@@ -1,0 +1,60 @@
+{
+  "name": "@chaindoc_io/server-sdk",
+  "version": "0.1.0-alpha.4",
+  "description": "Server-side SDK for Chaindoc API - document management, signatures, and embedded sessions",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "prepack": "npm run build"
+  },
+  "keywords": [
+    "chaindoc",
+    "document-signing",
+    "e-signature",
+    "api-client",
+    "sdk",
+    "typescript",
+    "nodejs"
+  ],
+  "author": "Chaindoc Team <dev@chaindoc.io>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ChaindocIO/server-sdk.git"
+  },
+  "homepage": "https://chaindoc.io/docs",
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.54.0",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.2",
+    "vitest": "^1.0.4"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
