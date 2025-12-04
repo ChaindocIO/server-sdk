@@ -1,6 +1,9 @@
 # @chaindoc_io/server-sdk
 
-Server-side SDK for Chaindoc API - document management, signatures, and embedded sessions.
+**Server-side SDK for Chaindoc API - document management, signatures, and embedded sessions.**
+
+[![npm version](https://img.shields.io/npm/v/@chaindoc_io/server-sdk.svg)](https://www.npmjs.com/package/@chaindoc_io/server-sdk)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## Installation
 
