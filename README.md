@@ -226,4 +226,13 @@ try {
 
 ## License
 
-MIT
+MIT License - see [LICENSE](LICENSE) file for details
+
+## Support
+
+- GitHub Issues: [Report a bug](https://github.com/ChaindocIO/server-sdk/issues)
+- Documentation: https://chaindoc.io/docs
+
+---
+
+Made with ❤️ by the Chaindoc team
