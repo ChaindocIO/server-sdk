@@ -92,10 +92,18 @@ const session = await chaindoc.embedded.createSession({
 ```typescript
 const chaindoc = new Chaindoc({
   secretKey: "sk_xxx", // Required
-  baseUrl: "https://...", // Optional, default: https://api.chaindoc.io
+  environment: "production", // Optional: 'production' | 'staging' | 'development'
   timeout: 30000, // Optional, default: 30000ms
 });
 ```
+
+### Environments
+
+| Environment   | API URL                                |
+| ------------- | -------------------------------------- |
+| `production`  | `https://api.chaindoc.io` (default)    |
+| `staging`     | `https://api-dev-chaindoc.idealogic.dev` |
+| `development` | `https://api-dev-chaindoc.idealogic.dev` |
 
 ### Documents
 

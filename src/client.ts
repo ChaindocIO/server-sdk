@@ -3,7 +3,7 @@
  * Uses native fetch (Node 18+)
  */
 
-import type { ChaindocConfig, RetryConfig } from "./types";
+import type { ChaindocConfig, ChaindocEnvironment, RetryConfig } from "./types";
 
 export class ChaindocError extends Error {
   constructor(
@@ -26,7 +26,13 @@ export interface RequestOptions {
   noRetry?: boolean;
 }
 
-const DEFAULT_BASE_URL = "https://api.chaindoc.io";
+const ENVIRONMENT_URLS: Record<ChaindocEnvironment, string> = {
+  production: "https://api.chaindoc.io",
+  staging: "https://api-dev-chaindoc.idealogic.dev",
+  development: "https://api-dev-chaindoc.idealogic.dev",
+};
+
+const DEFAULT_ENVIRONMENT: ChaindocEnvironment = "production";
 const DEFAULT_TIMEOUT = 30000;
 const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_BASE_DELAY_MS = 1000;
@@ -48,7 +54,8 @@ export class HttpClient {
       throw new ChaindocError('secretKey must start with "sk_"');
     }
 
-    this.baseUrl = (config.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, "");
+    const environment = config.environment ?? DEFAULT_ENVIRONMENT;
+    this.baseUrl = ENVIRONMENT_URLS[environment];
     this.secretKey = config.secretKey;
     this.timeout = config.timeout ?? DEFAULT_TIMEOUT;
     this.defaultHeaders = {

@@ -877,7 +877,7 @@ describe("Chaindoc Integration", () => {
   beforeAll(() => {
     chaindoc = new Chaindoc({
       secretKey: process.env.CHAINDOC_TEST_SECRET_KEY!,
-      baseUrl: "https://api-staging.chaindoc.io",
+      environment: "staging",
     });
   });
 

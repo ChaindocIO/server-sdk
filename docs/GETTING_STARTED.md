@@ -322,12 +322,29 @@ try {
 
 ## Environment Configuration
 
+The SDK supports three environments:
+
+| Environment   | API URL                                |
+| ------------- | -------------------------------------- |
+| `production`  | `https://api.chaindoc.io` (default)    |
+| `staging`     | `https://api-dev-chaindoc.idealogic.dev` |
+| `development` | `https://api-dev-chaindoc.idealogic.dev` |
+
 ### Development
 
 ```typescript
 const chaindoc = new Chaindoc({
-  secretKey: "sk_test_xxxxxxxxxxxxx", // Test key
-  baseUrl: "https://api-staging.chaindoc.io", // Staging API
+  secretKey: "sk_test_xxxxxxxxxxxxx",
+  environment: "development",
+});
+```
+
+### Staging
+
+```typescript
+const chaindoc = new Chaindoc({
+  secretKey: "sk_test_xxxxxxxxxxxxx",
+  environment: "staging",
 });
 ```
 
@@ -335,8 +352,8 @@ const chaindoc = new Chaindoc({
 
 ```typescript
 const chaindoc = new Chaindoc({
-  secretKey: process.env.CHAINDOC_SECRET_KEY!, // From env
-  // baseUrl defaults to https://api.chaindoc.io
+  secretKey: process.env.CHAINDOC_SECRET_KEY!,
+  // environment defaults to 'production'
 });
 ```
 

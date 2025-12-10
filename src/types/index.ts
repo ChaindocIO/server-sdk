@@ -26,6 +26,11 @@ export interface RetryConfig {
   maxDelayMs?: number;
 }
 
+/**
+ * Available API environments
+ */
+export type ChaindocEnvironment = 'production' | 'staging' | 'development';
+
 export interface ChaindocConfig {
   /**
    * Secret API key (starts with sk_)
@@ -34,10 +39,13 @@ export interface ChaindocConfig {
   secretKey: string;
 
   /**
-   * Base URL for API
-   * @default 'https://api.chaindoc.io'
+   * API environment
+   * - production: https://api.chaindoc.io
+   * - staging: https://api-dev-chaindoc.idealogic.dev
+   * - development: https://api-dev-chaindoc.idealogic.dev
+   * @default 'production'
    */
-  baseUrl?: string;
+  environment?: ChaindocEnvironment;
 
   /**
    * Request timeout in milliseconds
