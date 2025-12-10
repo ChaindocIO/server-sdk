@@ -109,10 +109,11 @@ const session = await chaindoc.embedded.createSession({
 
 ```typescript
 const chaindoc = new Chaindoc({
-  secretKey: "sk_xxx",           // Required - Your secret API key
-  environment: "production",      // Optional: 'production' | 'staging' | 'development'
-  timeout: 30000,                 // Optional: Request timeout in ms (default: 30000)
-  retry: {                        // Optional: Retry configuration
+  secretKey: "sk_xxx", // Required - Your secret API key
+  environment: "production", // Optional: 'production' | 'staging' | 'development'
+  timeout: 30000, // Optional: Request timeout in ms (default: 30000)
+  retry: {
+    // Optional: Retry configuration
     maxRetries: 3,
     initialDelay: 1000,
     maxDelay: 10000,
@@ -241,10 +242,10 @@ try {
 
 ## Documentation
 
-- [Getting Started](docs/GETTING_STARTED.md) - Step-by-step setup guide
-- [API Reference](docs/API_REFERENCE.md) - Complete API documentation
-- [Advanced Usage](docs/ADVANCED_USAGE.md) - Workflows, webhooks, and best practices
-- [Migration Guide](MIGRATION.md) - Upgrading from alpha versions
+- [Introduction](https://chaindoc.io/docs/introduction)
+- [Quick Start](https://chaindoc.io/docs/quick-start)
+- [API Documentation](https://chaindoc.io/docs/api-docs)
+- [Chaindoc SDKs](https://chaindoc.io/docs/sdks)
 - [Changelog](CHANGELOG.md) - Version history
 
 ## Requirements
