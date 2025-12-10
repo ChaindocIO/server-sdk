@@ -143,21 +143,21 @@ new Chaindoc(config: ChaindocConfig)
 
 #### ChaindocConfig
 
-| Property      | Type                     | Required | Default        | Description                                        |
-| ------------- | ------------------------ | -------- | -------------- | -------------------------------------------------- |
-| `secretKey`   | `string`                 | **Yes**  | -              | API secret key (format: `sk_*`)                    |
+| Property      | Type                     | Required | Default        | Description                                              |
+| ------------- | ------------------------ | -------- | -------------- | -------------------------------------------------------- |
+| `secretKey`   | `string`                 | **Yes**  | -              | API secret key (format: `sk_*`)                          |
 | `environment` | `ChaindocEnvironment`    | No       | `'production'` | API environment (`production`, `staging`, `development`) |
-| `timeout`     | `number`                 | No       | `30000`        | Request timeout (ms)                               |
-| `headers`     | `Record<string, string>` | No       | `{}`           | Custom headers                                     |
-| `retry`       | `RetryConfig`            | No       | See below      | Retry configuration                                |
+| `timeout`     | `number`                 | No       | `30000`        | Request timeout (ms)                                     |
+| `headers`     | `Record<string, string>` | No       | `{}`           | Custom headers                                           |
+| `retry`       | `RetryConfig`            | No       | See below      | Retry configuration                                      |
 
 #### Environments
 
-| Environment   | API URL                                |
-| ------------- | -------------------------------------- |
-| `production`  | `https://api.chaindoc.io`              |
-| `staging`     | `https://api-dev-chaindoc.idealogic.dev` |
-| `development` | `https://api-dev-chaindoc.idealogic.dev` |
+| Environment   | API URL                        |
+| ------------- | ------------------------------ |
+| `production`  | `https://api.chaindoc.io`      |
+| `staging`     | `https://api-demo.chaindoc.io` |
+| `development` | `https://api-demo.chaindoc.io` |
 
 #### RetryConfig
 

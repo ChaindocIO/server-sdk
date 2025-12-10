@@ -99,11 +99,11 @@ const chaindoc = new Chaindoc({
 
 ### Environments
 
-| Environment   | API URL                                |
-| ------------- | -------------------------------------- |
-| `production`  | `https://api.chaindoc.io` (default)    |
-| `staging`     | `https://api-dev-chaindoc.idealogic.dev` |
-| `development` | `https://api-dev-chaindoc.idealogic.dev` |
+| Environment   | API URL                             |
+| ------------- | ----------------------------------- |
+| `production`  | `https://api.chaindoc.io` (default) |
+| `staging`     | `https://api-demo.chaindoc.io`      |
+| `development` | `https://api-demo.chaindoc.io`      |
 
 ### Documents
 

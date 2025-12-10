@@ -28,8 +28,8 @@ export interface RequestOptions {
 
 const ENVIRONMENT_URLS: Record<ChaindocEnvironment, string> = {
   production: "https://api.chaindoc.io",
-  staging: "https://api-dev-chaindoc.idealogic.dev",
-  development: "https://api-dev-chaindoc.idealogic.dev",
+  staging: "https://api-demo.chaindoc.io",
+  development: "https://api-demo.chaindoc.io",
 };
 
 const DEFAULT_ENVIRONMENT: ChaindocEnvironment = "production";

@@ -29,7 +29,7 @@ export interface RetryConfig {
 /**
  * Available API environments
  */
-export type ChaindocEnvironment = 'production' | 'staging' | 'development';
+export type ChaindocEnvironment = "production" | "staging" | "development";
 
 export interface ChaindocConfig {
   /**
@@ -41,8 +41,8 @@ export interface ChaindocConfig {
   /**
    * API environment
    * - production: https://api.chaindoc.io
-   * - staging: https://api-dev-chaindoc.idealogic.dev
-   * - development: https://api-dev-chaindoc.idealogic.dev
+   * - staging: https://api-demo.chaindoc.io
+   * - development: https://api-demo.chaindoc.io
    * @default 'production'
    */
   environment?: ChaindocEnvironment;
