@@ -1,6 +1,6 @@
 {
   "name": "@chaindoc_io/server-sdk",
-  "version": "0.1.0-alpha.6",
+  "version": "0.1.0-alpha.7",
   "description": "Server-side SDK for Chaindoc API - document management, signatures, and embedded sessions",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
