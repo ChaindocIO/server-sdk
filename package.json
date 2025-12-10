@@ -15,7 +15,8 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "tsup",
@@ -30,10 +31,15 @@
     "chaindoc",
     "document-signing",
     "e-signature",
+    "digital-signature",
+    "blockchain",
+    "document-verification",
     "api-client",
     "sdk",
     "typescript",
-    "nodejs"
+    "nodejs",
+    "kyc",
+    "embedded-signing"
   ],
   "author": "Chaindoc Team <dev@chaindoc.io>",
   "license": "MIT",
@@ -42,6 +48,9 @@
     "url": "git+https://github.com/ChaindocIO/server-sdk.git"
   },
   "homepage": "https://chaindoc.io/docs",
+  "bugs": {
+    "url": "https://github.com/ChaindocIO/server-sdk/issues"
+  },
   "publishConfig": {
     "access": "public"
   },

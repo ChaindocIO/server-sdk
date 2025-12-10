@@ -1,5 +1,7 @@
 # Advanced Usage Guide
 
+> **Version:** 1.0.0
+
 Advanced configuration, workflows, and best practices for production deployments.
 
 ---
@@ -949,3 +951,11 @@ describe("Complete Signing Flow", () => {
   });
 });
 ```
+
+---
+
+## Support
+
+- **Documentation**: [chaindoc.io/docs](https://chaindoc.io/docs)
+- **GitHub Issues**: [Report a bug](https://github.com/ChaindocIO/server-sdk/issues)
+- **Email**: support@chaindoc.io

@@ -1,14 +1,35 @@
 # @chaindoc_io/server-sdk
 
-**Server-side SDK for Chaindoc API - document management, signatures, and embedded sessions.**
+**Official server-side SDK for Chaindoc API - document management, digital signatures, and blockchain verification.**
 
 [![npm version](https://img.shields.io/npm/v/@chaindoc_io/server-sdk.svg)](https://www.npmjs.com/package/@chaindoc_io/server-sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-green.svg)](https://nodejs.org/)
+
+## Features
+
+- **Document Management** - Create, update, and version documents with blockchain verification
+- **Digital Signatures** - Request and collect legally-binding electronic signatures
+- **Embedded Signing** - Seamless in-app signing experience with frontend SDK integration
+- **Blockchain Verification** - Immutable document verification on blockchain
+- **KYC Integration** - Built-in Sumsub KYC verification for signers
+- **Zero Dependencies** - Uses native Node.js 18+ APIs (fetch, FormData)
+- **TypeScript First** - Full type definitions included
+- **Automatic Retries** - Built-in retry logic with exponential backoff
 
 ## Installation
 
 ```bash
 npm install @chaindoc_io/server-sdk
+```
+
+```bash
+yarn add @chaindoc_io/server-sdk
+```
+
+```bash
+pnpm add @chaindoc_io/server-sdk
 ```
 
 ## Quick Start
@@ -33,7 +54,7 @@ const session = await chaindoc.embedded.createSession({
 console.log(session.sessionId);
 ```
 
-## Full Example: Document Signing Flow
+## Complete Example: Document Signing Flow
 
 ```typescript
 import { Chaindoc } from "@chaindoc_io/server-sdk";
@@ -48,7 +69,7 @@ const buffer = await readFile("./contract.pdf");
 const file = new Blob([buffer], { type: "application/pdf" });
 const { media } = await chaindoc.media.upload([file]);
 
-// 2. Create document
+// 2. Create document with blockchain verification
 const doc = await chaindoc.documents.create({
   name: "Service Agreement",
   description: "Contract for services",
@@ -67,7 +88,6 @@ const request = await chaindoc.signatures.createRequest({
   ],
   deadline: new Date("2025-12-31"),
   embeddedFlow: true,
-  // isKycRequired: true, // Enable KYC verification
 });
 
 // 4. Create embedded session for signer
@@ -85,25 +105,30 @@ const session = await chaindoc.embedded.createSession({
 // sdk.openSignatureFlow({ sessionId: session.sessionId })
 ```
 
-## API Reference
-
-### Chaindoc
+## Configuration
 
 ```typescript
 const chaindoc = new Chaindoc({
-  secretKey: "sk_xxx", // Required
-  environment: "production", // Optional: 'production' | 'staging' | 'development'
-  timeout: 30000, // Optional, default: 30000ms
+  secretKey: "sk_xxx",           // Required - Your secret API key
+  environment: "production",      // Optional: 'production' | 'staging' | 'development'
+  timeout: 30000,                 // Optional: Request timeout in ms (default: 30000)
+  retry: {                        // Optional: Retry configuration
+    maxRetries: 3,
+    initialDelay: 1000,
+    maxDelay: 10000,
+  },
 });
 ```
 
 ### Environments
 
-| Environment   | API URL                             |
-| ------------- | ----------------------------------- |
-| `production`  | `https://api.chaindoc.io` (default) |
-| `staging`     | `https://api-demo.chaindoc.io`      |
-| `development` | `https://api-demo.chaindoc.io`      |
+| Environment   | API URL                             | Use Case                |
+| ------------- | ----------------------------------- | ----------------------- |
+| `production`  | `https://api.chaindoc.io` (default) | Live production traffic |
+| `staging`     | `https://api-demo.chaindoc.io`      | Pre-release testing     |
+| `development` | `https://api-demo.chaindoc.io`      | Development & debugging |
+
+## API Overview
 
 ### Documents
 
@@ -115,11 +140,7 @@ await chaindoc.documents.create({
   media: Media;
   hashtags: string[];
   status: 'draft' | 'published';
-  meta?: MetaTag[];
-  isForSigning?: boolean;
   accessType?: 'private' | 'public' | 'restricted';
-  accessEmails?: AccessEmail[];
-  accessRoles?: AccessRole[];
 });
 
 // Update document (creates new version)
@@ -144,12 +165,10 @@ await chaindoc.documents.getVerificationStatus(versionId);
 // Create signature request
 await chaindoc.signatures.createRequest({
   versionId: string;
-  recipients: Recipient[];      // [{ email, shareToken? }]
+  recipients: [{ email: string, shareToken?: string }];
   deadline: Date;
-  message?: string;
-  embeddedFlow?: boolean;       // true for embedded signing
-  isKycRequired?: boolean;      // Validate KYC via shareToken
-  meta?: MetaTag[];
+  embeddedFlow?: boolean;
+  isKycRequired?: boolean;
 });
 
 // Get request status
@@ -158,49 +177,39 @@ await chaindoc.signatures.getRequestStatus(requestId);
 // Get all requests
 await chaindoc.signatures.getMyRequests({ pageNumber: 1, pageSize: 10 });
 
-// Sign document (if API key owner is signatory)
-await chaindoc.signatures.sign({
-  requestId: string;
-  signatureId: number;
-});
-
-// Get user's signatures
-await chaindoc.signatures.getSignatures();
+// Sign document
+await chaindoc.signatures.sign({ requestId, signatureId });
 ```
 
 ### Embedded Sessions
 
 ```typescript
-// Create session (sends OTP to email)
-await chaindoc.embedded.createSession({
+// Create session for frontend signing (sends OTP to email)
+const session = await chaindoc.embedded.createSession({
   email: 'signer@example.com',
   metadata: {
-    documentId: string;          // Required
+    documentId: string;
     signatureRequestId?: string;
     returnUrl?: string;
-    [key: string]: unknown;
   },
 });
-
-// Response includes sessionId for frontend SDK
+// Returns sessionId for @chaindoc_io/embed-sdk
 ```
 
 ### Media
 
 ```typescript
-// Upload files
+// Upload files (PDF, DOC, images, videos)
 const { media } = await chaindoc.media.upload([file1, file2]);
-
-// Use media[0] when creating documents
 ```
 
 ### KYC
 
 ```typescript
-// Share KYC data (for pre-verification)
+// Share KYC data for pre-verification
 await chaindoc.kyc.share({
   email: "user@example.com",
-  shareToken: "sumsub_share_token", // Optional
+  shareToken: "sumsub_share_token",
 });
 ```
 
@@ -230,20 +239,41 @@ try {
 }
 ```
 
+## Documentation
+
+- [Getting Started](docs/GETTING_STARTED.md) - Step-by-step setup guide
+- [API Reference](docs/API_REFERENCE.md) - Complete API documentation
+- [Advanced Usage](docs/ADVANCED_USAGE.md) - Workflows, webhooks, and best practices
+- [Migration Guide](MIGRATION.md) - Upgrading from alpha versions
+- [Changelog](CHANGELOG.md) - Version history
+
 ## Requirements
 
-- Node.js 18+ (uses native fetch)
-- Secret API key (sk_xxx) from Chaindoc
+- Node.js 18+ (uses native fetch API)
+- Secret API key (`sk_xxx`) from [Chaindoc Dashboard](https://chaindoc.io)
+
+## Related Packages
+
+- [`@chaindoc_io/embed-sdk`](https://www.npmjs.com/package/@chaindoc_io/embed-sdk) - Frontend SDK for embedded signing
+
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## Security
+
+For security vulnerabilities, please see our [Security Policy](SECURITY.md).
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Support
 
-- GitHub Issues: [Report a bug](https://github.com/ChaindocIO/server-sdk/issues)
-- Documentation: https://chaindoc.io/docs
+- [Documentation](https://chaindoc.io/docs)
+- [GitHub Issues](https://github.com/ChaindocIO/server-sdk/issues)
+- [Email Support](mailto:support@chaindoc.io)
 
 ---
 
-Made with ❤️ by the Chaindoc team
+Made with ❤️ by the [Chaindoc](https://chaindoc.io) team

@@ -362,8 +362,8 @@ const chaindoc = new Chaindoc({
 ## Next Steps
 
 - **[API Reference](./API_REFERENCE.md)** - Complete API documentation
-- **[Embed SDK](../../chaindoc-websdk-core/docs/API_REFERENCE.md)** - Frontend integration
-- **[Framework Guides](../../chaindoc-websdk-core/docs/FRAMEWORK_GUIDES.md)** - React, Vue, Angular
+- **[Advanced Usage](./ADVANCED_USAGE.md)** - Workflows, webhooks, and best practices
+- **[Embed SDK](https://www.npmjs.com/package/@chaindoc_io/embed-sdk)** - Frontend integration
 
 ---
 
@@ -371,6 +371,6 @@ const chaindoc = new Chaindoc({
 
 Need help?
 
-- **Documentation**: [docs.chaindoc.io](https://docs.chaindoc.io)
-- **GitHub Issues**: [Report a bug](https://github.com/chaindoc-io/chaindoc-websdk-server-sdk/issues)
+- **Documentation**: [chaindoc.io/docs](https://chaindoc.io/docs)
+- **GitHub Issues**: [Report a bug](https://github.com/ChaindocIO/server-sdk/issues)
 - **Email**: support@chaindoc.io

@@ -1,7 +1,8 @@
 # Chaindoc Server SDK - API Reference
 
-> **Version:** 0.1.0
-> **Package:** `@chaindoc_io/server-sdk` > **License:** MIT
+> **Version:** 1.0.0
+> **Package:** `@chaindoc_io/server-sdk`
+> **License:** MIT
 > **Node.js:** >= 18
 
 ---
@@ -1066,6 +1067,6 @@ async function createSigningSession(
 
 ## Support
 
-- **Documentation**: [docs.chaindoc.io](https://docs.chaindoc.io)
-- **GitHub Issues**: [Report a bug](https://github.com/chaindoc-io/chaindoc-websdk-server-sdk/issues)
+- **Documentation**: [chaindoc.io/docs](https://chaindoc.io/docs)
+- **GitHub Issues**: [Report a bug](https://github.com/ChaindocIO/server-sdk/issues)
 - **Email**: support@chaindoc.io
