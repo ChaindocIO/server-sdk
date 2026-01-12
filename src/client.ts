@@ -27,9 +27,9 @@ export interface RequestOptions {
 }
 
 const ENVIRONMENT_URLS: Record<ChaindocEnvironment, string> = {
-  production: "https://api.chaindoc.io",
-  staging: "https://api-demo.chaindoc.io",
-  development: "https://api-demo.chaindoc.io",
+  production: process.env.CHAINDOC_API_PRODUCTION!,
+  staging: process.env.CHAINDOC_API_STAGING!,
+  development: process.env.CHAINDOC_API_DEVELOPMENT!,
 };
 
 const DEFAULT_ENVIRONMENT: ChaindocEnvironment = "production";
