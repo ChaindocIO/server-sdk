@@ -27,9 +27,9 @@ export interface RequestOptions {
 }
 
 const ENVIRONMENT_URLS: Record<ChaindocEnvironment, string> = {
-  production: process.env.CHAINDOC_API_PRODUCTION!,
-  staging: process.env.CHAINDOC_API_STAGING!,
-  development: process.env.CHAINDOC_API_DEVELOPMENT!,
+  production: "https://api.chaindoc.io",
+  staging: "https://api.chaindoc.io",
+  development: "https://api.chaindoc.io",
 };
 
 const DEFAULT_ENVIRONMENT: ChaindocEnvironment = "production";
@@ -55,7 +55,7 @@ export class HttpClient {
     }
 
     const environment = config.environment ?? DEFAULT_ENVIRONMENT;
-    this.baseUrl = ENVIRONMENT_URLS[environment];
+    this.baseUrl = config.baseUrl ?? ENVIRONMENT_URLS[environment];
     this.secretKey = config.secretKey;
     this.timeout = config.timeout ?? DEFAULT_TIMEOUT;
     this.defaultHeaders = {

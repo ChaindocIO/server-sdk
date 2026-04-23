@@ -1,6 +1,6 @@
 {
   "name": "@chaindoc_io/server-sdk",
-  "version": "1.0.5",
+  "version": "2.0.0",
   "description": "Server-side SDK for Chaindoc API - document management, signatures, and embedded sessions",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -23,8 +23,10 @@
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts",
+    "sync:openapi:snapshot": "node scripts/sync-openapi-snapshot.mjs",
     "test": "vitest",
     "test:ui": "vitest --ui",
+    "prepare": "npm run build",
     "prepack": "npm run build"
   },
   "keywords": [
@@ -38,8 +40,10 @@
     "sdk",
     "typescript",
     "nodejs",
-    "kyc",
-    "embedded-signing"
+    "embedded-signing",
+    "contracts",
+    "invoices",
+    "templates"
   ],
   "author": "Chaindoc Team <dev@chaindoc.io>",
   "license": "MIT",

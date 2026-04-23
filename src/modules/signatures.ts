@@ -20,8 +20,8 @@ export class Signatures {
    * Create a signature request
    *
    * When embeddedFlow=true and isKycRequired=true:
-   * - Recipients must include shareToken for KYC verification
-   * - Backend validates KYC via Sumsub before creating request
+   * - Signers complete KYC inside Chaindoc before signing
+   * - Backend enforces KYC at signing time
    */
   async createRequest(params: CreateSignatureRequestParams): Promise<SignatureRequestResponse> {
     return this.client.post<SignatureRequestResponse>('/api/v1/signatures/requests', {

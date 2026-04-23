@@ -1,6 +1,6 @@
 # @chaindoc_io/server-sdk
 
-**Official server-side SDK for Chaindoc API - document management, digital signatures, and blockchain verification.**
+**Official server-side SDK for Chaindoc API - documents, signatures, contracts, invoicing, and webhook-safe integrations.**
 
 [![npm version](https://img.shields.io/npm/v/@chaindoc_io/server-sdk.svg)](https://www.npmjs.com/package/@chaindoc_io/server-sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -11,9 +11,11 @@
 
 - **Document Management** - Create, update, and version documents with blockchain verification
 - **Digital Signatures** - Request and collect legally-binding electronic signatures
+- **Templates, Contracts, and Billing** - Generate documents and contracts from published templates, then manage invoice lifecycle and transactions
 - **Embedded Signing** - Seamless in-app signing experience with frontend SDK integration
 - **Blockchain Verification** - Immutable document verification on blockchain
-- **KYC Integration** - Built-in Sumsub KYC verification for signers
+- **Webhook Verification** - Verify signed webhook deliveries with replay protection
+- **Embedded KYC Enforcement** - Require Chaindoc-managed KYC inside the signing iframe
 - **Zero Dependencies** - Uses native Node.js 18+ APIs (fetch, FormData)
 - **TypeScript First** - Full type definitions included
 - **Automatic Retries** - Built-in retry logic with exponential backoff
@@ -80,14 +82,11 @@ const doc = await chaindoc.documents.create({
 
 // 3. Create signature request
 const request = await chaindoc.signatures.createRequest({
-  versionId: doc.document.versions[0].uuid,
-  recipients: [
-    { email: "signer@example.com" },
-    // With KYC verification:
-    // { email: 'signer@example.com', shareToken: 'sumsub_share_token' }
-  ],
-  deadline: new Date("2025-12-31"),
+  versionId: doc.document.currentVersion.id,
+  recipients: [{ email: "signer@example.com" }],
+  deadline: new Date("2027-12-31"),
   embeddedFlow: true,
+  isKycRequired: true,
 });
 
 // 4. Create embedded session for signer
@@ -95,7 +94,7 @@ const session = await chaindoc.embedded.createSession({
   email: "signer@example.com",
   metadata: {
     documentId: doc.documentId,
-    signatureRequestId: request.signatureRequest.uuid,
+    signatureRequestId: request.requestId,
     returnUrl: "https://yourapp.com/signing-complete",
   },
 });
@@ -103,6 +102,101 @@ const session = await chaindoc.embedded.createSession({
 // 5. Send sessionId to frontend
 // Frontend uses: @chaindoc_io/embed-sdk
 // sdk.openSignatureFlow({ sessionId: session.sessionId })
+```
+
+## Complete Example: Contract Billing Flow
+
+```typescript
+import { Chaindoc } from "@chaindoc_io/server-sdk";
+
+const chaindoc = new Chaindoc({
+  secretKey: "sk_your_secret_key",
+});
+
+// Contract should already be created, sent, and signed by both parties
+const contract = await chaindoc.contracts.get("contract_uuid");
+const contractId = contract.contractId;
+
+if (contract.contract.status !== "active") {
+  throw new Error("Invoices can be created only for active contracts");
+}
+
+const invoice = await chaindoc.invoices.create(contractId, {
+  title: "April Retainer",
+  amount: "1500.00",
+  dueDate: "2026-04-30T00:00:00.000Z",
+  sendImmediately: false,
+});
+
+const invoiceId = invoice.invoiceId ?? invoice.invoice.id;
+
+await chaindoc.invoices.send(contractId, invoiceId, {
+  autoCharge: false,
+});
+
+const refreshedInvoice = await chaindoc.invoices.get(contractId, invoiceId);
+
+if (refreshedInvoice.invoice.status === "unpaid") {
+  await chaindoc.invoices.charge(contractId, invoiceId);
+}
+
+const transactions = await chaindoc.transactions.listByContract(contractId);
+
+console.log(transactions.transactions.map((transaction) => transaction.id));
+```
+
+## Complete Example: Template Runtime Flow
+
+```typescript
+import { Chaindoc } from "@chaindoc_io/server-sdk";
+
+const chaindoc = new Chaindoc({
+  secretKey: "sk_your_secret_key",
+});
+
+const templateId = "template_uuid";
+
+const draftDocument = await chaindoc.templates.createDocument(templateId, {
+  documentName: "Generated NDA",
+  documentDescription: "Rendered from a published Chaindoc template",
+  variables: {
+    client_name: "Acme Inc.",
+    effective_date: "2026-04-10",
+  },
+});
+
+const signatureRequest = await chaindoc.templates.sendForSigning(templateId, {
+  documentName: "Generated NDA",
+  documentDescription: "Ready for signing",
+  variables: {
+    client_name: "Acme Inc.",
+    effective_date: "2026-04-10",
+  },
+  slotAssignments: [{ signerKey: "party_a", email: "signer@example.com" }],
+  deadline: new Date("2026-12-31"),
+});
+
+const contract = await chaindoc.templates.createContract(templateId, {
+  title: "Generated Master Services Agreement",
+  description: "Contract rendered from template",
+  variables: {
+    company_name: "Acme Inc.",
+    effective_date: "2026-04-10",
+  },
+  contragent: {
+    email: "partner@example.com",
+    name: "Partner Corp",
+  },
+  slotAssignments: [
+    { signerKey: "party_a", role: "business" },
+    { signerKey: "party_b", role: "contragent" },
+  ],
+  deadline: new Date("2026-12-31"),
+});
+
+console.log(draftDocument.documentId);
+console.log(signatureRequest.requestId);
+console.log(contract.contractId);
 ```
 
 ## Configuration
@@ -166,7 +260,7 @@ await chaindoc.documents.getVerificationStatus(versionId);
 // Create signature request
 await chaindoc.signatures.createRequest({
   versionId: string;
-  recipients: [{ email: string, shareToken?: string }];
+  recipients: [{ email: string }];
   deadline: Date;
   embeddedFlow?: boolean;
   isKycRequired?: boolean;
@@ -197,21 +291,95 @@ const session = await chaindoc.embedded.createSession({
 // Returns sessionId for @chaindoc_io/embed-sdk
 ```
 
+### Contracts
+
+```typescript
+const created = await chaindoc.contracts.create({
+  documentId: "doc_uuid",
+  title: "Master Services Agreement",
+  contragent: { email: "partner@example.com", name: "Partner LLC" },
+  paymentMethodRequired: true,
+  preferredPaymentMethodType: "card",
+});
+
+await chaindoc.contracts.list({ page: 1, limit: 10, status: "active" });
+await chaindoc.contracts.get(created.contractId);
+await chaindoc.contracts.getStatus(created.contractId);
+await chaindoc.contracts.getActivities(created.contractId);
+await chaindoc.contracts.send(created.contractId, {
+  messageToSigners: "Please review and sign this contract",
+  deadline: new Date("2026-12-31"),
+  isKycRequired: true,
+});
+await chaindoc.contracts.cancel(created.contractId);
+await chaindoc.contracts.terminate(created.contractId, { reason: "Mutual offboarding" });
+```
+
+### Templates
+
+```typescript
+await chaindoc.templates.createDocument(templateId, {
+  documentName: "Generated NDA",
+  variables: {
+    client_name: "Acme Inc.",
+  },
+});
+
+await chaindoc.templates.sendForSigning(templateId, {
+  documentName: "Generated NDA",
+  variables: {
+    client_name: "Acme Inc.",
+  },
+  slotAssignments: [{ signerKey: "party_a", email: "signer@example.com" }],
+  deadline: new Date("2026-12-31"),
+});
+
+await chaindoc.templates.createContract(templateId, {
+  title: "Generated MSA",
+  variables: {
+    company_name: "Acme Inc.",
+  },
+  contragent: {
+    email: "partner@example.com",
+  },
+  slotAssignments: [
+    { signerKey: "party_a", role: "business" },
+    { signerKey: "party_b", role: "contragent" },
+  ],
+  deadline: new Date("2026-12-31"),
+});
+```
+
+### Invoices
+
+```typescript
+await chaindoc.invoices.create(contractId, {
+  title: "April Retainer",
+  amount: "1500.00",
+  dueDate: "2026-04-30T00:00:00.000Z",
+  autoCharge: false,
+  sendImmediately: false,
+});
+
+await chaindoc.invoices.list(contractId, { status: "unpaid", page: 1, limit: 20 });
+await chaindoc.invoices.get(contractId, invoiceId);
+await chaindoc.invoices.send(contractId, invoiceId, { autoCharge: true });
+await chaindoc.invoices.charge(contractId, invoiceId);
+await chaindoc.invoices.markPaid(contractId, invoiceId, { note: "Wire received" });
+```
+
+### Transactions
+
+```typescript
+await chaindoc.transactions.listByContract(contractId);
+await chaindoc.transactions.get(transactionId);
+```
+
 ### Media
 
 ```typescript
 // Upload files (PDF, DOC, images, videos)
 const { media } = await chaindoc.media.upload([file1, file2]);
-```
-
-### KYC
-
-```typescript
-// Share KYC data for pre-verification
-await chaindoc.kyc.share({
-  email: "user@example.com",
-  shareToken: "sumsub_share_token",
-});
 ```
 
 ### Utility
@@ -222,6 +390,32 @@ await chaindoc.getApiKeyInfo();
 
 // Health check
 await chaindoc.healthCheck();
+```
+
+### Webhooks
+
+```typescript
+const verification = Chaindoc.webhooks.verify(
+  rawBody,
+  req.headers["x-chaindoc-signature"] as string,
+  req.headers["x-chaindoc-timestamp"] as string,
+  process.env.CHAINDOC_WEBHOOK_SECRET!
+);
+
+if (!verification.valid) {
+  throw new Error("Invalid webhook signature");
+}
+
+switch (verification.envelope?.type) {
+  case "contract.signed":
+  case "invoice.created":
+  case "invoice.sent":
+  case "invoice.paid":
+  case "transaction.created":
+  case "transaction.updated":
+    console.log(verification.envelope.data);
+    break;
+}
 ```
 
 ## Error Handling

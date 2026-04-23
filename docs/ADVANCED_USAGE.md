@@ -49,8 +49,8 @@ const updated = await chaindoc.documents.update(doc.documentId, {
 });
 
 // Both versions are accessible
-console.log("v1:", doc.document.versions[0].uuid);
-console.log("v2:", updated.document.versions[1].uuid);
+console.log("v1:", doc.document.currentVersion.id);
+console.log("v2:", updated.document.currentVersion.id);
 ```
 
 ### Document Status Flow
@@ -104,7 +104,7 @@ async function uploadDocuments(files: { path: string; name: string }[]) {
     results.push({
       name: file.name,
       documentId: doc.documentId,
-      versionId: doc.document.versions[0].uuid,
+      versionId: doc.document.currentVersion.id,
     });
   }
 
@@ -122,7 +122,7 @@ All signers can sign independently in any order:
 
 ```typescript
 const sigRequest = await chaindoc.signatures.createRequest({
-  versionId: doc.document.versions[0].uuid,
+  versionId: doc.document.currentVersion.id,
   recipients: [
     { email: "signer1@example.com" },
     { email: "signer2@example.com" },
@@ -229,7 +229,7 @@ async function sendReminders(chaindoc: Chaindoc) {
         await sendReminderEmail(signer.signerEmail, {
           documentName: request.versionId, // You may need to fetch document name
           deadline: request.dueDate,
-          requestId: request.uuid,
+          requestId: request.id,
         });
       }
     }
@@ -403,77 +403,100 @@ await chaindoc.documents.create({
 
 ---
 
-## KYC Integration
+## Embedded KYC
 
-### Pre-Verification Flow
+Use `isKycRequired` when the signer must complete identity verification in the
+Chaindoc-managed iframe before signing.
 
 ```typescript
-async function createVerifiedSignatureRequest(
+async function createKycProtectedSignatureRequest(
   chaindoc: Chaindoc,
   versionId: string,
-  signerEmail: string,
-  sumsubShareToken: string
+  signerEmail: string
 ) {
-  // 1. Verify KYC data
-  const kycResult = await chaindoc.kyc.share({
-    email: signerEmail,
-    shareToken: sumsubShareToken,
-  });
-
-  if (!kycResult.success) {
-    throw new Error(`KYC verification failed: ${kycResult.error}`);
-  }
-
-  if (!kycResult.kycData?.verified) {
-    throw new Error("User is not verified");
-  }
-
-  console.log("KYC verified:", {
-    name: `${kycResult.kycData.firstName} ${kycResult.kycData.lastName}`,
-    country: kycResult.kycData.country,
-    status: kycResult.kycData.reviewStatus,
-  });
-
-  // 2. Create signature request with KYC requirement
-  return chaindoc.signatures.createRequest({
+  const request = await chaindoc.signatures.createRequest({
     versionId,
-    recipients: [{ email: signerEmail, shareToken: sumsubShareToken }],
+    recipients: [{ email: signerEmail }],
     deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     embeddedFlow: true,
     isKycRequired: true,
   });
+
+  const session = await chaindoc.embedded.createSession({
+    email: signerEmail,
+    metadata: {
+      documentId: request.documentId,
+      signatureRequestId: request.requestId,
+    },
+  });
+
+  return { request, session };
 }
 ```
 
-### KYC Data Usage
+---
+
+## Template Runtime Workflows
+
+Use template runtime when the template structure is curated in Chaindoc, but the
+render-time data lives in your system:
 
 ```typescript
-interface SignerKycInfo {
-  email: string;
-  verified: boolean;
-  fullName?: string;
-  country?: string;
-  applicantId?: string;
-}
+const templateId = "template_uuid";
 
-async function getSignerKycInfo(
-  chaindoc: Chaindoc,
-  email: string,
-  shareToken: string
-): Promise<SignerKycInfo> {
-  const result = await chaindoc.kyc.share({ email, shareToken });
+const draftDocument = await chaindoc.templates.createDocument(templateId, {
+  documentName: "Generated NDA",
+  variables: {
+    client_name: "Acme Inc.",
+    effective_date: "2026-04-10",
+  },
+});
 
-  return {
-    email,
-    verified: result.kycData?.verified ?? false,
-    fullName: result.kycData
-      ? `${result.kycData.firstName} ${result.kycData.lastName}`.trim()
-      : undefined,
-    country: result.kycData?.country,
-    applicantId: result.kycData?.applicantId,
-  };
-}
+const signingFlow = await chaindoc.templates.sendForSigning(templateId, {
+  documentName: "Generated NDA",
+  variables: {
+    client_name: "Acme Inc.",
+    effective_date: "2026-04-10",
+  },
+  slotAssignments: [{ signerKey: "party_a", email: "legal@acme.com" }],
+  deadline: new Date("2026-12-31"),
+});
 ```
+
+For template-backed contracts:
+
+```typescript
+const contractFlow = await chaindoc.templates.createContract(templateId, {
+  title: "Generated MSA",
+  variables: {
+    company_name: "Acme Inc.",
+    effective_date: "2026-04-10",
+  },
+  contragent: {
+    email: "partner@example.com",
+    name: "Partner Corp",
+  },
+  slotAssignments: [
+    { signerKey: "party_a", role: "business" },
+    { signerKey: "party_b", role: "contragent" },
+  ],
+  deadline: new Date("2026-12-31"),
+});
+
+const session = await chaindoc.embedded.createSession({
+  email: "partner@example.com",
+  metadata: {
+    contractId: contractFlow.contractId,
+  },
+});
+```
+
+Recommended boundaries:
+
+- Keep template CRUD and field-placement authoring in the Chaindoc app.
+- Use the public runtime API only for published template execution.
+- Store template UUIDs and signer-slot keys in your own integration config.
+- Treat signer-scoped template variables as part of the embedded signing flow, not the server-side render step.
 
 ---
 
@@ -484,88 +507,109 @@ Handle Chaindoc webhooks in your application:
 ```typescript
 // Express.js webhook handler
 import express from "express";
-import crypto from "crypto";
+import { Chaindoc } from "@chaindoc_io/server-sdk";
 
 const app = express();
 app.use(express.raw({ type: "application/json" }));
 
 const WEBHOOK_SECRET = process.env.CHAINDOC_WEBHOOK_SECRET!;
 
-app.post("/webhooks/chaindoc", (req, res) => {
-  // Verify signature
-  const signature = req.headers["x-chaindoc-signature"] as string;
-  const expectedSignature = crypto
-    .createHmac("sha256", WEBHOOK_SECRET)
-    .update(req.body)
-    .digest("hex");
+app.post("/webhooks/chaindoc", async (req, res) => {
+  const rawBody = req.body.toString("utf8");
+  const verification = Chaindoc.webhooks.verify(
+    rawBody,
+    req.headers["x-chaindoc-signature"] as string,
+    req.headers["x-chaindoc-timestamp"] as string,
+    WEBHOOK_SECRET
+  );
 
-  if (signature !== expectedSignature) {
+  if (!verification.valid || !verification.envelope) {
     return res.status(401).send("Invalid signature");
   }
 
-  const event = JSON.parse(req.body.toString());
+  const event = verification.envelope;
+
+  if (await wasAlreadyProcessed(event.id)) {
+    return res.status(200).send("Already processed");
+  }
 
   switch (event.type) {
-    case "signature.completed":
-      handleSignatureCompleted(event.data);
+    case "contract.signed":
+      await handleContractSigned(event.data);
       break;
 
-    case "signature.expired":
-      handleSignatureExpired(event.data);
+    case "invoice.created":
+    case "invoice.sent":
+    case "invoice.cancelled":
+      await upsertInvoiceProjection(event.data);
       break;
 
-    case "document.verified":
-      handleDocumentVerified(event.data);
+    case "invoice.paid":
+      await markInvoicePaid(event.data);
       break;
 
-    case "session.created":
-      handleSessionCreated(event.data);
+    case "transaction.created":
+    case "transaction.updated":
+      await upsertTransactionProjection(event.data);
       break;
 
     default:
       console.log("Unknown event:", event.type);
   }
 
+  await markProcessed(event.id);
   res.status(200).send("OK");
 });
 
-async function handleSignatureCompleted(data: any) {
-  const { requestId, signatureId, signerEmail, signedAt } = data;
-
-  // Update your database
-  await db.signatures.update({
-    requestId,
-    signedBy: signerEmail,
-    signedAt: new Date(signedAt),
+async function handleContractSigned(data: any) {
+  await db.contracts.update(data.contractId, {
+    status: data.status,
+    lastSignedAt: data.signedAt,
   });
-
-  // Notify relevant parties
-  await sendNotification(signerEmail, "Your signature was recorded");
 }
 
-async function handleSignatureExpired(data: any) {
-  const { requestId, versionId } = data;
-
-  // Mark as expired in your system
-  await db.signatureRequests.update(requestId, { status: "expired" });
-
-  // Notify document owner
-  await notifyDocumentOwner(versionId, "Signature request expired");
+async function upsertInvoiceProjection(data: any) {
+  await db.invoices.upsert(data.invoiceId, {
+    contractId: data.contractId,
+    invoiceNumber: data.invoiceNumber,
+    status: data.status,
+    amount: data.amount,
+    paidAmount: data.paidAmount,
+    currencyCode: data.currencyCode,
+    dueDate: data.dueDate,
+    paidAt: data.paidAt,
+  });
 }
 
-async function handleDocumentVerified(data: any) {
-  const { documentId, versionId, txHash, chainId } = data;
+async function markInvoicePaid(data: any) {
+  await upsertInvoiceProjection(data);
+  await db.contracts.update(data.contractId, {
+    lastPaidInvoiceId: data.invoiceId,
+  });
+}
 
-  // Store verification proof
-  await db.verifications.insert({
-    documentId,
-    versionId,
-    txHash,
-    chainId,
-    verifiedAt: new Date(),
+async function upsertTransactionProjection(data: any) {
+  await db.transactions.upsert(data.transactionId, {
+    invoiceId: data.invoiceId,
+    contractId: data.contractId,
+    status: data.status,
+    amount: data.amount,
+    currencyCode: data.currencyCode,
+    paymentMethodType: data.paymentMethodType,
+    failureReason: data.failureReason,
+    retryCount: data.retryCount,
+    createdAt: data.createdAt,
   });
 }
 ```
+
+Recommended payment webhook flow:
+
+- Use `event.id` for idempotency and keep a processed-delivery table.
+- Treat `invoice.created`, `invoice.sent`, and `invoice.cancelled` as projection updates.
+- Treat `invoice.paid` as the business-level settlement signal.
+- Treat `transaction.created` and `transaction.updated` as operational payment-status updates.
+- Always verify both `X-Chaindoc-Signature` and `X-Chaindoc-Timestamp` via `Chaindoc.webhooks.verify()`.
 
 ---
 
@@ -931,7 +975,7 @@ describe("Complete Signing Flow", () => {
 
     // 3. Create signature request
     const sigRequest = await chaindoc.signatures.createRequest({
-      versionId: doc.document.versions[0].uuid,
+      versionId: doc.document.currentVersion.id,
       recipients: [{ email: "test@example.com" }],
       deadline: new Date(Date.now() + 86400000),
       embeddedFlow: true,
@@ -942,7 +986,7 @@ describe("Complete Signing Flow", () => {
       email: "test@example.com",
       metadata: {
         documentId: doc.documentId,
-        signatureRequestId: sigRequest.signatureRequest.uuid,
+        signatureRequestId: sigRequest.requestId,
       },
     });
 

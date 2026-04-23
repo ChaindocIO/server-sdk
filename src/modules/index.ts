@@ -1,5 +1,9 @@
 export { Documents } from './documents';
 export { Signatures } from './signatures';
+export { Contracts } from './contracts';
+export { Templates } from './templates';
+export { Invoices } from './invoices';
+export { Transactions } from './transactions';
 export { Embedded } from './embedded';
 export { Media } from './media';
-export { Kyc } from './kyc';
+export { Webhooks } from './webhooks';

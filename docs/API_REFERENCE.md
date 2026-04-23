@@ -17,7 +17,6 @@
 - [Signatures Module](#signatures-module)
 - [Embedded Sessions Module](#embedded-sessions-module)
 - [Media Module](#media-module)
-- [KYC Module](#kyc-module)
 - [Error Handling](#error-handling)
 - [TypeScript Types](#typescript-types)
 
@@ -50,7 +49,6 @@ Chaindoc Server SDK provides a type-safe Node.js interface for the Chaindoc API.
 │   chaindoc.signatures ─────────────►  Signature Requests        │
 │   chaindoc.embedded   ─────────────►  Frontend Sessions         │
 │   chaindoc.media      ─────────────►  File Uploads              │
-│   chaindoc.kyc        ─────────────►  Identity Verification     │
 │                                                                  │
 └───────────────────────────┬─────────────────────────────────────┘
                             │ HTTPS
@@ -111,7 +109,7 @@ const doc = await chaindoc.documents.create({
 
 // 4. Create a signature request
 const sigRequest = await chaindoc.signatures.createRequest({
-  versionId: doc.document.versions[0].uuid,
+  versionId: doc.document.currentVersion.id,
   recipients: [{ email: "signer@example.com" }],
   deadline: new Date("2024-12-31"),
   embeddedFlow: true,
@@ -122,7 +120,7 @@ const session = await chaindoc.embedded.createSession({
   email: "signer@example.com",
   metadata: {
     documentId: doc.documentId,
-    signatureRequestId: sigRequest.signatureRequest.uuid,
+    signatureRequestId: sigRequest.requestId,
   },
 });
 
@@ -198,7 +196,6 @@ const chaindocDev = new Chaindoc({
 | `signatures` | `Signatures` | Signature requests  |
 | `embedded`   | `Embedded`   | Embedded sessions   |
 | `media`      | `Media`      | File uploads        |
-| `kyc`        | `Kyc`        | KYC verification    |
 
 ---
 
@@ -218,7 +215,6 @@ async getApiKeyInfo(): Promise<ApiKeyInfo>
 interface ApiKeyInfo {
   keyId: number;
   keyName: string;
-  userId: number;
   lastUsedAt: string;
   isActive: boolean;
   accessLevel: string;
@@ -250,7 +246,6 @@ interface HealthCheckResponse {
   status: string; // "ok"
   timestamp: string; // ISO timestamp
   apiKeyValid: boolean;
-  userId: number;
 }
 ```
 
@@ -340,7 +335,7 @@ const doc = await chaindoc.documents.create({
 });
 
 console.log("Document ID:", doc.documentId);
-console.log("Version UUID:", doc.document.versions[0].uuid);
+console.log("Version UUID:", doc.document.currentVersion.id);
 ```
 
 ---
@@ -476,7 +471,7 @@ async createRequest(params: CreateSignatureRequestParams): Promise<SignatureRequ
 | `deadline`      | `Date`        | **Yes**  | Signing deadline         |
 | `message`       | `string`      | No       | Message to signers       |
 | `embeddedFlow`  | `boolean`     | No       | Enable embedded signing  |
-| `isKycRequired` | `boolean`     | No       | Require KYC verification |
+| `isKycRequired` | `boolean`     | No       | Require Chaindoc-managed KYC inside embedded signing |
 | `meta`          | `MetaTag[]`   | No       | Metadata                 |
 
 #### Recipient
@@ -484,7 +479,6 @@ async createRequest(params: CreateSignatureRequestParams): Promise<SignatureRequ
 ```typescript
 interface Recipient {
   email: string; // Signer email
-  shareToken?: string; // Sumsub KYC share token
 }
 ```
 
@@ -497,7 +491,7 @@ interface SignatureRequestResponse {
 }
 
 interface SignatureRequest {
-  id: number;
+  id: string;
   uuid: string;
   status: "pending" | "completed" | "expired" | "cancelled";
   dueDate: string;
@@ -512,7 +506,7 @@ interface SignatureRequest {
 
 ```typescript
 const request = await chaindoc.signatures.createRequest({
-  versionId: doc.document.versions[0].uuid,
+  versionId: doc.document.currentVersion.id,
   recipients: [
     { email: "signer1@example.com" },
     { email: "signer2@example.com" },
@@ -523,7 +517,7 @@ const request = await chaindoc.signatures.createRequest({
   isKycRequired: false,
 });
 
-console.log("Request ID:", request.signatureRequest.uuid);
+console.log("Request ID:", request.requestId);
 console.log("Status:", request.signatureRequest.status);
 ```
 
@@ -593,7 +587,7 @@ const { items, total } = await chaindoc.signatures.getMyRequests({
 });
 
 items.forEach((request) => {
-  console.log(`${request.uuid}: ${request.status}`);
+  console.log(`${request.id}: ${request.status}`);
 });
 ```
 
@@ -790,70 +784,6 @@ const { media } = await chaindoc.media.upload(files);
 
 ---
 
-## KYC Module
-
-Manage identity verification. Access via `chaindoc.kyc`.
-
-### `share(params)`
-
-Share KYC data for a user via Sumsub integration.
-
-```typescript
-async share(params: ShareKycParams): Promise<ShareKycResponse>
-```
-
-#### ShareKycParams
-
-| Property     | Type     | Required | Description        |
-| ------------ | -------- | -------- | ------------------ |
-| `email`      | `string` | **Yes**  | User email         |
-| `shareToken` | `string` | No       | Sumsub share token |
-
-#### Response: ShareKycResponse
-
-```typescript
-interface ShareKycResponse {
-  success: boolean;
-  message: string;
-  shareToken?: string;
-  email: string;
-  sharedAt: string;
-  kycData?: {
-    verified: boolean;
-    firstName?: string;
-    lastName?: string;
-    dob?: string;
-    country?: string;
-    nationality?: string;
-    reviewStatus?: string;
-    applicantId?: string;
-  };
-  error?: string;
-}
-```
-
-#### Example
-
-```typescript
-// Verify user before creating signature request
-const kyc = await chaindoc.kyc.share({
-  email: "signer@example.com",
-  shareToken: "sumsub_token_xxx",
-});
-
-if (kyc.kycData?.verified) {
-  // Create signature request with KYC requirement
-  await chaindoc.signatures.createRequest({
-    versionId: "version_uuid",
-    recipients: [{ email: "signer@example.com" }],
-    deadline: new Date("2024-12-31"),
-    isKycRequired: true,
-  });
-}
-```
-
----
-
 ## Error Handling
 
 ### ChaindocError
@@ -1016,7 +946,7 @@ async function createSigningSession(
 
     // 4. Create signature request
     const sigRequest = await chaindoc.signatures.createRequest({
-      versionId: doc.document.versions[0].uuid,
+      versionId: doc.document.currentVersion.id,
       recipients: [{ email: signerEmail }],
       deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
       embeddedFlow: true,
@@ -1027,7 +957,7 @@ async function createSigningSession(
       email: signerEmail,
       metadata: {
         documentId: doc.documentId,
-        signatureRequestId: sigRequest.signatureRequest.uuid,
+        signatureRequestId: sigRequest.requestId,
       },
     });
 
@@ -1061,7 +991,15 @@ async function createSigningSession(
 | Signatures | getSignatures         | GET  | `/api/v1/signatures`                           |
 | Embedded   | createSession         | POST | `/api/v1/embedded/sessions`                    |
 | Media      | upload                | POST | `/api/v1/media/upload`                         |
-| KYC        | share                 | POST | `/api/v1/kyc/share`                            |
+| Contracts  | create                | POST | `/api/v1/contracts`                            |
+| Contracts  | list                  | GET  | `/api/v1/contracts`                            |
+| Contracts  | get                   | GET  | `/api/v1/contracts/{contractId}`               |
+| Contracts  | getStatus             | GET  | `/api/v1/contracts/{contractId}/status`        |
+| Contracts  | getActivities         | GET  | `/api/v1/contracts/{contractId}/activities`    |
+| Contracts  | addPaymentSetup       | POST | `/api/v1/contracts/{contractId}/payment-setup` |
+| Contracts  | send                  | POST | `/api/v1/contracts/{contractId}/send`          |
+| Contracts  | cancel                | POST | `/api/v1/contracts/{contractId}/cancel`        |
+| Contracts  | terminate             | POST | `/api/v1/contracts/{contractId}/terminate`     |
 
 ---
 
