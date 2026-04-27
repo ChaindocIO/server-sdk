@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2026-04-27
+
+### Fixed
+
+- **Email normalization at the SDK boundary.** All email values sent through the SDK are now trimmed and lowercased before reaching the API. Affected inputs: `signatures.createRequest` (`recipients[].email`, `fields[].signerEmail`), `embedded.createSession` (`email`), `contracts.create` (`contragent.email`), `templates.sendForSigning` (`slotAssignments[].email`), `templates.createContract` (`contragent.email`), `documents.create` and `documents.updateRights` (`accessEmails[].email`). Caller-owned input objects are not mutated. Aligns the SDK with the backend rule that `users.email` is canonical lowercase, fixing silent auto-link misses when partner-side emails were stored mixed-case.
+
+---
+
 ## [2.0.0] - 2026-04-23
 
 Major release expanding the SDK to cover contracts, invoices, transactions, templates, and webhook verification. Identifiers are now UUID-only across all public resources, and webhook delivery follows a canonical signed envelope format. KYC is no longer exposed as an SDK module — it is handled by the signer inside the Chaindoc embedded flow and enforced by the backend at signing time.

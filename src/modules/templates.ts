@@ -11,6 +11,7 @@ import type {
   TemplateDocumentResponse,
   TemplateSignatureRequestResponse,
 } from '../types';
+import { withNormalizedEmail } from '../utils/normalize-email';
 
 export class Templates {
   constructor(private client: HttpClient) {}
@@ -34,7 +35,10 @@ export class Templates {
   ): Promise<TemplateSignatureRequestResponse> {
     return this.client.post<TemplateSignatureRequestResponse>(
       `/api/v1/templates/${templateId}/signature-requests`,
-      params,
+      {
+        ...params,
+        slotAssignments: params.slotAssignments.map(withNormalizedEmail),
+      },
     );
   }
 
@@ -45,6 +49,9 @@ export class Templates {
     templateId: string,
     params: CreateContractFromTemplateParams,
   ): Promise<TemplateContractResponse> {
-    return this.client.post<TemplateContractResponse>(`/api/v1/templates/${templateId}/contracts`, params);
+    return this.client.post<TemplateContractResponse>(`/api/v1/templates/${templateId}/contracts`, {
+      ...params,
+      contragent: withNormalizedEmail(params.contragent),
+    });
   }
 }

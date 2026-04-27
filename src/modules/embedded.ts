@@ -7,6 +7,7 @@ import type {
   CreateEmbeddedSessionParams,
   EmbeddedSessionResponse,
 } from '../types';
+import { normalizeEmail } from '../utils/normalize-email';
 
 export class Embedded {
   constructor(private client: HttpClient) {}
@@ -34,6 +35,9 @@ export class Embedded {
    * ```
    */
   async createSession(params: CreateEmbeddedSessionParams): Promise<EmbeddedSessionResponse> {
-    return this.client.post<EmbeddedSessionResponse>('/api/v1/embedded/sessions', params);
+    return this.client.post<EmbeddedSessionResponse>('/api/v1/embedded/sessions', {
+      ...params,
+      email: normalizeEmail(params.email),
+    });
   }
 }

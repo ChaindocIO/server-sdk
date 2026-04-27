@@ -223,6 +223,10 @@ const chaindoc = new Chaindoc({
 | `staging`     | `https://api-demo.chaindoc.io`      | Pre-release testing     |
 | `development` | `https://api-demo.chaindoc.io`      | Development & debugging |
 
+### Email handling
+
+The SDK trims and lowercases every email value before sending it to the API. This applies to top-level fields (`email`, `signerEmail`) and to nested email fields inside `recipients`, `fields`, `slotAssignments`, `accessEmails`, and `contragent`. Your input objects are not mutated — the SDK copies them shallowly before normalizing. This matches the backend's canonical email format and prevents silent auto-link misses for users who registered with a different case.
+
 ## API Overview
 
 ### Documents

@@ -17,6 +17,7 @@ import type {
   ContractListParams,
   PaginationParams,
 } from '../types';
+import { withNormalizedEmail } from '../utils/normalize-email';
 
 export class Contracts {
   constructor(private client: HttpClient) {}
@@ -27,7 +28,10 @@ export class Contracts {
    * Payment terms can be included or added later via addPaymentSetup().
    */
   async create(params: CreateContractParams): Promise<ContractResponse> {
-    return this.client.post<ContractResponse>('/api/v1/contracts', params);
+    return this.client.post<ContractResponse>('/api/v1/contracts', {
+      ...params,
+      contragent: withNormalizedEmail(params.contragent),
+    });
   }
 
   /**

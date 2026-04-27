@@ -12,6 +12,7 @@ import type {
   GetMyRequestsResponse,
   GetSignaturesResponse,
 } from '../types';
+import { withNormalizedEmail, withNormalizedSignerEmail } from '../utils/normalize-email';
 
 export class Signatures {
   constructor(private client: HttpClient) {}
@@ -26,6 +27,8 @@ export class Signatures {
   async createRequest(params: CreateSignatureRequestParams): Promise<SignatureRequestResponse> {
     return this.client.post<SignatureRequestResponse>('/api/v1/signatures/requests', {
       ...params,
+      recipients: params.recipients.map(withNormalizedEmail),
+      fields: params.fields?.map(withNormalizedSignerEmail),
       deadline: params.deadline.toISOString(),
     });
   }

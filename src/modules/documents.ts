@@ -4,6 +4,7 @@
 
 import type { HttpClient } from '../client';
 import type {
+  AccessEmail,
   CreateDocumentParams,
   UpdateDocumentParams,
   UpdateDocumentRightsParams,
@@ -11,6 +12,11 @@ import type {
   VerifyDocumentParams,
   VerifyDocumentResponse,
 } from '../types';
+import { withNormalizedEmail } from '../utils/normalize-email';
+
+function normalizeAccessEmails(accessEmails: AccessEmail[] | undefined): AccessEmail[] | undefined {
+  return accessEmails?.map(withNormalizedEmail);
+}
 
 export class Documents {
   constructor(private client: HttpClient) {}
@@ -20,7 +26,10 @@ export class Documents {
    * Creates document with first version. Set status to "published" to verify in blockchain immediately.
    */
   async create(params: CreateDocumentParams): Promise<DocumentResponse> {
-    return this.client.post<DocumentResponse>('/api/v1/documents', params);
+    return this.client.post<DocumentResponse>('/api/v1/documents', {
+      ...params,
+      accessEmails: normalizeAccessEmails(params.accessEmails),
+    });
   }
 
   /**
@@ -35,7 +44,10 @@ export class Documents {
    * Update document access rights
    */
   async updateRights(documentId: string, params: UpdateDocumentRightsParams): Promise<DocumentResponse> {
-    return this.client.put<DocumentResponse>(`/api/v1/documents/${documentId}/rights`, params);
+    return this.client.put<DocumentResponse>(`/api/v1/documents/${documentId}/rights`, {
+      ...params,
+      accessEmails: normalizeAccessEmails(params.accessEmails),
+    });
   }
 
   /**
