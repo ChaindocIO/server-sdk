@@ -18,12 +18,45 @@ export class ChaindocError extends Error {
 }
 
 export interface RequestOptions {
-  method?: "GET" | "POST" | "PUT" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   headers?: Record<string, string>;
   timeout?: number;
   /** Disable retry for this specific request */
   noRetry?: boolean;
+}
+
+/** Result of `HttpClient.download()` — binary body + content metadata. */
+export interface DownloadResult {
+  /** Raw bytes; convert with `Buffer.from(data)` or `new Uint8Array(data)`. */
+  data: ArrayBuffer;
+  /** Server-reported MIME type (defaults to `application/octet-stream`). */
+  contentType: string;
+  /** Filename parsed from `Content-Disposition`, or `undefined` if the header is absent / unparseable. */
+  fileName?: string;
+}
+
+/**
+ * Parses RFC 6266 / 5987 `Content-Disposition` headers like:
+ *   attachment; filename="download.docx"; filename*=UTF-8''contract%20v2.docx
+ * Prefers the percent-encoded `filename*` when present, falls back to plain `filename`.
+ */
+function parseAttachmentFileName(header: string | null): string | undefined {
+  if (!header) return undefined;
+
+  const extendedMatch = header.match(/filename\*\s*=\s*[^']*'[^']*'([^;]+)/i);
+  const extendedValue = extendedMatch?.[1];
+  if (extendedValue) {
+    try {
+      return decodeURIComponent(extendedValue.trim());
+    } catch {
+      // fall through to ASCII fallback
+    }
+  }
+
+  const plainMatch = header.match(/filename\s*=\s*"?([^";]+)"?/i);
+  const plainValue = plainMatch?.[1];
+  return plainValue ? plainValue.trim() : undefined;
 }
 
 const ENVIRONMENT_URLS: Record<ChaindocEnvironment, string> = {
@@ -243,11 +276,139 @@ export class HttpClient {
     return this.request<T>(endpoint, { ...options, method: "PUT", body });
   }
 
+  async patch<T>(
+    endpoint: string,
+    body?: unknown,
+    options?: Omit<RequestOptions, "method" | "body">
+  ): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: "PATCH", body });
+  }
+
   async delete<T>(
     endpoint: string,
     options?: Omit<RequestOptions, "method" | "body">
   ): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: "DELETE" });
+  }
+
+  /**
+   * Download binary content from an endpoint.
+   *
+   * Defaults to GET; pass `method`/`body` for endpoints that produce a binary
+   * response from a POST (e.g. template PDF previews). Skips the JSON-parsing
+   * path used by `request<T>()` and returns the raw ArrayBuffer plus content
+   * metadata. Honors the same retry semantics as `get<T>()` for transient
+   * network/5xx failures.
+   */
+  async download(
+    endpoint: string,
+    options?: Omit<RequestOptions, "method"> & { method?: "GET" | "POST" }
+  ): Promise<DownloadResult> {
+    const url = `${this.baseUrl}${endpoint}`;
+    const maxAttempts = options?.noRetry ? 1 : this.retryConfig.maxRetries + 1;
+    const method = options?.method ?? "GET";
+    const hasBody = options?.body !== undefined;
+    let lastError: ChaindocError | undefined;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(
+        () => controller.abort(),
+        options?.timeout ?? this.timeout
+      );
+
+      try {
+        const response = await fetch(url, {
+          method,
+          headers: {
+            ...this.defaultHeaders,
+            ...(hasBody ? { "Content-Type": "application/json" } : {}),
+            ...options?.headers,
+          },
+          body: hasBody ? JSON.stringify(options?.body) : undefined,
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          let errorMessage = `Download failed with status ${response.status}`;
+          let errorBody: unknown;
+          const contentType = response.headers.get("content-type") ?? "";
+          if (contentType.includes("application/json")) {
+            errorBody = await response
+              .json()
+              .catch(() => undefined as unknown);
+            if (
+              errorBody &&
+              typeof errorBody === "object" &&
+              "message" in errorBody &&
+              typeof (errorBody as { message: unknown }).message === "string"
+            ) {
+              errorMessage = (errorBody as { message: string }).message;
+            }
+          }
+          const isRetryable = this.isRetryableError(null, response.status);
+          lastError = new ChaindocError(
+            errorMessage,
+            response.status,
+            errorBody,
+            isRetryable
+          );
+
+          if (isRetryable && attempt < maxAttempts - 1) {
+            await this.sleep(this.getRetryDelay(attempt));
+            continue;
+          }
+
+          throw lastError;
+        }
+
+        const data = await response.arrayBuffer();
+        return {
+          data,
+          contentType:
+            response.headers.get("content-type") ?? "application/octet-stream",
+          fileName: parseAttachmentFileName(
+            response.headers.get("content-disposition")
+          ),
+        };
+      } catch (error) {
+        clearTimeout(timeoutId);
+
+        if (error instanceof ChaindocError) {
+          if (!error.isRetryable || attempt >= maxAttempts - 1) {
+            throw error;
+          }
+          lastError = error;
+          await this.sleep(this.getRetryDelay(attempt));
+          continue;
+        }
+
+        const isRetryable = this.isRetryableError(error);
+        if (error instanceof Error) {
+          const message =
+            error.name === "AbortError" ? "Download timeout" : error.message;
+          lastError = new ChaindocError(
+            message,
+            undefined,
+            undefined,
+            isRetryable
+          );
+
+          if (isRetryable && attempt < maxAttempts - 1) {
+            await this.sleep(this.getRetryDelay(attempt));
+            continue;
+          }
+
+          throw lastError;
+        }
+
+        throw new ChaindocError("Unknown error occurred");
+      }
+    }
+
+    throw lastError ?? new ChaindocError("Download failed after retries");
   }
 
   /**

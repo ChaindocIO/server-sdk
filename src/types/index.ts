@@ -153,6 +153,12 @@ export type DocumentStatus =
   | "archived"
   | "pending_signature"
   | "signed";
+/**
+ * Subset of DocumentStatus accepted by the public create/update endpoints.
+ * Backend rejects `archived`, `pending_signature`, `signed` here because they
+ * are derived states managed by the server (publishing, signature lifecycle).
+ */
+export type DocumentStatusForCreate = "draft" | "published";
 export type AccessType = "private" | "public" | "restricted" | "team";
 
 export interface AccessEmail {
@@ -171,7 +177,7 @@ export interface CreateDocumentParams {
   media: Media;
   meta: MetaTag[];
   hashtags: string[];
-  status: DocumentStatus;
+  status: DocumentStatusForCreate;
   isForSigning?: boolean;
   accessType?: AccessType;
   accessEmails?: AccessEmail[];
@@ -184,7 +190,7 @@ export interface UpdateDocumentParams {
   media: Media;
   meta: MetaTag[];
   hashtags: string[];
-  status: DocumentStatus;
+  status: DocumentStatusForCreate;
   isForSigning?: boolean;
 }
 
@@ -229,6 +235,184 @@ export interface DocumentResponse {
   success: boolean;
   documentId: string;
   document: Document;
+  message: string;
+}
+
+// ─── Documents read-surface (get / getVersions / download) ──────────────────
+
+/** Slim media summary returned by public document read endpoints (no presigned url) */
+export interface PublicDocumentMediaSummary {
+  name: string | null;
+  hash: string | null;
+  size: number | null;
+}
+
+/** Document version as returned by GET /documents/:id and GET /documents/:id/versions */
+export interface PublicDocumentVersion {
+  id: string;
+  documentVersion: string;
+  name?: string | null;
+  description?: string | null;
+  status: DocumentStatus;
+  versionHash?: string | null;
+  isForSigning: boolean;
+  media: PublicDocumentMediaSummary | null;
+  meta: MetaTag[];
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Document detail payload returned by GET /documents/:id */
+export interface PublicDocumentDetail {
+  id: string;
+  txtId: string;
+  accessType: AccessType;
+  currentVersion: PublicDocumentVersion | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GetDocumentResponse {
+  success: boolean;
+  document: PublicDocumentDetail;
+}
+
+export interface ListDocumentVersionsParams {
+  pageNumber?: number;
+  pageSize?: number;
+}
+
+export interface GetDocumentVersionsResponse {
+  success: boolean;
+  versions: PublicDocumentVersion[];
+  pagination: {
+    pageNumber: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+// ─── Documents analytics surface (listShared / search / activity / downloads) ─
+
+/**
+ * Lifecycle filter accepted by the document search/list endpoints. Distinct from
+ * `DocumentStatusForCreate` — `published_not_signed` is a derived server state.
+ */
+export type DocumentSearchStatus = "draft" | "published" | "published_not_signed";
+
+export interface DocumentSearchParams {
+  pageNumber?: number;
+  pageSize?: number;
+  /** Free-text filter applied to document names. */
+  search?: string;
+  status?: DocumentSearchStatus;
+}
+
+/** Paginated document list returned by GET /documents/shared and /documents/search */
+export interface DocumentListResponse {
+  success: boolean;
+  documents: PublicDocumentDetail[];
+  totalPublished: number;
+  totalDraft: number;
+  pagination: {
+    pageNumber: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+/** Lightweight public profile of an actor on an activity / download record */
+export interface DocumentActorRef {
+  username: string;
+  email: string;
+}
+
+export interface DocumentActivityItem {
+  /** Activity operation, e.g. "download", "preview", "verification_checked" */
+  type: string;
+  timestamp: string;
+  document: {
+    id: string;
+    name: string;
+    version: string;
+  };
+  user: DocumentActorRef | null;
+}
+
+export interface DocumentActivityResponse {
+  success: boolean;
+  activity: DocumentActivityItem[];
+}
+
+export interface DocumentDownloadItem {
+  versionName: string;
+  documentVersion: string;
+  downloadedAt: string;
+  user: DocumentActorRef;
+}
+
+export interface DocumentDownloadsResponse {
+  success: boolean;
+  downloads: DocumentDownloadItem[];
+}
+
+// ─── Documents comments + distribution (comments.add / list / sendPublicLink) ─
+
+export interface CreateCommentParams {
+  /** Comment body text. Posted as a top-level comment. */
+  content: string;
+}
+
+export interface CommentListParams {
+  pageNumber?: number;
+  pageSize?: number;
+}
+
+/**
+ * A document comment as returned by the public list endpoint. No numeric ids —
+ * `CommentEntity` has no UUID, so replies are read-only (nested, not addressable).
+ */
+export interface PublicComment {
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  author: DocumentActorRef | null;
+  replyCount: number;
+  replies: PublicComment[];
+}
+
+export interface AddCommentResponse {
+  success: boolean;
+  comment: {
+    content: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+  message: string;
+}
+
+export interface CommentListResponse {
+  success: boolean;
+  totalComments: number;
+  comments: PublicComment[];
+  pagination: {
+    pageNumber: number;
+    pageSize: number;
+  };
+}
+
+export interface SendPublicLinkParams {
+  /** Recipient email address. Normalized client-side before sending. */
+  email: string;
+  /** Optional message included in the share email. */
+  text?: string;
+}
+
+export interface SendPublicLinkResponse {
+  success: boolean;
   message: string;
 }
 
@@ -318,6 +502,32 @@ export interface CreateSignatureRequestParams {
   fields?: SignatureRequestField[];
 }
 
+export interface CancelSignatureRequestResponse {
+  success: boolean;
+  requestId: string;
+  status: string;
+  message: string;
+}
+
+export interface RemindSignatureRequestParams {
+  /**
+   * Optional list of signer emails to remind. When omitted, reminders are
+   * sent to every pending signer on the request. Emails are normalized
+   * (lowercased + trimmed) before being sent.
+   */
+  signerEmails?: string[];
+}
+
+export interface RemindSignatureRequestResponse {
+  success: boolean;
+  requestId: string;
+  /** Emails of signers who received a reminder in this call */
+  remindedEmails: string[];
+  /** Signers skipped (already signed, rate-limited, missing permissions, …) */
+  skipped: { email: string; reason: string }[];
+  message: string;
+}
+
 export interface SignDocumentParams {
   requestId: string;
   signatureId: number;
@@ -378,6 +588,33 @@ export interface GetMyRequestsResponse {
   pageSize: number;
 }
 
+/** Lifecycle bucket for filtering `signatures.getMyRequests`. */
+export type SignatureRequestStatusFilter = 'all' | 'pending' | 'completed' | 'declined';
+
+/** Parameters for `signatures.getMyRequests` — pagination plus an optional status filter. */
+export interface GetMyRequestsParams {
+  pageNumber?: number;
+  pageSize?: number;
+  /** Filter requests by lifecycle bucket. Defaults to `all`. */
+  status?: SignatureRequestStatusFilter;
+}
+
+/** Parameters for `signatures.editRequest` — reassign a signer slot. */
+export interface EditSignatureRequestParams {
+  /** UUID of the signer slot to reassign (from a request summary's `signers[].id`). */
+  signerId: string;
+  /** New recipient email for that signer slot. */
+  recipient: string;
+}
+
+/** Response from POST /api/v1/signatures/requests/:requestId/edit */
+export interface EditSignatureRequestResponse {
+  success: boolean;
+  requestId: string;
+  request: SignatureRequest | null;
+  message: string;
+}
+
 export interface SavedSignature {
   hash: string;
   createdAt: string;
@@ -390,6 +627,44 @@ export interface GetSignaturesResponse {
   total: number;
   pageNumber: number;
   pageSize: number;
+}
+
+/** Parameters for creating a saved signature from an uploaded image. */
+export interface CreateSignatureParams {
+  /** Signature image media object, previously uploaded via `media.upload`. */
+  media: Media & { type: 'image' };
+}
+
+/** Response from POST /api/v1/signatures */
+export interface CreateSignatureResponse {
+  success: boolean;
+  signature: SavedSignature;
+  message: string;
+}
+
+/** DSS validation report for the signatures embedded in an uploaded PDF. */
+export interface ValidatePdfSignaturesResponse {
+  success: boolean;
+  valid: boolean;
+  signatureCount: number;
+  /** Full DSS validation report — structure depends on the document. */
+  details: Record<string, unknown>;
+}
+
+/** Parameters for signing a contract as the business owner. */
+export interface BusinessSignParams {
+  /** Hash of a saved signature owned by the API key (from `signatures.getSignatures`). */
+  signatureHash: string;
+  /** Optional metadata tags attached to the signature. */
+  meta?: MetaTag[];
+}
+
+/** Response from the business-sign action. */
+export interface BusinessSignResponse {
+  success: boolean;
+  contractId: string;
+  signingRequestId: string;
+  message: string;
 }
 
 // ============================================================================
@@ -528,6 +803,15 @@ export type ContractSigningMethod = 'embedded' | 'delegated';
 /** Source of a completed contract signer action */
 export type ContractSignerSource = 'embedded' | 'delegated_api';
 
+/** Contract signing-request status */
+export type ContractSigningRequestStatus = 'pending' | 'completed' | 'expired' | 'cancelled';
+
+/** Contract signing-request purpose */
+export type ContractSigningRequestPurpose = 'signature' | 'recurring_approval';
+
+/** Contract signer status */
+export type ContractSignerStatus = 'pending' | 'accepted' | 'rejected' | 'declined';
+
 /** Billing address */
 export interface BillingAddress {
   line1: string;
@@ -568,6 +852,17 @@ export interface PaymentTermInput {
   dueDate?: string;
   /** Auto-charge when due (default: true) */
   autoCharge?: boolean;
+}
+
+/** Payment term input for recurring setup */
+export interface RecurringPaymentTermInput
+  extends Omit<PaymentTermInput, 'type' | 'frequency' | 'dayOfPeriod' | 'startDate' | 'dueDate'> {
+  type: 'recurring';
+  frequency: PaymentFrequency;
+  /** Day of period (1-28) */
+  dayOfPeriod: number;
+  /** ISO 8601 date */
+  startDate: string;
 }
 
 /** Payment term in response */
@@ -798,6 +1093,411 @@ export interface ContractActionResponse {
   message: string;
 }
 
+/** Parameters for updating a draft contract */
+export interface UpdateContractParams {
+  title?: string;
+  description?: string;
+  contragent?: ContragentInfo;
+  /** ISO 8601, min 24h from now */
+  startDate?: string;
+  /** ISO 8601 */
+  endDate?: string;
+  autoRenew?: boolean;
+  terminationType?: TerminationType;
+  /** Min: 14 days */
+  noticePeriodDays?: number;
+  paymentMethodRequired?: boolean;
+  /** Pass `null` to clear the previously set preference. */
+  preferredPaymentMethodType?: ContractPreferredPaymentMethodType | null;
+}
+
+/** Parameters for creating an empty (invoice-only) contract */
+export interface CreateEmptyContractParams {
+  title: string;
+  description?: string;
+  contragentEmail: string;
+  contragentName?: string;
+  /** ISO 4217 currency code (default: USD) */
+  currencyCode?: string;
+}
+
+/** Parameters for creating a minimal (3-step flow) contract */
+export interface CreateMinimalContractParams {
+  /** UUID of existing published document */
+  documentId: string;
+  title: string;
+  description?: string;
+  contragentEmail: string;
+  contragentName?: string;
+  /** Skip payment setup (add later via addPaymentSetup). Default: true. */
+  skipPaymentSetup?: boolean;
+}
+
+/** Parameters for importing an externally signed contract */
+export interface CreateImportContractParams {
+  /** UUID of existing published document */
+  documentId: string;
+  title: string;
+  description?: string;
+  contragentEmail: string;
+  contragentName?: string;
+  /** ISO 4217 currency code (default: USD) */
+  currencyCode?: string;
+  /** ISO 8601 (can be in the past for imported contracts) */
+  startDate?: string;
+  /** ISO 8601 */
+  endDate?: string;
+}
+
+/** Parameters for attaching a document to a draft contract */
+export interface AttachDocumentParams {
+  /** UUID of existing published document */
+  documentId: string;
+}
+
+/** Aggregate contract payment statistics */
+export interface ContractStats {
+  contractValue: number | null;
+  hasPaymentTerms: boolean;
+  paidAmount: number;
+  pendingAmount: number;
+  remainingAmount: number | null;
+  invoiceCount: number;
+  isOverpaid: boolean;
+  showPaymentStats: boolean;
+}
+
+/** Response from GET /api/v1/contracts/:id/stats */
+export interface ContractStatsResponse {
+  success: boolean;
+  contractId: string;
+  stats: ContractStats;
+}
+
+// --- Recurring and termination ---
+
+/** Parameters for setting up recurring payments on an imported contract */
+export interface RecurringSetupParams {
+  /** Each term must be of type `recurring` with `frequency` + `dayOfPeriod`. */
+  paymentTerms: RecurringPaymentTermInput[];
+  /** Whether contragent must link a payment method (default: true). */
+  paymentMethodRequired?: boolean;
+  /** Message included in the approval invitation email. */
+  messageToContragent?: string;
+  /** Days before the approval request expires (1-90, default 30). */
+  expiresInDays?: number;
+}
+
+export type TerminationRequestStatus = 'pending' | 'approved' | 'rejected' | 'executed';
+
+export interface TerminationApproval {
+  approved: boolean;
+  approvedAt?: string;
+}
+
+export interface TerminationApprovals {
+  business: TerminationApproval;
+  contragent: TerminationApproval;
+}
+
+export interface TerminationRejection {
+  reason: string;
+  rejectedBy: {
+    email: string;
+    role: SignerRole;
+  };
+  rejectedAt: string;
+}
+
+/** Termination request as exposed by the public API (UUID-only references). */
+export interface TerminationRequest {
+  id: string;
+  status: TerminationRequestStatus;
+  contract: {
+    id: string;
+    title: string;
+    terminationType: TerminationType;
+    noticePeriodDays: number;
+  };
+  initiatedBy: {
+    email: string;
+    name: string | null;
+    role: SignerRole;
+  };
+  reason: string;
+  requestDate: string;
+  effectiveDate: string;
+  approvals?: TerminationApprovals;
+  rejection?: TerminationRejection;
+  outstandingAmount?: string;
+  allInvoicesSettled: boolean;
+  daysUntilEffective: number;
+  canCancel: boolean;
+  canApprove: boolean;
+  canReject: boolean;
+  createdAt: string;
+}
+
+export interface OutstandingInvoiceSummary {
+  uuid: string;
+  invoiceNumber: string;
+  amount: string;
+  dueDate: string;
+}
+
+export interface TerminationStatus {
+  hasActiveRequest: boolean;
+  currentRequest?: {
+    uuid: string;
+    status: TerminationRequestStatus;
+    effectiveDate: string;
+    daysRemaining: number;
+  };
+  outstandingInvoices: {
+    count: number;
+    totalAmount: string;
+    invoices: OutstandingInvoiceSummary[];
+  };
+  upcomingPayments: {
+    count: number;
+    totalAmount: string;
+  };
+  canInitiateTermination: boolean;
+  terminationType: TerminationType;
+  noticePeriodDays: number;
+  earliestEffectiveDate: string;
+}
+
+export interface ApproveTerminationParams {
+  /** Optional comment on the approval (max 500 chars). */
+  comment?: string;
+}
+
+export interface RejectTerminationParams {
+  /** Required rejection reason (max 1000 chars). */
+  reason: string;
+}
+
+/** Response from GET /api/v1/contracts/:id/termination */
+export interface TerminationRequestEnvelope {
+  success: boolean;
+  terminationRequest: TerminationRequest | null;
+}
+
+/** Response from GET /api/v1/contracts/:id/termination/status */
+export interface TerminationStatusEnvelope {
+  success: boolean;
+  contractId: string;
+  status: TerminationStatus;
+}
+
+/** Response from GET /api/v1/contracts/:id/termination/history */
+export interface TerminationHistoryEnvelope {
+  success: boolean;
+  items: TerminationRequest[];
+  total: number;
+}
+
+/** Response from POST /api/v1/contracts/:id/termination/approve */
+export interface TerminationApproveEnvelope {
+  success: boolean;
+  terminationRequest: TerminationRequest;
+  message: string;
+}
+
+// --- Payment term granular CRUD ---
+
+/** Parameters for updating a single payment term. All fields optional. */
+export interface UpdatePaymentTermParams {
+  name?: string;
+  /** Decimal amount as string */
+  amount?: string;
+  description?: string;
+  frequency?: PaymentFrequency;
+  /** Day of period (1-28) */
+  dayOfPeriod?: number;
+  /** ISO 8601 date */
+  startDate?: string;
+  /** ISO 8601 date */
+  endDate?: string;
+  /** Total expected payments (for recurring) */
+  totalPayments?: number;
+  /** Due date (for one_time), ISO 8601 */
+  dueDate?: string;
+  autoCharge?: boolean;
+  isActive?: boolean;
+}
+
+/** Response from GET /api/v1/contracts/:id/payment-terms */
+export interface PaymentTermListResponse {
+  success: boolean;
+  contractId: string;
+  paymentTerms: PaymentTermResponse[];
+}
+
+/** Response from create/update payment term */
+export interface PaymentTermEnvelope {
+  success: boolean;
+  contractId: string;
+  paymentTerm: PaymentTermResponse;
+  message: string;
+}
+
+/** Response from DELETE payment term */
+export interface PaymentTermDeleteResponse {
+  success: boolean;
+  contractId: string;
+  paymentTermId: string;
+  message: string;
+}
+
+/** Response from signing-request resend / cancel actions */
+export interface SigningRequestActionResponse {
+  success: boolean;
+  contractId: string;
+  signingRequestId: string;
+  message: string;
+}
+
+// --- Signing-request inspection (list / get) ---
+
+/** A signing request as returned by the list endpoint (no per-signer detail). */
+export interface SigningRequestSummary {
+  id: string;
+  status: ContractSigningRequestStatus;
+  purpose: ContractSigningRequestPurpose;
+  termsChanged: boolean;
+  expiresAt: string;
+  messageToSigners: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** One signer on a signing request. */
+export interface SigningRequestSigner {
+  email: string;
+  role: SignerRole;
+  status: ContractSignerStatus;
+  signed: boolean;
+  signedAt: string | null;
+  signingSource: ContractSignerSource;
+}
+
+/** A signing request with full signer detail, returned by the get endpoint. */
+export interface SigningRequestDetail extends SigningRequestSummary {
+  signers: SigningRequestSigner[];
+}
+
+export interface SigningRequestListResponse {
+  success: boolean;
+  contractId: string;
+  signingRequests: SigningRequestSummary[];
+}
+
+export interface SigningRequestGetResponse {
+  success: boolean;
+  contractId: string;
+  signingRequest: SigningRequestDetail;
+}
+
+// --- Additional agreements / amendments ---
+
+/** Action applied by a payment-term modification carried in an amendment. */
+export type PaymentTermModificationAction = 'add' | 'update' | 'deactivate';
+
+/**
+ * One payment-term modification in an amendment.
+ * `paymentTermId` (a payment term UUID) is required for `update` / `deactivate`;
+ * `add` instead supplies the new term fields (type/name/amount, etc.).
+ */
+export interface PaymentTermModificationInput {
+  action: PaymentTermModificationAction;
+  /** Payment term UUID — required for `update` and `deactivate`. */
+  paymentTermId?: string;
+  type?: PaymentTermType;
+  name?: string;
+  description?: string;
+  /** Decimal amount as string */
+  amount?: string;
+  frequency?: PaymentFrequency;
+  /** Day of period (1-28) */
+  dayOfPeriod?: number;
+  /** ISO 8601 date */
+  startDate?: string;
+  /** ISO 8601 date */
+  endDate?: string;
+  totalPayments?: number;
+  /** ISO 8601 date */
+  dueDate?: string;
+  autoCharge?: boolean;
+}
+
+/** Parameters for creating an additional agreement (amendment). */
+export interface CreateAgreementParams {
+  /** UUID of an existing document backing the amendment. */
+  documentId: string;
+  title: string;
+  description?: string;
+  /** ISO 8601 date */
+  effectiveDate?: string;
+  modifiesPaymentTerms?: boolean;
+  paymentTermModifications?: PaymentTermModificationInput[];
+}
+
+/** Parameters for sending an amendment into signing. */
+export interface InitiateAgreementSigningParams {
+  messageToSigners?: string;
+  deadline?: Date;
+  isKycRequired?: boolean;
+  notifyContragent?: boolean;
+}
+
+/** Additional agreement (amendment) as returned by the public API. */
+export interface AdditionalAgreement {
+  id: string;
+  document: { id: string } | null;
+  title: string;
+  description?: string;
+  status: ContractStatus;
+  effectiveDate?: string;
+  modifiesPaymentTerms: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Response from create / get a single agreement. */
+export interface AgreementEnvelope {
+  success: boolean;
+  contractId: string;
+  agreement: AdditionalAgreement;
+  message?: string;
+}
+
+/** Response from GET /api/v1/contracts/:id/agreements */
+export interface AgreementListResponse {
+  success: boolean;
+  contractId: string;
+  agreements: AdditionalAgreement[];
+}
+
+/** Response from POST .../agreements/:agreementId/initiate-signing */
+export interface AgreementSigningResponse {
+  success: boolean;
+  contractId: string;
+  agreementId: string;
+  signingRequestId: string;
+  status: string;
+  message: string;
+}
+
+/** Response from DELETE an agreement. */
+export interface AgreementDeleteResponse {
+  success: boolean;
+  contractId: string;
+  agreementId: string;
+  message: string;
+}
+
 /** Contract webhook event types */
 export type ContractWebhookEventType = Extract<
   WebhookEventType,
@@ -920,6 +1620,232 @@ export interface TemplateContractResponse {
   message: string;
 }
 
+// Templates read surface (list / get / versions)
+
+export type TemplateStatus = "draft" | "published" | "archived";
+
+export type TemplateVariableDataType =
+  | "text"
+  | "long_text"
+  | "date"
+  | "number"
+  | "boolean";
+
+export type TemplateVariableScope = "document" | "signer";
+
+export interface TemplateVariable {
+  key: string;
+  label: string;
+  dataType: TemplateVariableDataType;
+  scope: TemplateVariableScope;
+  /** Required when scope === 'signer' */
+  signerKey?: string;
+  /** Canonical system key for profile-based autofill (e.g. 'full_name', 'email') */
+  systemKey?: string;
+  required: boolean;
+  defaultValue?: string | number | boolean;
+  description?: string;
+}
+
+export interface TemplatePlacedField {
+  fieldType: "signature" | "initials" | "date_signed" | "text" | "checkbox";
+  pageIndex: number;
+  xPct: number;
+  yPct: number;
+  wPct: number;
+  hPct: number;
+  required: boolean;
+  systemKey?: string;
+  label?: string;
+}
+
+export interface TemplateSignerSlot {
+  signerKey: string;
+  signerLabel: string;
+  fields: TemplatePlacedField[];
+}
+
+export interface TemplateSignatureRequirement {
+  signerKey: string;
+  signerLabel: string;
+  fieldType: "signature" | "initials" | "date_signed" | "text" | "checkbox";
+  required: boolean;
+  label?: string;
+}
+
+export interface TemplateRenderConfig {
+  format?: string;
+  marginTop?: number;
+  marginBottom?: number;
+  marginLeft?: number;
+  marginRight?: number;
+}
+
+export interface ListTemplatesParams {
+  page?: number;
+  limit?: number;
+  status?: TemplateStatus;
+  search?: string;
+}
+
+/** Slim version reference returned inside template list/summary payloads */
+export interface TemplateVersionRef {
+  versionNumber: number;
+}
+
+/** Full template version payload returned by the detail and versions endpoints */
+export interface TemplateVersionDetail {
+  versionNumber: number;
+  variablesSchema: TemplateVariable[];
+  signerSlots: TemplateSignerSlot[];
+  signatureRequirements: TemplateSignatureRequirement[];
+  renderConfig?: TemplateRenderConfig;
+  changelog?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Template list item (currentVersion / lastPublishedVersion are slim refs) */
+export interface TemplateSummary {
+  id: string;
+  name?: string;
+  description?: string;
+  status: TemplateStatus;
+  category: string;
+  currentVersion: TemplateVersionRef | null;
+  lastPublishedVersion: TemplateVersionRef | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Template detail payload (currentVersion / lastPublishedVersion carry full schema) */
+export interface TemplateDetail {
+  id: string;
+  name?: string;
+  description?: string;
+  status: TemplateStatus;
+  category: string;
+  currentVersion: TemplateVersionDetail | null;
+  lastPublishedVersion: TemplateVersionDetail | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TemplateListResponse {
+  success: boolean;
+  templates: TemplateSummary[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface TemplateGetResponse {
+  success: boolean;
+  template: TemplateDetail;
+}
+
+export interface TemplateVersionsResponse {
+  success: boolean;
+  versions: TemplateVersionDetail[];
+}
+
+// --- Template write surface ---
+
+export type TemplateCategory =
+  | "contract"
+  | "agreement"
+  | "invoice"
+  | "nda"
+  | "proposal"
+  | "letter"
+  | "other";
+
+/** Template variable as supplied when creating/updating a template. */
+export interface TemplateVariableInput {
+  key: string;
+  label: string;
+  dataType: TemplateVariableDataType;
+  /** Defaults to 'document'. */
+  scope?: TemplateVariableScope;
+  /** Required when scope === 'signer'. */
+  signerKey?: string;
+  systemKey?: string;
+  required: boolean;
+  defaultValue?: string | number | boolean;
+  description?: string;
+}
+
+/** Parameters for creating a template. */
+export interface CreateTemplateParams {
+  name: string;
+  description?: string;
+  category: TemplateCategory;
+  /** Tiptap JSON document AST. */
+  contentJson: Record<string, unknown>;
+  variablesSchema?: TemplateVariableInput[];
+  signatureRequirements?: TemplateSignatureRequirement[];
+  signerSlots?: TemplateSignerSlot[];
+  renderConfig?: TemplateRenderConfig;
+  meta?: MetaTag[];
+}
+
+/** Parameters for updating a template. All fields optional. */
+export interface UpdateTemplateParams {
+  name?: string;
+  description?: string;
+  category?: TemplateCategory;
+  contentJson?: Record<string, unknown>;
+  variablesSchema?: TemplateVariableInput[];
+  signatureRequirements?: TemplateSignatureRequirement[];
+  signerSlots?: TemplateSignerSlot[];
+  renderConfig?: TemplateRenderConfig;
+}
+
+/** Parameters for publishing a template. */
+export interface PublishTemplateParams {
+  /** Optional changelog recorded on the published version. */
+  changelog?: string;
+}
+
+/** Parameters for rendering a template preview PDF. */
+export interface PreviewTemplateParams {
+  /** Variable values substituted into the rendered preview. */
+  variables?: Record<string, string | number | boolean>;
+}
+
+/** Response from rendering a saved template to preview HTML. */
+export interface PreviewTemplateHtmlResponse {
+  success: boolean;
+  html: string;
+}
+
+/** Parameters for rendering ad-hoc Tiptap content to a preview PDF. */
+export interface PreviewUnsavedPdfParams {
+  /** Tiptap JSON document to render. */
+  contentJson: Record<string, unknown>;
+  /** Optional render configuration (margins, page size, etc.). */
+  renderConfig?: TemplateRenderConfig;
+  /** Variable values substituted into the rendered preview. */
+  variables?: Record<string, string | number | boolean>;
+}
+
+/** Response from create / update / publish / archive / restore. */
+export interface TemplateEnvelope {
+  success: boolean;
+  template: TemplateDetail;
+  message: string;
+}
+
+/** Response from DELETE a template. */
+export interface TemplateDeleteResponse {
+  success: boolean;
+  templateId: string;
+  message: string;
+}
+
 // ============================================================================
 // Invoices and Transactions
 // ============================================================================
@@ -1028,9 +1954,25 @@ export interface InvoiceListParams extends PaginationParams {
   dueDateTo?: string;
 }
 
+/** Parameters for listing invoices across all contracts. */
+export interface InvoiceListAllParams extends InvoiceListParams {
+  /** Search by invoice number or contract title. */
+  search?: string;
+}
+
 /** Parameters for sending an invoice */
 export interface SendInvoiceParams {
   autoCharge?: boolean;
+}
+
+/** Parameters for updating a draft invoice. All fields optional. */
+export interface UpdateInvoiceParams {
+  title?: string;
+  description?: string;
+  /** ISO 8601 */
+  dueDate?: string;
+  /** When provided, replaces the existing line item set. */
+  lineItems?: InvoiceLineItemInput[];
 }
 
 /** Parameters for manually marking an invoice as paid */
@@ -1118,6 +2060,77 @@ export interface TransactionListResponse {
     total: number;
     totalPages: number;
   };
+}
+
+// --- Transaction analytics (payment-mix / fee-estimate) ---
+
+export interface PaymentMixParams {
+  /** Start of the date range (ISO 8601, e.g. "2025-01-01"). */
+  from: string;
+  /** End of the date range (ISO 8601). */
+  to: string;
+  /** Transaction status to aggregate. Defaults to SUCCESS server-side. */
+  status?: TransactionStatus;
+  /** Restrict the aggregation to a single contract. */
+  contractUuid?: string;
+  /** Restrict the aggregation to a single currency (ISO 4217). */
+  currencyCode?: string;
+}
+
+/** One payment-method row of the payment-mix breakdown. */
+export interface PaymentMixMethod {
+  paymentMethodType: string;
+  count: number;
+  totalAmount: string;
+  totalStripeFee: string;
+  totalPlatformFee: string;
+  avgStripeFeePercent: number;
+}
+
+export interface PaymentMixResponse {
+  success: boolean;
+  dateRange: { from: string; to: string };
+  totalTransactions: number;
+  byMethod: PaymentMixMethod[];
+  /** Present only when there are card transactions in range. */
+  estimatedSavingsIfAllBankTransfer?: string;
+}
+
+export interface FeeEstimateParams {
+  /** Amount to estimate fees for. */
+  amount: number;
+  /** Currency code (ISO 4217). */
+  currency: string;
+  /** Override the default platform fee percentage. */
+  platformFeePercent?: number;
+}
+
+/** One payment-method row of the fee-estimate comparison. */
+export interface FeeEstimateMethod {
+  paymentMethodType: string;
+  stripeFeePercent: number;
+  stripeFeeFixed: number;
+  estimatedStripeFee: string;
+  platformFeePercent: number;
+  estimatedPlatformFee: string;
+  estimatedTotalFee: string;
+  totalFeePercent: number;
+  isApproximate: boolean;
+}
+
+export interface FeeEstimateResponse {
+  success: boolean;
+  amount: number;
+  currency: string;
+  methods: FeeEstimateMethod[];
+}
+
+/**
+ * Response from GET /api/v1/invoices: every invoice across all the API key
+ * owner's contracts, plus aggregate status counts.
+ */
+export interface InvoiceListAllResponse extends InvoiceListResponse {
+  statusCounts: Record<string, number>;
 }
 
 /** Invoice webhook event types */

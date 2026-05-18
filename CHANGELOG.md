@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-05-18
+
+Additive release — extends the public API surface across templates, contracts,
+documents, signatures, invoices and transactions. No breaking changes.
+
+### Added
+
+- **Templates module** — full CRUD (`create`, `update`, `publish`, `archive`,
+  `restore`, `delete`), reads (`list`, `get`, `getVersions`), and previews
+  (`previewPdf`, `previewHtml`, `previewUnsavedPdf`).
+- **Contracts** — core lifecycle (`update`, `delete`, `createEmpty`, `createMinimal`,
+  `import`, `attachDocument`, `getStats`); recurring billing (`recurringSetup`,
+  `resendRecurringApproval`, `cancelRecurringApproval`); signing-request inspection
+  (`listSigningRequests`, `getSigningRequest`) and actions (`resendSigningRequest`,
+  `cancelSigningRequest`, `businessSign`). New submodules: `contracts.termination`,
+  `contracts.paymentTerms`, `contracts.agreements`.
+- **Documents** — read surface (`get`, `getVersions`, `download`, `preview`);
+  analytics (`listShared`, `search`, `getActivity`, `getDownloads`);
+  `documents.comments` submodule (`add`, `list`); `sendPublicLink`.
+- **Signatures** — `editRequest`, `getMyRequests` status filter, `createSignature`,
+  `validatePdfSignatures` (DSS validation of an uploaded PDF).
+- **Invoices module** — `update`, `cancel`, `downloadPdf`, `listAll` (business-wide).
+- **Transactions module** — `getPaymentMix` and `getFeeEstimate` analytics.
+- **`HttpClient`** — `patch()` verb, `download()` now supports `POST` bodies,
+  exported `DownloadResult` type.
+
+### Changed
+
+- `DocumentStatusForCreate` narrowed to `"draft" | "published"` — the backend rejects
+  server-derived statuses on create/update.
+
+---
+
 ## [2.0.1] - 2026-04-27
 
 ### Fixed

@@ -8,6 +8,7 @@ import type {
   EmbeddedSessionResponse,
 } from '../types';
 import { normalizeEmail } from '../utils/normalize-email';
+import { assertValidEmail } from '../utils/validate-email';
 
 export class Embedded {
   constructor(private client: HttpClient) {}
@@ -35,6 +36,7 @@ export class Embedded {
    * ```
    */
   async createSession(params: CreateEmbeddedSessionParams): Promise<EmbeddedSessionResponse> {
+    assertValidEmail(params.email, 'email');
     return this.client.post<EmbeddedSessionResponse>('/api/v1/embedded/sessions', {
       ...params,
       email: normalizeEmail(params.email),

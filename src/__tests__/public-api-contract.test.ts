@@ -55,7 +55,24 @@ const EXPECTED_ROUTE_MATRIX: Record<string, Record<string, string[]>> = {
     get: ['200'],
     post: ['201'],
   },
+  '/api/v1/contracts/empty': {
+    post: ['201'],
+  },
+  '/api/v1/contracts/minimal': {
+    post: ['201'],
+  },
+  '/api/v1/contracts/import': {
+    post: ['201'],
+  },
   '/api/v1/contracts/{contractId}': {
+    delete: ['200'],
+    get: ['200'],
+    patch: ['200'],
+  },
+  '/api/v1/contracts/{contractId}/document': {
+    patch: ['200'],
+  },
+  '/api/v1/contracts/{contractId}/stats': {
     get: ['200'],
   },
   '/api/v1/contracts/{contractId}/status': {
@@ -76,11 +93,78 @@ const EXPECTED_ROUTE_MATRIX: Record<string, Record<string, string[]>> = {
   '/api/v1/contracts/{contractId}/terminate': {
     post: ['200'],
   },
+  '/api/v1/contracts/{contractId}/recurring-setup': {
+    post: ['201'],
+  },
+  '/api/v1/contracts/{contractId}/recurring-approval': {
+    delete: ['200'],
+  },
+  '/api/v1/contracts/{contractId}/recurring-approval/resend': {
+    post: ['200'],
+  },
+  '/api/v1/contracts/{contractId}/termination': {
+    delete: ['200'],
+    get: ['200'],
+  },
+  '/api/v1/contracts/{contractId}/termination/status': {
+    get: ['200'],
+  },
+  '/api/v1/contracts/{contractId}/termination/history': {
+    get: ['200'],
+  },
+  '/api/v1/contracts/{contractId}/termination/approve': {
+    post: ['200'],
+  },
+  '/api/v1/contracts/{contractId}/termination/reject': {
+    post: ['200'],
+  },
+  '/api/v1/contracts/{contractId}/payment-terms': {
+    get: ['200'],
+    post: ['201'],
+  },
+  '/api/v1/contracts/{contractId}/payment-terms/{termId}': {
+    patch: ['200'],
+    delete: ['200'],
+  },
+  '/api/v1/contracts/{contractId}/signing-requests': {
+    get: ['200'],
+  },
+  '/api/v1/contracts/{contractId}/signing-requests/{requestId}/resend': {
+    post: ['200'],
+  },
+  '/api/v1/contracts/{contractId}/signing-requests/{requestId}': {
+    get: ['200'],
+    delete: ['200'],
+  },
+  '/api/v1/contracts/{contractId}/signing-requests/{requestId}/business-sign': {
+    post: ['200'],
+  },
+  '/api/v1/contracts/{contractId}/agreements': {
+    get: ['200'],
+    post: ['201'],
+  },
+  '/api/v1/contracts/{contractId}/agreements/{agreementId}': {
+    get: ['200'],
+    delete: ['200'],
+  },
+  '/api/v1/contracts/{contractId}/agreements/{agreementId}/initiate-signing': {
+    post: ['201'],
+  },
+  '/api/v1/signatures/requests/{requestId}/edit': {
+    post: ['200'],
+  },
   '/api/v1/contracts/{contractId}/invoices': {
     get: ['200'],
     post: ['201'],
   },
   '/api/v1/contracts/{contractId}/invoices/{invoiceUuid}': {
+    get: ['200'],
+    patch: ['200'],
+  },
+  '/api/v1/contracts/{contractId}/invoices/{invoiceUuid}/cancel': {
+    post: ['200'],
+  },
+  '/api/v1/contracts/{contractId}/invoices/{invoiceUuid}/pdf': {
     get: ['200'],
   },
   '/api/v1/contracts/{contractId}/invoices/{invoiceUuid}/send': {
@@ -98,6 +182,42 @@ const EXPECTED_ROUTE_MATRIX: Record<string, Record<string, string[]>> = {
   '/api/v1/transactions/{transactionUuid}': {
     get: ['200'],
   },
+  '/api/v1/transactions/payment-mix': {
+    get: ['200'],
+  },
+  '/api/v1/transactions/fee-estimate': {
+    get: ['200'],
+  },
+  '/api/v1/invoices': {
+    get: ['200'],
+  },
+  '/api/v1/templates': {
+    get: ['200'],
+    post: ['201'],
+  },
+  '/api/v1/templates/{templateId}': {
+    get: ['200'],
+    patch: ['200'],
+    delete: ['200'],
+  },
+  '/api/v1/templates/{templateId}/publish': {
+    post: ['200'],
+  },
+  '/api/v1/templates/{templateId}/archive': {
+    post: ['200'],
+  },
+  '/api/v1/templates/{templateId}/restore': {
+    post: ['200'],
+  },
+  '/api/v1/templates/{templateId}/preview-pdf': {
+    post: ['200'],
+  },
+  '/api/v1/templates/{templateId}/preview-html': {
+    post: ['200'],
+  },
+  '/api/v1/templates/preview-unsaved-pdf': {
+    post: ['200'],
+  },
   '/api/v1/templates/{templateId}/documents': {
     post: ['201'],
   },
@@ -107,19 +227,102 @@ const EXPECTED_ROUTE_MATRIX: Record<string, Record<string, string[]>> = {
   '/api/v1/templates/{templateId}/contracts': {
     post: ['201'],
   },
+  '/api/v1/templates/{templateId}/versions': {
+    get: ['200'],
+  },
+  '/api/v1/documents/shared': {
+    get: ['200'],
+  },
+  '/api/v1/documents/search': {
+    get: ['200'],
+  },
+  '/api/v1/documents/{documentId}': {
+    get: ['200'],
+  },
+  '/api/v1/documents/{documentId}/versions': {
+    get: ['200'],
+  },
+  '/api/v1/documents/{documentId}/activity': {
+    get: ['200'],
+  },
+  '/api/v1/documents/{documentId}/downloads': {
+    get: ['200'],
+  },
+  '/api/v1/documents/{documentId}/comments': {
+    get: ['200'],
+    post: ['201', '401'],
+  },
+  '/api/v1/documents/{documentId}/send-public-link': {
+    post: ['200', '401'],
+  },
+  '/api/v1/documents/versions/{versionId}/download': {
+    get: ['200'],
+  },
+  '/api/v1/documents/versions/{versionId}/preview': {
+    get: ['200'],
+  },
+  '/api/v1/signatures': {
+    get: ['200', '401'],
+    post: ['201'],
+  },
+  '/api/v1/signatures/validate-pdf': {
+    post: ['200'],
+  },
+  '/api/v1/signatures/requests/{requestId}/cancel': {
+    post: ['200'],
+  },
+  '/api/v1/signatures/requests/{requestId}/remind': {
+    post: ['200'],
+  },
+  '/api/v1/signatures/versions/{versionId}/certificate': {
+    get: ['200'],
+  },
+  '/api/v1/signatures/versions/{versionId}/signed-document': {
+    get: ['200'],
+  },
   '/api/v1/embedded/sessions': {
     post: ['201', '401'],
   },
 };
 
-const EXPECTED_TEMPLATE_RESPONSE_REFS: Record<string, string> = {
-  '/api/v1/templates/{templateId}/documents':
-    '#/components/schemas/PublicTemplateDocumentEnvelopeDto',
-  '/api/v1/templates/{templateId}/signature-requests':
-    '#/components/schemas/PublicTemplateSignatureRequestEnvelopeDto',
-  '/api/v1/templates/{templateId}/contracts':
-    '#/components/schemas/PublicTemplateContractEnvelopeDto',
-};
+const EXPECTED_TEMPLATE_RESPONSE_REFS = [
+  {
+    route: '/api/v1/templates',
+    method: 'get',
+    status: '200',
+    ref: '#/components/schemas/PublicTemplateListEnvelopeDto',
+  },
+  {
+    route: '/api/v1/templates/{templateId}',
+    method: 'get',
+    status: '200',
+    ref: '#/components/schemas/PublicTemplateGetEnvelopeDto',
+  },
+  {
+    route: '/api/v1/templates/{templateId}/documents',
+    method: 'post',
+    status: '201',
+    ref: '#/components/schemas/PublicTemplateDocumentEnvelopeDto',
+  },
+  {
+    route: '/api/v1/templates/{templateId}/signature-requests',
+    method: 'post',
+    status: '201',
+    ref: '#/components/schemas/PublicTemplateSignatureRequestEnvelopeDto',
+  },
+  {
+    route: '/api/v1/templates/{templateId}/contracts',
+    method: 'post',
+    status: '201',
+    ref: '#/components/schemas/PublicTemplateContractEnvelopeDto',
+  },
+  {
+    route: '/api/v1/templates/{templateId}/versions',
+    method: 'get',
+    status: '200',
+    ref: '#/components/schemas/PublicTemplateVersionsEnvelopeDto',
+  },
+] as const;
 
 function loadSnapshot(): any {
   return JSON.parse(readFileSync(SNAPSHOT_PATH, 'utf8'));
@@ -175,9 +378,9 @@ describe('public API contract snapshot', () => {
   it('publishes explicit template runtime response schemas in the backend snapshot', () => {
     const snapshot = loadSnapshot();
 
-    for (const [route, ref] of Object.entries(EXPECTED_TEMPLATE_RESPONSE_REFS)) {
+    for (const { route, method, status, ref } of EXPECTED_TEMPLATE_RESPONSE_REFS) {
       expect(
-        snapshot.paths[route].post.responses['201'].content['application/json'].schema.$ref,
+        snapshot.paths[route][method].responses[status].content['application/json'].schema.$ref,
       ).toBe(ref);
     }
   });

@@ -78,6 +78,29 @@
         ],
         "type": "object"
       },
+      "ActionableStatsDto": {
+        "properties": {
+          "failedSubscriptionPayments": {
+            "type": "number"
+          },
+          "openEscrowDisputes": {
+            "type": "number"
+          },
+          "pendingPublicProfilesInitial": {
+            "type": "number"
+          },
+          "pendingPublicProfilesUpdate": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "pendingPublicProfilesInitial",
+          "pendingPublicProfilesUpdate",
+          "openEscrowDisputes",
+          "failedSubscriptionPayments"
+        ],
+        "type": "object"
+      },
       "AddDisputeEvidenceDto": {
         "properties": {
           "description": {
@@ -489,6 +512,19 @@
         ],
         "type": "object"
       },
+      "AttachPublicDocumentDto": {
+        "properties": {
+          "documentId": {
+            "description": "Document UUID",
+            "example": "550e8400-e29b-41d4-a716-446655440000",
+            "type": "string"
+          }
+        },
+        "required": [
+          "documentId"
+        ],
+        "type": "object"
+      },
       "AvailablePaymentMethodDto": {
         "properties": {
           "available": {
@@ -686,6 +722,29 @@
         ],
         "type": "object"
       },
+      "BlockchainStatsDto": {
+        "properties": {
+          "failed24h": {
+            "type": "number"
+          },
+          "initialized": {
+            "type": "number"
+          },
+          "pending": {
+            "type": "number"
+          },
+          "verified24h": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "initialized",
+          "pending",
+          "verified24h",
+          "failed24h"
+        ],
+        "type": "object"
+      },
       "BusinessProfileResponseDto": {
         "properties": {
           "address": {
@@ -700,9 +759,6 @@
           "businessType": {
             "type": "string"
           },
-          "companyDescription": {
-            "type": "object"
-          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -714,15 +770,6 @@
             "type": "number"
           },
           "phone": {
-            "type": "string"
-          },
-          "publicFields": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "publicLogoUrl": {
             "type": "string"
           },
           "registrationNumber": {
@@ -741,23 +788,6 @@
           "vatNumber": {
             "type": "string"
           },
-          "verificationNote": {
-            "type": "object"
-          },
-          "verificationRequestedAt": {
-            "type": "string"
-          },
-          "verificationStatus": {
-            "enum": [
-              "none",
-              "pending",
-              "verified"
-            ],
-            "type": "string"
-          },
-          "verifiedAt": {
-            "type": "string"
-          },
           "website": {
             "type": "string"
           }
@@ -765,8 +795,6 @@
         "required": [
           "id",
           "businessName",
-          "verificationStatus",
-          "publicFields",
           "stripeConnectStatus",
           "createdAt",
           "updatedAt"
@@ -1406,6 +1434,43 @@
         "required": [
           "signerKey",
           "role"
+        ],
+        "type": "object"
+      },
+      "ContractsStatsDto": {
+        "properties": {
+          "active": {
+            "type": "number"
+          },
+          "byStatus": {
+            "items": {
+              "$ref": "#/components/schemas/StatusBreakdownDto"
+            },
+            "type": "array"
+          },
+          "new30d": {
+            "type": "number"
+          },
+          "new7d": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          },
+          "trend30d": {
+            "items": {
+              "$ref": "#/components/schemas/TrendPointDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "total",
+          "active",
+          "new7d",
+          "new30d",
+          "byStatus",
+          "trend30d"
         ],
         "type": "object"
       },
@@ -2560,6 +2625,57 @@
         ],
         "type": "object"
       },
+      "CreatePublicAgreementDto": {
+        "properties": {
+          "description": {
+            "example": "Adjusts the monthly retainer starting Q3",
+            "type": "string"
+          },
+          "documentId": {
+            "description": "Document UUID",
+            "example": "550e8400-e29b-41d4-a716-446655440000",
+            "type": "string"
+          },
+          "effectiveDate": {
+            "description": "ISO 8601 date",
+            "example": "2026-07-01",
+            "type": "string"
+          },
+          "modifiesPaymentTerms": {
+            "description": "Whether this agreement modifies payment terms",
+            "type": "boolean"
+          },
+          "paymentTermModifications": {
+            "description": "Payment term modifications applied when the agreement is signed",
+            "items": {
+              "$ref": "#/components/schemas/PublicPaymentTermModificationDto"
+            },
+            "type": "array"
+          },
+          "title": {
+            "example": "Amendment #1 — revised pricing",
+            "type": "string"
+          }
+        },
+        "required": [
+          "documentId",
+          "title"
+        ],
+        "type": "object"
+      },
+      "CreatePublicCommentDto": {
+        "properties": {
+          "content": {
+            "description": "Comment body text. Posted as a top-level comment on the document.",
+            "example": "Looks good — approved on our side.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "type": "object"
+      },
       "CreatePublicContractDto": {
         "properties": {
           "autoRenew": {
@@ -2593,12 +2709,25 @@
             "example": 14,
             "type": "number"
           },
+          "paymentMethodRequired": {
+            "default": false,
+            "description": "Whether payment method is required",
+            "type": "boolean"
+          },
           "paymentTerms": {
             "description": "Payment terms (can be added later via payment-setup)",
             "items": {
               "type": "string"
             },
             "type": "array"
+          },
+          "preferredPaymentMethodType": {
+            "description": "Preferred payment method for invoice checkout. Only \"card\" and \"bank_transfer\" are allowed. \"bank_transfer\" is only valid for EUR contracts.",
+            "enum": [
+              "card",
+              "bank_transfer"
+            ],
+            "type": "string"
           },
           "signingPolicy": {
             "allOf": [
@@ -2756,18 +2885,6 @@
             "example": "Document description",
             "type": "string"
           },
-          "documentMeta": {
-            "example": [
-              {
-                "key": "author",
-                "value": "John Doe"
-              }
-            ],
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
           "hashtags": {
             "example": [
               "#tag1",
@@ -2842,6 +2959,82 @@
         ],
         "type": "object"
       },
+      "CreatePublicEmptyContractDto": {
+        "properties": {
+          "contragentEmail": {
+            "example": "partner@example.com",
+            "type": "string"
+          },
+          "contragentName": {
+            "example": "Partner Corp",
+            "type": "string"
+          },
+          "currencyCode": {
+            "description": "ISO 4217 currency code (default: USD)",
+            "example": "USD",
+            "type": "string"
+          },
+          "description": {
+            "example": "Manual invoicing relationship",
+            "type": "string"
+          },
+          "title": {
+            "example": "Invoice-only contract",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "contragentEmail"
+        ],
+        "type": "object"
+      },
+      "CreatePublicImportContractDto": {
+        "properties": {
+          "contragentEmail": {
+            "example": "partner@example.com",
+            "type": "string"
+          },
+          "contragentName": {
+            "example": "Partner Corp",
+            "type": "string"
+          },
+          "currencyCode": {
+            "description": "ISO 4217 currency code (default: USD)",
+            "example": "USD",
+            "type": "string"
+          },
+          "description": {
+            "example": "Pre-signed PDF imported from third-party",
+            "type": "string"
+          },
+          "documentId": {
+            "description": "Document UUID",
+            "example": "550e8400-e29b-41d4-a716-446655440000",
+            "type": "string"
+          },
+          "endDate": {
+            "description": "ISO 8601",
+            "example": "2026-01-15T00:00:00Z",
+            "type": "string"
+          },
+          "startDate": {
+            "description": "ISO 8601 (can be in the past for imported contracts)",
+            "example": "2025-01-15T00:00:00Z",
+            "type": "string"
+          },
+          "title": {
+            "example": "Externally signed agreement",
+            "type": "string"
+          }
+        },
+        "required": [
+          "documentId",
+          "title",
+          "contragentEmail"
+        ],
+        "type": "object"
+      },
       "CreatePublicInvoiceDto": {
         "properties": {
           "amount": {
@@ -2884,6 +3077,58 @@
           "title",
           "amount",
           "dueDate"
+        ],
+        "type": "object"
+      },
+      "CreatePublicMinimalContractDto": {
+        "properties": {
+          "contragentEmail": {
+            "example": "partner@example.com",
+            "type": "string"
+          },
+          "contragentName": {
+            "example": "Partner Corp",
+            "type": "string"
+          },
+          "description": {
+            "example": "Annual consulting agreement",
+            "type": "string"
+          },
+          "documentId": {
+            "description": "Document UUID",
+            "example": "550e8400-e29b-41d4-a716-446655440000",
+            "type": "string"
+          },
+          "skipPaymentSetup": {
+            "default": true,
+            "description": "Skip payment setup (add later via addPaymentSetup)",
+            "type": "boolean"
+          },
+          "title": {
+            "example": "Service Agreement 2026",
+            "type": "string"
+          }
+        },
+        "required": [
+          "documentId",
+          "title",
+          "contragentEmail"
+        ],
+        "type": "object"
+      },
+      "CreatePublicProfileDto": {
+        "properties": {
+          "brandName": {
+            "description": "Brand name for the public profile",
+            "type": "string"
+          },
+          "slug": {
+            "description": "URL slug. If omitted, auto-generated from brandName.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "brandName"
         ],
         "type": "object"
       },
@@ -2981,6 +3226,22 @@
           "variables",
           "slotAssignments",
           "deadline"
+        ],
+        "type": "object"
+      },
+      "CreatePublicUserSignatureDto": {
+        "properties": {
+          "media": {
+            "description": "Signature image media object, previously uploaded via the media upload endpoint.",
+            "example": {
+              "key": "/temp/signature.png",
+              "type": "image"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "media"
         ],
         "type": "object"
       },
@@ -3164,6 +3425,18 @@
           "description": {
             "example": "A standard contract template",
             "type": "string"
+          },
+          "meta": {
+            "example": [
+              {
+                "key": "aiSessionId",
+                "value": "uuid"
+              }
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "name": {
             "example": "Contract Template",
@@ -4684,6 +4957,28 @@
         ],
         "type": "object"
       },
+      "HourlyTrendPointDto": {
+        "properties": {
+          "failed": {
+            "example": 1,
+            "type": "number"
+          },
+          "hour": {
+            "example": "14:00",
+            "type": "string"
+          },
+          "success": {
+            "example": 42,
+            "type": "number"
+          }
+        },
+        "required": [
+          "hour",
+          "success",
+          "failed"
+        ],
+        "type": "object"
+      },
       "ImportFromPipedriveDto": {
         "properties": {
           "dealId": {
@@ -4762,8 +5057,8 @@
           "documentMeta": {
             "example": [
               {
-                "key": "author",
-                "value": "John Doe"
+                "key": "pipedriveDealStage",
+                "value": "qualified"
               }
             ],
             "items": {
@@ -5755,9 +6050,6 @@
             ],
             "type": "string"
           },
-          "id": {
-            "type": "number"
-          },
           "isActive": {
             "type": "boolean"
           },
@@ -5786,10 +6078,14 @@
           "updatedAt": {
             "format": "date-time",
             "type": "string"
+          },
+          "uuid": {
+            "description": "Stable public identifier for the payment term",
+            "type": "string"
           }
         },
         "required": [
-          "id",
+          "uuid",
           "type",
           "name",
           "amount",
@@ -5996,6 +6292,16 @@
         ],
         "type": "object"
       },
+      "PublicApproveTerminationDto": {
+        "properties": {
+          "comment": {
+            "description": "Optional comment on the approval",
+            "maxLength": 500,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "PublicBillingAddressDto": {
         "properties": {
           "city": {
@@ -6029,6 +6335,25 @@
           "city",
           "postalCode",
           "country"
+        ],
+        "type": "object"
+      },
+      "PublicBusinessSignDto": {
+        "properties": {
+          "meta": {
+            "description": "Optional metadata tags attached to the signature",
+            "items": {
+              "$ref": "#/components/schemas/PublicSignatureMetaTagDto"
+            },
+            "type": "array"
+          },
+          "signatureHash": {
+            "description": "Hash of a saved signature owned by the API key. Obtain it from GET /api/v1/signatures.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "signatureHash"
         ],
         "type": "object"
       },
@@ -6105,6 +6430,78 @@
         "required": [
           "email"
         ],
+        "type": "object"
+      },
+      "PublicEditSignatureRequestDto": {
+        "properties": {
+          "recipient": {
+            "description": "New recipient email",
+            "example": "new-signer@example.com",
+            "type": "string"
+          },
+          "signerId": {
+            "description": "UUID of the signer slot to reassign on the request",
+            "type": "string"
+          }
+        },
+        "required": [
+          "signerId",
+          "recipient"
+        ],
+        "type": "object"
+      },
+      "PublicFeeEstimateResponseDto": {
+        "properties": {
+          "amount": {
+            "description": "Amount used for calculation",
+            "example": 1000,
+            "type": "number"
+          },
+          "currency": {
+            "description": "Currency used for calculation",
+            "example": "EUR",
+            "type": "string"
+          },
+          "methods": {
+            "description": "Fee comparison by payment method",
+            "items": {
+              "$ref": "#/components/schemas/FeeComparisonItemDto"
+            },
+            "type": "array"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "amount",
+          "currency",
+          "methods",
+          "success"
+        ],
+        "type": "object"
+      },
+      "PublicInitiateAgreementSigningDto": {
+        "properties": {
+          "deadline": {
+            "description": "Signing deadline",
+            "format": "date-time",
+            "type": "string"
+          },
+          "isKycRequired": {
+            "default": false,
+            "type": "boolean"
+          },
+          "messageToSigners": {
+            "example": "Please review and sign the amendment",
+            "type": "string"
+          },
+          "notifyContragent": {
+            "default": true,
+            "description": "Notify the contragent by email",
+            "type": "boolean"
+          }
+        },
         "type": "object"
       },
       "PublicInvoiceActionResponseDto": {
@@ -6236,6 +6633,50 @@
           "quantity",
           "unitPrice",
           "amount"
+        ],
+        "type": "object"
+      },
+      "PublicInvoiceListAllResponseDto": {
+        "properties": {
+          "invoices": {
+            "items": {
+              "$ref": "#/components/schemas/PublicInvoiceResponseDto"
+            },
+            "type": "array"
+          },
+          "pagination": {
+            "properties": {
+              "limit": {
+                "type": "number"
+              },
+              "page": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number"
+              },
+              "totalPages": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "statusCounts": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "Invoice counts grouped by status across matching business invoices.",
+            "type": "object"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "invoices",
+          "pagination",
+          "statusCounts"
         ],
         "type": "object"
       },
@@ -6464,6 +6905,44 @@
         },
         "type": "object"
       },
+      "PublicPaymentMixResponseDto": {
+        "properties": {
+          "byMethod": {
+            "description": "Breakdown by payment method type",
+            "items": {
+              "$ref": "#/components/schemas/PaymentMixMethodDto"
+            },
+            "type": "array"
+          },
+          "dateRange": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentMixDateRangeDto"
+              }
+            ],
+            "description": "Requested date range"
+          },
+          "estimatedSavingsIfAllBankTransfer": {
+            "description": "Estimated savings in Stripe fees if all card transactions were bank_transfer instead. Only present when there are card transactions.",
+            "example": "4050.00",
+            "type": "string"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "totalTransactions": {
+            "description": "Total number of transactions in range",
+            "type": "number"
+          }
+        },
+        "required": [
+          "dateRange",
+          "totalTransactions",
+          "byMethod",
+          "success"
+        ],
+        "type": "object"
+      },
       "PublicPaymentSetupDto": {
         "properties": {
           "currencyCode": {
@@ -6474,12 +6953,25 @@
             "example": "2027-05-01T00:00:00Z",
             "type": "string"
           },
+          "paymentMethodRequired": {
+            "default": false,
+            "description": "Whether payment method is required",
+            "type": "boolean"
+          },
           "paymentTerms": {
             "description": "At least one payment term required",
             "items": {
               "type": "string"
             },
             "type": "array"
+          },
+          "preferredPaymentMethodType": {
+            "description": "Preferred payment method for invoice checkout. Only \"card\" and \"bank_transfer\" are allowed. \"bank_transfer\" is only valid for EUR contracts.",
+            "enum": [
+              "card",
+              "bank_transfer"
+            ],
+            "type": "string"
           },
           "startDate": {
             "description": "ISO 8601, min 24h from now",
@@ -6566,6 +7058,658 @@
         ],
         "type": "object"
       },
+      "PublicPaymentTermModificationDto": {
+        "properties": {
+          "action": {
+            "enum": [
+              "add",
+              "update",
+              "deactivate"
+            ],
+            "example": "update",
+            "type": "string"
+          },
+          "amount": {
+            "description": "Decimal amount as string",
+            "example": "1000.00",
+            "type": "string"
+          },
+          "autoCharge": {
+            "example": true,
+            "type": "boolean"
+          },
+          "dayOfPeriod": {
+            "description": "Day of period (1-28)",
+            "example": 1,
+            "type": "number"
+          },
+          "description": {
+            "example": "Updated payment terms",
+            "type": "string"
+          },
+          "dueDate": {
+            "example": "2026-06-01",
+            "type": "string"
+          },
+          "endDate": {
+            "example": "2027-05-01",
+            "type": "string"
+          },
+          "frequency": {
+            "enum": [
+              "weekly",
+              "biweekly",
+              "monthly",
+              "quarterly",
+              "yearly"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "example": "Initial payment",
+            "type": "string"
+          },
+          "paymentTermId": {
+            "description": "Payment term UUID — required for \"update\" and \"deactivate\" actions",
+            "type": "string"
+          },
+          "startDate": {
+            "example": "2026-05-01",
+            "type": "string"
+          },
+          "totalPayments": {
+            "example": 12,
+            "type": "number"
+          },
+          "type": {
+            "description": "Required for \"add\"",
+            "enum": [
+              "deposit",
+              "recurring",
+              "one_time"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      },
+      "PublicProfileAdminDetailDto": {
+        "properties": {
+          "activeRevision": {
+            "type": "object"
+          },
+          "businessProfile": {
+            "type": "object"
+          },
+          "hasPendingUpdate": {
+            "type": "boolean"
+          },
+          "profileStatus": {
+            "enum": [
+              "draft",
+              "pending_initial_review",
+              "verified",
+              "archived"
+            ],
+            "type": "string"
+          },
+          "published": {
+            "type": "object"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "uuid": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "uuid",
+          "slug",
+          "profileStatus",
+          "hasPendingUpdate"
+        ],
+        "type": "object"
+      },
+      "PublicProfileAdminListItemDto": {
+        "properties": {
+          "activeRevisionStatus": {
+            "type": "string"
+          },
+          "activeRevisionType": {
+            "type": "string"
+          },
+          "businessName": {
+            "type": "string"
+          },
+          "businessProfileUuid": {
+            "type": "string"
+          },
+          "hasPendingUpdate": {
+            "type": "boolean"
+          },
+          "lastReviewNote": {
+            "type": "object"
+          },
+          "lastSubmittedAt": {
+            "type": "object"
+          },
+          "profileStatus": {
+            "enum": [
+              "draft",
+              "pending_initial_review",
+              "verified",
+              "archived"
+            ],
+            "type": "string"
+          },
+          "publishedBrandName": {
+            "type": "string"
+          },
+          "publishedShortDescription": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "uuid": {
+            "type": "string"
+          },
+          "verifiedAt": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "uuid",
+          "slug",
+          "profileStatus",
+          "hasPendingUpdate"
+        ],
+        "type": "object"
+      },
+      "PublicProfileAttachmentDto": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "fileId": {
+            "type": "number"
+          },
+          "isPublic": {
+            "type": "boolean"
+          },
+          "kind": {
+            "enum": [
+              "supporting_document",
+              "report",
+              "gallery_image"
+            ],
+            "type": "string"
+          },
+          "sortOrder": {
+            "default": 0,
+            "type": "number"
+          },
+          "title": {
+            "type": "string"
+          },
+          "uuid": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fileId",
+          "kind",
+          "isPublic",
+          "sortOrder"
+        ],
+        "type": "object"
+      },
+      "PublicProfileAttachmentResponseDto": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "supporting_document",
+              "report",
+              "gallery_image"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "uuid": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "uuid",
+          "kind",
+          "url"
+        ],
+        "type": "object"
+      },
+      "PublicProfileCertificationDto": {
+        "properties": {
+          "credentialId": {
+            "type": "string"
+          },
+          "evidenceFileId": {
+            "type": "number"
+          },
+          "expiresOn": {
+            "type": "string"
+          },
+          "issuedOn": {
+            "type": "string"
+          },
+          "issuer": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "default": 0,
+            "type": "number"
+          },
+          "uuid": {
+            "type": "string"
+          },
+          "verificationUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "sortOrder"
+        ],
+        "type": "object"
+      },
+      "PublicProfileHighlightDto": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "type": "object"
+      },
+      "PublicProfileOwnerListItemDto": {
+        "properties": {
+          "activeRevisionStatus": {
+            "type": "string"
+          },
+          "activeRevisionType": {
+            "type": "string"
+          },
+          "hasPendingUpdate": {
+            "type": "boolean"
+          },
+          "lastReviewNote": {
+            "type": "object"
+          },
+          "lastSubmittedAt": {
+            "type": "object"
+          },
+          "profileStatus": {
+            "enum": [
+              "draft",
+              "pending_initial_review",
+              "verified",
+              "archived"
+            ],
+            "type": "string"
+          },
+          "publishedBrandName": {
+            "type": "string"
+          },
+          "publishedShortDescription": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "uuid": {
+            "type": "string"
+          },
+          "verifiedAt": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "uuid",
+          "slug",
+          "profileStatus",
+          "hasPendingUpdate"
+        ],
+        "type": "object"
+      },
+      "PublicProfilePrivateDetailDto": {
+        "properties": {
+          "activeRevision": {
+            "type": "object"
+          },
+          "hasPendingUpdate": {
+            "type": "boolean"
+          },
+          "profileStatus": {
+            "enum": [
+              "draft",
+              "pending_initial_review",
+              "verified",
+              "archived"
+            ],
+            "type": "string"
+          },
+          "published": {
+            "type": "object"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "uuid": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "uuid",
+          "slug",
+          "profileStatus",
+          "hasPendingUpdate"
+        ],
+        "type": "object"
+      },
+      "PublicProfilePublicDetailDto": {
+        "properties": {
+          "assets": {
+            "type": "object"
+          },
+          "attachments": {
+            "items": {
+              "$ref": "#/components/schemas/PublicProfileAttachmentResponseDto"
+            },
+            "type": "array"
+          },
+          "brandName": {
+            "type": "string"
+          },
+          "certifications": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "fullDescription": {
+            "type": "string"
+          },
+          "headline": {
+            "type": "string"
+          },
+          "highlights": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "industries": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "publicEmail": {
+            "type": "string"
+          },
+          "publicPhone": {
+            "type": "string"
+          },
+          "publishedUpdatedAt": {
+            "type": "object"
+          },
+          "seo": {
+            "type": "object"
+          },
+          "serviceRegions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "shortDescription": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "socialLinks": {
+            "type": "object"
+          },
+          "verification": {
+            "type": "object"
+          },
+          "website": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "brandName",
+          "shortDescription",
+          "fullDescription",
+          "website",
+          "industries",
+          "serviceRegions",
+          "assets",
+          "certifications",
+          "attachments",
+          "verification",
+          "seo"
+        ],
+        "type": "object"
+      },
+      "PublicProfilePublicListItemDto": {
+        "properties": {
+          "brandName": {
+            "type": "string"
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "coverImageUrl": {
+            "type": "string"
+          },
+          "headline": {
+            "type": "string"
+          },
+          "industries": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "logoImageUrl": {
+            "type": "string"
+          },
+          "noIndex": {
+            "type": "boolean"
+          },
+          "publishedUpdatedAt": {
+            "type": "object"
+          },
+          "shortDescription": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "verifiedAt": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "slug",
+          "brandName",
+          "industries",
+          "noIndex"
+        ],
+        "type": "object"
+      },
+      "PublicProfilePublicListResponseDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PublicProfilePublicListItemDto"
+            },
+            "type": "array"
+          },
+          "pagination": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "items",
+          "pagination"
+        ],
+        "type": "object"
+      },
+      "PublicProfileSocialCustomLinkDto": {
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "url"
+        ],
+        "type": "object"
+      },
+      "PublicProfileSocialLinksDto": {
+        "properties": {
+          "custom": {
+            "items": {
+              "$ref": "#/components/schemas/PublicProfileSocialCustomLinkDto"
+            },
+            "type": "array"
+          },
+          "facebook": {
+            "type": "string"
+          },
+          "github": {
+            "type": "string"
+          },
+          "instagram": {
+            "type": "string"
+          },
+          "linkedin": {
+            "type": "string"
+          },
+          "x": {
+            "type": "string"
+          },
+          "youtube": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "PublicRecurringSetupDto": {
+        "properties": {
+          "expiresInDays": {
+            "default": 30,
+            "description": "Number of days before the approval request expires",
+            "type": "number"
+          },
+          "messageToContragent": {
+            "description": "Message included in the approval invitation email",
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "paymentMethodRequired": {
+            "default": true,
+            "description": "Whether contragent must link a payment method",
+            "type": "boolean"
+          },
+          "paymentTerms": {
+            "description": "At least one payment term. All terms must be of type \"recurring\" with frequency + dayOfPeriod.",
+            "items": {
+              "$ref": "#/components/schemas/PublicPaymentTermDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "paymentTerms"
+        ],
+        "type": "object"
+      },
+      "PublicRejectTerminationDto": {
+        "properties": {
+          "reason": {
+            "description": "Reason for rejection",
+            "maxLength": 1000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
+      },
+      "PublicRemindSignatureRequestDto": {
+        "properties": {
+          "signerEmails": {
+            "description": "Optional list of signer emails to remind. When omitted, reminders are sent to every pending signer on the request.",
+            "example": [
+              "signer@example.com"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "PublicSendContractDto": {
+        "properties": {
+          "deadline": {
+            "description": "Signing deadline",
+            "format": "date-time",
+            "type": "string"
+          },
+          "isKycRequired": {
+            "default": false,
+            "type": "boolean"
+          },
+          "messageToSigners": {
+            "example": "Please review and sign this contract",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "PublicSendInvoiceDto": {
         "properties": {
           "autoCharge": {
@@ -6573,6 +7717,23 @@
             "type": "boolean"
           }
         },
+        "type": "object"
+      },
+      "PublicSignatureMetaTagDto": {
+        "properties": {
+          "key": {
+            "example": "source",
+            "type": "string"
+          },
+          "value": {
+            "example": "api",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "value"
+        ],
         "type": "object"
       },
       "PublicTemplateContractContragentResponseDto": {
@@ -6900,6 +8061,83 @@
         ],
         "type": "object"
       },
+      "PublicTemplateDeleteEnvelopeDto": {
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "templateId": {
+            "description": "Template UUID",
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "templateId",
+          "message"
+        ],
+        "type": "object"
+      },
+      "PublicTemplateDetailDto": {
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "currentVersion": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PublicTemplateVersionDetailDto"
+              }
+            ],
+            "nullable": true
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "description": "Template UUID",
+            "type": "string"
+          },
+          "lastPublishedVersion": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PublicTemplateVersionDetailDto"
+              }
+            ],
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "published",
+              "archived"
+            ],
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "category",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
       "PublicTemplateDocumentEnvelopeDto": {
         "properties": {
           "document": {
@@ -7001,6 +8239,89 @@
           "id",
           "name",
           "status"
+        ],
+        "type": "object"
+      },
+      "PublicTemplateGetEnvelopeDto": {
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "template": {
+            "$ref": "#/components/schemas/PublicTemplateDetailDto"
+          }
+        },
+        "required": [
+          "success",
+          "template"
+        ],
+        "type": "object"
+      },
+      "PublicTemplateListEnvelopeDto": {
+        "properties": {
+          "pagination": {
+            "$ref": "#/components/schemas/PublicTemplatePaginationDto"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "templates": {
+            "items": {
+              "$ref": "#/components/schemas/PublicTemplateSummaryDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "success",
+          "templates",
+          "pagination"
+        ],
+        "type": "object"
+      },
+      "PublicTemplateMutationEnvelopeDto": {
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "template": {
+            "$ref": "#/components/schemas/PublicTemplateDetailDto"
+          }
+        },
+        "required": [
+          "success",
+          "template",
+          "message"
+        ],
+        "type": "object"
+      },
+      "PublicTemplatePaginationDto": {
+        "properties": {
+          "limit": {
+            "example": 10,
+            "type": "number"
+          },
+          "page": {
+            "example": 1,
+            "type": "number"
+          },
+          "total": {
+            "example": 42,
+            "type": "number"
+          },
+          "totalPages": {
+            "example": 5,
+            "type": "number"
+          }
+        },
+        "required": [
+          "page",
+          "limit",
+          "total",
+          "totalPages"
         ],
         "type": "object"
       },
@@ -7147,6 +8468,150 @@
         "required": [
           "signerKey",
           "email"
+        ],
+        "type": "object"
+      },
+      "PublicTemplateSummaryDto": {
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "currentVersion": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PublicTemplateVersionRefDto"
+              }
+            ],
+            "nullable": true
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "description": "Template UUID",
+            "type": "string"
+          },
+          "lastPublishedVersion": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PublicTemplateVersionRefDto"
+              }
+            ],
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "published",
+              "archived"
+            ],
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "category",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "PublicTemplateVersionDetailDto": {
+        "properties": {
+          "changelog": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "renderConfig": {
+            "description": "Optional render config (margins, format)",
+            "type": "object"
+          },
+          "signatureRequirements": {
+            "description": "Per-signer signature requirements",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "signerSlots": {
+            "description": "Signer slots with placed fields",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "variablesSchema": {
+            "description": "Variables this version expects (key, dataType, scope, required, etc.)",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "versionNumber": {
+            "example": 1,
+            "type": "number"
+          }
+        },
+        "required": [
+          "versionNumber",
+          "variablesSchema",
+          "signerSlots",
+          "signatureRequirements",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "PublicTemplateVersionRefDto": {
+        "properties": {
+          "versionNumber": {
+            "description": "Template version number",
+            "example": 1,
+            "type": "number"
+          }
+        },
+        "required": [
+          "versionNumber"
+        ],
+        "type": "object"
+      },
+      "PublicTemplateVersionsEnvelopeDto": {
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/PublicTemplateVersionDetailDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "success",
+          "versions"
         ],
         "type": "object"
       },
@@ -7378,6 +8843,56 @@
         },
         "type": "object"
       },
+      "QueuesStatsDto": {
+        "properties": {
+          "byQueue": {
+            "items": {
+              "$ref": "#/components/schemas/QueueStatsDto"
+            },
+            "type": "array"
+          },
+          "totalFailed": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "totalFailed",
+          "byQueue"
+        ],
+        "type": "object"
+      },
+      "QueueStatsDto": {
+        "properties": {
+          "active": {
+            "example": 1,
+            "type": "number"
+          },
+          "delayed": {
+            "example": 0,
+            "type": "number"
+          },
+          "failed": {
+            "example": 3,
+            "type": "number"
+          },
+          "name": {
+            "example": "payment",
+            "type": "string"
+          },
+          "waiting": {
+            "example": 2,
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "waiting",
+          "active",
+          "delayed",
+          "failed"
+        ],
+        "type": "object"
+      },
       "RejectActiveContractDto": {
         "properties": {
           "reason": {
@@ -7396,6 +8911,17 @@
         },
         "required": [
           "reason"
+        ],
+        "type": "object"
+      },
+      "RejectPublicProfileRevisionDto": {
+        "properties": {
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
         ],
         "type": "object"
       },
@@ -7432,7 +8958,12 @@
           "requestId": {
             "type": "string"
           },
+          "signerEmail": {
+            "description": "Email of the signer on the request. Either signerId or signerEmail must be supplied.",
+            "type": "string"
+          },
           "signerId": {
+            "description": "Numeric user id of the signer. Either signerId or signerEmail must be supplied.",
             "type": "number"
           },
           "versionId": {
@@ -7441,8 +8972,7 @@
         },
         "required": [
           "versionId",
-          "requestId",
-          "signerId"
+          "requestId"
         ],
         "type": "object"
       },
@@ -7473,39 +9003,6 @@
             "type": "number"
           }
         },
-        "type": "object"
-      },
-      "RequestBusinessVerificationDto": {
-        "properties": {
-          "companyDescription": {
-            "example": "Leading provider of digital document solutions",
-            "type": "string"
-          },
-          "publicFields": {
-            "description": "Additional fields to display publicly",
-            "example": [
-              "email",
-              "phone",
-              "website"
-            ],
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "publicLogoUrl": {
-            "example": "https://example.com/logo.png",
-            "type": "string"
-          },
-          "verificationNote": {
-            "example": "We are a licensed financial company",
-            "type": "string"
-          }
-        },
-        "required": [
-          "publicLogoUrl",
-          "publicFields"
-        ],
         "type": "object"
       },
       "RequestCapabilitiesDto": {
@@ -7595,6 +9092,37 @@
         "required": [
           "resolution",
           "resolutionNotes"
+        ],
+        "type": "object"
+      },
+      "RevenueStatsDto": {
+        "properties": {
+          "currency": {
+            "example": "USD",
+            "type": "string"
+          },
+          "outstanding": {
+            "type": "number"
+          },
+          "overdue": {
+            "type": "number"
+          },
+          "paid30d": {
+            "type": "number"
+          },
+          "trend30d": {
+            "items": {
+              "$ref": "#/components/schemas/TrendPointDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "currency",
+          "paid30d",
+          "outstanding",
+          "overdue",
+          "trend30d"
         ],
         "type": "object"
       },
@@ -7793,6 +9321,24 @@
         },
         "required": [
           "message"
+        ],
+        "type": "object"
+      },
+      "SendPublicDocumentLinkDto": {
+        "properties": {
+          "email": {
+            "description": "Email address the public document link is sent to.",
+            "example": "recipient@example.com",
+            "type": "string"
+          },
+          "text": {
+            "description": "Optional message included in the share email.",
+            "example": "Please review this document.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
         ],
         "type": "object"
       },
@@ -8487,6 +10033,67 @@
         "required": [
           "signerKey",
           "email"
+        ],
+        "type": "object"
+      },
+      "SnoozeSuggestionDto": {
+        "properties": {},
+        "type": "object"
+      },
+      "StatsOverviewDto": {
+        "properties": {
+          "actionable": {
+            "$ref": "#/components/schemas/ActionableStatsDto"
+          },
+          "blockchain": {
+            "$ref": "#/components/schemas/BlockchainStatsDto"
+          },
+          "contracts": {
+            "$ref": "#/components/schemas/ContractsStatsDto"
+          },
+          "generatedAt": {
+            "example": "2026-04-17T16:45:00.000Z",
+            "type": "string"
+          },
+          "queues": {
+            "$ref": "#/components/schemas/QueuesStatsDto"
+          },
+          "revenue": {
+            "$ref": "#/components/schemas/RevenueStatsDto"
+          },
+          "users": {
+            "$ref": "#/components/schemas/UsersStatsDto"
+          },
+          "webhooks": {
+            "$ref": "#/components/schemas/WebhooksStatsDto"
+          }
+        },
+        "required": [
+          "generatedAt",
+          "actionable",
+          "users",
+          "contracts",
+          "revenue",
+          "webhooks",
+          "blockchain",
+          "queues"
+        ],
+        "type": "object"
+      },
+      "StatusBreakdownDto": {
+        "properties": {
+          "count": {
+            "example": 318,
+            "type": "number"
+          },
+          "status": {
+            "example": "ACTIVE",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "count"
         ],
         "type": "object"
       },
@@ -9243,6 +10850,23 @@
         ],
         "type": "object"
       },
+      "TrendPointDto": {
+        "properties": {
+          "date": {
+            "example": "2026-04-01",
+            "type": "string"
+          },
+          "value": {
+            "example": 12,
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "value"
+        ],
+        "type": "object"
+      },
       "UpcomingPaymentsDto": {
         "properties": {
           "count": {
@@ -9829,6 +11453,57 @@
         ],
         "type": "object"
       },
+      "UpdatePublicContractDto": {
+        "properties": {
+          "autoRenew": {
+            "type": "boolean"
+          },
+          "contragent": {
+            "$ref": "#/components/schemas/PublicContragentInfoDto"
+          },
+          "description": {
+            "example": "Annual consulting agreement",
+            "type": "string"
+          },
+          "endDate": {
+            "example": "2027-05-01T00:00:00Z",
+            "type": "string"
+          },
+          "noticePeriodDays": {
+            "description": "Min: 14 days",
+            "example": 14,
+            "type": "number"
+          },
+          "paymentMethodRequired": {
+            "type": "boolean"
+          },
+          "preferredPaymentMethodType": {
+            "description": "Preferred payment method for invoice checkout. Only \"card\" and \"bank_transfer\" are allowed. \"bank_transfer\" is only valid for EUR contracts. Pass null to clear preference.",
+            "enum": [
+              "card",
+              "bank_transfer"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "startDate": {
+            "example": "2026-05-01T00:00:00Z",
+            "type": "string"
+          },
+          "terminationType": {
+            "enum": [
+              "one_side",
+              "mutual_approval"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "example": "Service Agreement 2026",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "UpdatePublicDocumentDto": {
         "properties": {
           "description": {
@@ -9886,6 +11561,188 @@
           "status",
           "isForSigning"
         ],
+        "type": "object"
+      },
+      "UpdatePublicInvoiceDto": {
+        "properties": {
+          "description": {
+            "description": "Invoice description",
+            "type": "string"
+          },
+          "dueDate": {
+            "description": "Due date (ISO 8601)",
+            "type": "string"
+          },
+          "lineItems": {
+            "description": "Line items. Replaces the existing set when provided.",
+            "items": {
+              "$ref": "#/components/schemas/PublicInvoiceLineItemDto"
+            },
+            "type": "array"
+          },
+          "title": {
+            "description": "Invoice title",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdatePublicPaymentTermDto": {
+        "properties": {
+          "amount": {
+            "description": "Decimal amount as string",
+            "example": "1000.00",
+            "type": "string"
+          },
+          "autoCharge": {
+            "description": "Auto-charge when due",
+            "example": true,
+            "type": "boolean"
+          },
+          "dayOfPeriod": {
+            "description": "Day of period (1-28)",
+            "example": 1,
+            "type": "number"
+          },
+          "description": {
+            "example": "Payment for services rendered",
+            "type": "string"
+          },
+          "dueDate": {
+            "description": "Due date (for one_time)",
+            "example": "2026-06-01",
+            "type": "string"
+          },
+          "endDate": {
+            "description": "ISO 8601 date",
+            "example": "2027-05-01",
+            "type": "string"
+          },
+          "frequency": {
+            "enum": [
+              "weekly",
+              "biweekly",
+              "monthly",
+              "quarterly",
+              "yearly"
+            ],
+            "example": "monthly",
+            "type": "string"
+          },
+          "isActive": {
+            "description": "Whether the term is active",
+            "example": true,
+            "type": "boolean"
+          },
+          "name": {
+            "example": "Initial payment",
+            "type": "string"
+          },
+          "startDate": {
+            "description": "ISO 8601 date",
+            "example": "2026-05-01",
+            "type": "string"
+          },
+          "totalPayments": {
+            "description": "Total expected payments (for recurring)",
+            "example": 12,
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "UpdatePublicProfileDto": {
+        "properties": {
+          "attachments": {
+            "items": {
+              "$ref": "#/components/schemas/PublicProfileAttachmentDto"
+            },
+            "type": "array"
+          },
+          "brandName": {
+            "type": "string"
+          },
+          "certifications": {
+            "items": {
+              "$ref": "#/components/schemas/PublicProfileCertificationDto"
+            },
+            "type": "array"
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "coverFileId": {
+            "type": "number"
+          },
+          "fullDescription": {
+            "type": "string"
+          },
+          "headline": {
+            "type": "string"
+          },
+          "highlights": {
+            "items": {
+              "$ref": "#/components/schemas/PublicProfileHighlightDto"
+            },
+            "type": "array"
+          },
+          "industries": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "logoFileId": {
+            "type": "number"
+          },
+          "noIndex": {
+            "default": false,
+            "type": "boolean"
+          },
+          "ogDescription": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "ogImageFileId": {
+            "type": "number"
+          },
+          "ogTitle": {
+            "maxLength": 60,
+            "type": "string"
+          },
+          "publicEmail": {
+            "type": "string"
+          },
+          "publicPhone": {
+            "type": "string"
+          },
+          "seoDescription": {
+            "maxLength": 160,
+            "type": "string"
+          },
+          "seoTitle": {
+            "maxLength": 60,
+            "type": "string"
+          },
+          "serviceRegions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "shortDescription": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "socialLinks": {
+            "$ref": "#/components/schemas/PublicProfileSocialLinksDto"
+          },
+          "website": {
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "UpdateRoleDto": {
@@ -10169,6 +12026,63 @@
         ],
         "type": "object"
       },
+      "UsersStatsByTypeDto": {
+        "properties": {
+          "business": {
+            "type": "number"
+          },
+          "empty": {
+            "type": "number"
+          },
+          "personal": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "personal",
+          "business",
+          "empty"
+        ],
+        "type": "object"
+      },
+      "UsersStatsDto": {
+        "properties": {
+          "byType": {
+            "$ref": "#/components/schemas/UsersStatsByTypeDto"
+          },
+          "emailVerified": {
+            "type": "number"
+          },
+          "kycVerified": {
+            "type": "number"
+          },
+          "new30d": {
+            "type": "number"
+          },
+          "new7d": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          },
+          "trend30d": {
+            "items": {
+              "$ref": "#/components/schemas/TrendPointDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "total",
+          "new7d",
+          "new30d",
+          "emailVerified",
+          "kycVerified",
+          "byType",
+          "trend30d"
+        ],
+        "type": "object"
+      },
       "ValidateTaxInfoDto": {
         "properties": {
           "countryCode": {
@@ -10187,74 +12101,6 @@
         },
         "required": [
           "countryCode"
-        ],
-        "type": "object"
-      },
-      "VerifiedBusinessDetailDto": {
-        "properties": {
-          "address": {
-            "$ref": "#/components/schemas/AddressDto"
-          },
-          "businessName": {
-            "type": "string"
-          },
-          "businessType": {
-            "type": "string"
-          },
-          "companyDescription": {
-            "type": "string"
-          },
-          "email": {
-            "type": "string"
-          },
-          "phone": {
-            "type": "string"
-          },
-          "publicLogoUrl": {
-            "type": "string"
-          },
-          "registrationNumber": {
-            "type": "string"
-          },
-          "uuid": {
-            "type": "string"
-          },
-          "verifiedAt": {
-            "type": "string"
-          },
-          "website": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "uuid",
-          "businessName",
-          "verifiedAt"
-        ],
-        "type": "object"
-      },
-      "VerifiedBusinessListItemDto": {
-        "properties": {
-          "businessName": {
-            "type": "string"
-          },
-          "companyDescription": {
-            "type": "string"
-          },
-          "publicLogoUrl": {
-            "type": "string"
-          },
-          "uuid": {
-            "type": "string"
-          },
-          "verifiedAt": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "uuid",
-          "businessName",
-          "verifiedAt"
         ],
         "type": "object"
       },
@@ -10368,6 +12214,41 @@
         "required": [
           "userId",
           "reputation"
+        ],
+        "type": "object"
+      },
+      "WebhooksStatsDto": {
+        "properties": {
+          "failed24h": {
+            "type": "number"
+          },
+          "pending": {
+            "type": "number"
+          },
+          "success24h": {
+            "type": "number"
+          },
+          "successRate24h": {
+            "example": 98.5,
+            "type": "number"
+          },
+          "total24h": {
+            "type": "number"
+          },
+          "trend24h": {
+            "items": {
+              "$ref": "#/components/schemas/HourlyTrendPointDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "total24h",
+          "success24h",
+          "failed24h",
+          "pending",
+          "successRate24h",
+          "trend24h"
         ],
         "type": "object"
       }
@@ -10501,6 +12382,46 @@
       }
     },
     "/api/v1/contracts/{contractId}": {
+      "delete": {
+        "description": "Requires secret key (sk_). Deletes a DRAFT contract and decrements contract usage. Cannot delete contracts that are already signed or active.",
+        "operationId": "PublicContractsController_deleteContract",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract deleted successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Delete a draft contract",
+        "tags": [
+          "Contracts"
+        ]
+      },
       "get": {
         "description": "Requires secret key (sk_). Returns full contract details including payment terms and signing status.",
         "operationId": "PublicContractsController_getContract",
@@ -10537,6 +12458,56 @@
           }
         ],
         "summary": "Get contract details",
+        "tags": [
+          "Contracts"
+        ]
+      },
+      "patch": {
+        "description": "Requires secret key (sk_). Updates a DRAFT contract. Only provided fields are applied. Cannot be used after the contract leaves draft status.",
+        "operationId": "PublicContractsController_updateContract",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePublicContractDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Contract updated successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Update contract (draft only)",
         "tags": [
           "Contracts"
         ]
@@ -10602,6 +12573,259 @@
         ]
       }
     },
+    "/api/v1/contracts/{contractId}/agreements": {
+      "get": {
+        "description": "Requires secret key (sk_). Returns all amendments attached to the contract.",
+        "operationId": "PublicContractsController_listAgreements",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Additional agreements listed successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "List additional agreements for a contract",
+        "tags": [
+          "Contracts"
+        ]
+      },
+      "post": {
+        "description": "Requires secret key (sk_). Creates a DRAFT amendment backed by an existing document. May carry payment-term modifications applied once the amendment is signed.",
+        "operationId": "PublicContractsController_createAgreement",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePublicAgreementDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Additional agreement created successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Add an additional agreement (amendment) to a contract",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/{contractId}/agreements/{agreementId}": {
+      "delete": {
+        "description": "Requires secret key (sk_). Removes a DRAFT amendment from the contract.",
+        "operationId": "PublicContractsController_deleteAgreement",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Additional agreement UUID",
+            "in": "path",
+            "name": "agreementId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Additional agreement deleted successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Delete an additional agreement (draft only)",
+        "tags": [
+          "Contracts"
+        ]
+      },
+      "get": {
+        "description": "Requires secret key (sk_). Returns a single amendment by UUID.",
+        "operationId": "PublicContractsController_getAgreement",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Additional agreement UUID",
+            "in": "path",
+            "name": "agreementId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Additional agreement retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Get an additional agreement",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/{contractId}/agreements/{agreementId}/initiate-signing": {
+      "post": {
+        "description": "Requires secret key (sk_). Initiates the signing flow for a DRAFT amendment on an ACTIVE contract.",
+        "operationId": "PublicContractsController_initiateAgreementSigning",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Additional agreement UUID",
+            "in": "path",
+            "name": "agreementId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicInitiateAgreementSigningDto"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "201": {
+            "description": "Additional agreement sent for signing"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Send an additional agreement for signing",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
     "/api/v1/contracts/{contractId}/cancel": {
       "post": {
         "description": "Requires secret key (sk_). Cancels a DRAFT contract. Cannot cancel contracts that are already signed or active.",
@@ -10639,6 +12863,58 @@
           }
         ],
         "summary": "Cancel contract",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/{contractId}/document": {
+      "patch": {
+        "description": "Requires secret key (sk_). Attaches an existing document to a DRAFT contract that does not have one yet (typically created via /empty or /minimal). Document must belong to the API key owner.",
+        "operationId": "PublicContractsController_attachDocument",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachPublicDocumentDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Document attached successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Attach a document to a draft contract",
         "tags": [
           "Contracts"
         ]
@@ -10883,6 +13159,130 @@
         "tags": [
           "Contracts"
         ]
+      },
+      "patch": {
+        "description": "Requires secret key (sk_). Updates a DRAFT invoice. Only provided fields are applied; line items, when supplied, replace the existing set.",
+        "operationId": "PublicContractsController_updateInvoice",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Invoice UUID",
+            "in": "path",
+            "name": "invoiceUuid",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePublicInvoiceDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicInvoiceEnvelopeDto"
+                }
+              }
+            },
+            "description": "Invoice updated successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Update an invoice (draft only)",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/{contractId}/invoices/{invoiceUuid}/cancel": {
+      "post": {
+        "description": "Requires secret key (sk_). Cancels a draft, unpaid, or overdue invoice and voids any open checkout sessions.",
+        "operationId": "PublicContractsController_cancelInvoice",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Invoice UUID",
+            "in": "path",
+            "name": "invoiceUuid",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicInvoiceActionResponseDto"
+                }
+              }
+            },
+            "description": "Invoice cancelled successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Cancel an invoice",
+        "tags": [
+          "Contracts"
+        ]
       }
     },
     "/api/v1/contracts/{contractId}/invoices/{invoiceUuid}/charge": {
@@ -11011,6 +13411,57 @@
         ]
       }
     },
+    "/api/v1/contracts/{contractId}/invoices/{invoiceUuid}/pdf": {
+      "get": {
+        "description": "Requires secret key (sk_). Returns the generated invoice PDF as an attachment. The PDF exists only once the invoice has been sent.",
+        "operationId": "PublicContractsController_downloadInvoicePdf",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Invoice UUID",
+            "in": "path",
+            "name": "invoiceUuid",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invoice PDF returned as attachment"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Download invoice PDF",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
     "/api/v1/contracts/{contractId}/invoices/{invoiceUuid}/send": {
       "post": {
         "description": "Requires secret key (sk_). Sends a draft invoice to the contragent and optionally attempts auto-charge.",
@@ -11131,6 +13582,344 @@
         ]
       }
     },
+    "/api/v1/contracts/{contractId}/payment-terms": {
+      "get": {
+        "description": "Requires secret key (sk_). Returns all payment terms for the contract.",
+        "operationId": "PublicContractsController_listPaymentTerms",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment terms listed successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "List payment terms for a contract",
+        "tags": [
+          "Contracts"
+        ]
+      },
+      "post": {
+        "description": "Requires secret key (sk_). Adds a single payment term to a DRAFT contract. The currency is inherited from the contract.",
+        "operationId": "PublicContractsController_createPaymentTerm",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicPaymentTermDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Payment term created successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Add a payment term to a draft contract",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/{contractId}/payment-terms/{termId}": {
+      "delete": {
+        "description": "Requires secret key (sk_). Removes a payment term from a DRAFT contract.",
+        "operationId": "PublicContractsController_deletePaymentTerm",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Payment term UUID",
+            "in": "path",
+            "name": "termId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment term deleted successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Delete a payment term",
+        "tags": [
+          "Contracts"
+        ]
+      },
+      "patch": {
+        "description": "Requires secret key (sk_). Updates a single payment term on a DRAFT contract. Only provided fields are applied.",
+        "operationId": "PublicContractsController_updatePaymentTerm",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Payment term UUID",
+            "in": "path",
+            "name": "termId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePublicPaymentTermDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Payment term updated successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Update a payment term",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/{contractId}/recurring-approval": {
+      "delete": {
+        "description": "Requires secret key (sk_). Cancels a pending approval and removes the related pending payment terms.",
+        "operationId": "PublicContractsController_cancelRecurringApproval",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recurring approval cancelled"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Cancel pending recurring approval request",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/{contractId}/recurring-approval/resend": {
+      "post": {
+        "description": "Requires secret key (sk_). Resends the pending approval invitation email.",
+        "operationId": "PublicContractsController_resendRecurringApproval",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invitation resent successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Resend recurring approval invitation to contragent",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/{contractId}/recurring-setup": {
+      "post": {
+        "description": "Requires secret key (sk_). Creates a recurring payment plan on an ACTIVE imported contract and sends an approval invitation to the contragent.",
+        "operationId": "PublicContractsController_setupRecurring",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicRecurringSetupDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Recurring approval request created"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Set up recurring payments on an imported contract",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
     "/api/v1/contracts/{contractId}/send": {
       "post": {
         "description": "Requires secret key (sk_). Initiates the signing flow for a DRAFT contract. Creates signing request and notifies signers.",
@@ -11154,6 +13943,16 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicSendContractDto"
+              }
+            }
+          },
+          "required": false
+        },
         "responses": {
           "200": {
             "description": "Contract sent for signing"
@@ -11168,6 +13967,302 @@
           }
         ],
         "summary": "Send contract for signing",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/{contractId}/signing-requests": {
+      "get": {
+        "description": "Requires secret key (sk_). Returns every signing request on the contract as a summary (no per-signer detail). Use GET /signing-requests/:requestId for signers.",
+        "operationId": "PublicContractsController_listSigningRequests",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Signing requests retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "List signing requests for a contract",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/{contractId}/signing-requests/{requestId}": {
+      "delete": {
+        "description": "Requires secret key (sk_). Cancels a pending signing request. Cannot cancel a request that has already been signed.",
+        "operationId": "PublicContractsController_cancelSigningRequest",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Signing request UUID",
+            "in": "path",
+            "name": "requestId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Signing request cancelled"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Cancel a signing request",
+        "tags": [
+          "Contracts"
+        ]
+      },
+      "get": {
+        "description": "Requires secret key (sk_). Returns a single signing request with full signer detail.",
+        "operationId": "PublicContractsController_getSigningRequest",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Signing request UUID",
+            "in": "path",
+            "name": "requestId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Signing request retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Get a signing request",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/{contractId}/signing-requests/{requestId}/business-sign": {
+      "post": {
+        "description": "Requires secret key (sk_). Applies the business-side signature to a signing request using a saved signature, identified by its hash from GET /api/v1/signatures.",
+        "operationId": "PublicContractsController_businessSignRequest",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Signing request UUID",
+            "in": "path",
+            "name": "requestId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicBusinessSignDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Contract signed successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Sign a contract as the business owner",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/{contractId}/signing-requests/{requestId}/resend": {
+      "post": {
+        "description": "Requires secret key (sk_). Resends the signing invitation email for a pending signing request.",
+        "operationId": "PublicContractsController_resendSigningRequest",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Signing request UUID",
+            "in": "path",
+            "name": "requestId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Signing invitation resent"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Resend a signing invitation",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/{contractId}/stats": {
+      "get": {
+        "description": "Requires secret key (sk_). Returns aggregate financial stats for the contract: contract value, paid amount, pending amount, invoice count and overpayment status.",
+        "operationId": "PublicContractsController_getContractStats",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract stats retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Get contract payment statistics",
         "tags": [
           "Contracts"
         ]
@@ -11267,6 +14362,276 @@
         ]
       }
     },
+    "/api/v1/contracts/{contractId}/termination": {
+      "delete": {
+        "description": "Requires secret key (sk_). Cancels a pending termination request. Only the original initiator side can cancel.",
+        "operationId": "PublicContractsController_cancelTerminationRequest",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Termination request cancelled"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Cancel a pending termination request (initiator only)",
+        "tags": [
+          "Contracts"
+        ]
+      },
+      "get": {
+        "description": "Requires secret key (sk_). Returns the pending request if any, otherwise the most recent request, or `null` when no termination has been initiated.",
+        "operationId": "PublicContractsController_getTermination",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Termination request retrieved"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Get current termination request for a contract",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/{contractId}/termination/approve": {
+      "post": {
+        "description": "Requires secret key (sk_). Records business approval on a mutual-approval termination. Once both sides approve, the contract is terminated.",
+        "operationId": "PublicContractsController_approveTermination",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicApproveTerminationDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Termination request approved"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Approve a pending termination request (mutual approval)",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/{contractId}/termination/history": {
+      "get": {
+        "description": "Requires secret key (sk_). Returns all termination requests for the contract.",
+        "operationId": "PublicContractsController_getTerminationHistory",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Termination history retrieved"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Get termination request history",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/{contractId}/termination/reject": {
+      "post": {
+        "description": "Requires secret key (sk_). Rejects a pending mutual-approval termination request with a reason.",
+        "operationId": "PublicContractsController_rejectTermination",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicRejectTerminationDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Termination request rejected"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Reject a pending termination request (mutual approval)",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/{contractId}/termination/status": {
+      "get": {
+        "description": "Requires secret key (sk_). Returns active request snapshot, outstanding invoices, upcoming payments and earliest possible effective date.",
+        "operationId": "PublicContractsController_getTerminationStatus",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Contract UUID",
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Termination status retrieved"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Get termination status overview",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
     "/api/v1/contracts/{contractId}/transactions": {
       "get": {
         "description": "Requires secret key (sk_). Returns payment transactions associated with the contract invoices.",
@@ -11311,6 +14676,135 @@
           }
         ],
         "summary": "List contract transactions",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/empty": {
+      "post": {
+        "description": "Requires secret key (sk_). Creates an empty contract that activates immediately without a document. Use for invoice-only relationships where no agreement needs signing.",
+        "operationId": "PublicContractsController_createEmptyContract",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePublicEmptyContractDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Empty contract created successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Create an empty contract (invoice-only, no document)",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/import": {
+      "post": {
+        "description": "Requires secret key (sk_). Imports a contract that was signed outside the platform. The contract is activated immediately. Use recurring-setup separately if recurring payments are needed.",
+        "operationId": "PublicContractsController_createImportedContract",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePublicImportContractDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Contract imported and activated immediately"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Import an externally signed contract",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/minimal": {
+      "post": {
+        "description": "Requires secret key (sk_). Creates a DRAFT contract with only a document, title and contragent email. Use payment-setup and send for signing later.",
+        "operationId": "PublicContractsController_createMinimalContract",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePublicMinimalContractDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Minimal contract created successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Create contract with minimal info (3-step flow)",
         "tags": [
           "Contracts"
         ]
@@ -11364,6 +14858,46 @@
       }
     },
     "/api/v1/documents/{documentId}": {
+      "get": {
+        "description": "Returns the document with its current version metadata. Both pk_ and sk_ keys are accepted.",
+        "operationId": "PublicApiController_getDocument",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "documentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document details retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Get document details",
+        "tags": [
+          "PublicApi",
+          "Documents"
+        ]
+      },
       "put": {
         "description": "Requires secret key (sk_). Updates document by creating a new version. Set status to \"published\" to verify in blockchain.",
         "operationId": "PublicApiController_updateDocument",
@@ -11412,6 +14946,206 @@
           }
         ],
         "summary": "Update document (creates new version)",
+        "tags": [
+          "PublicApi",
+          "Documents"
+        ]
+      }
+    },
+    "/api/v1/documents/{documentId}/activity": {
+      "get": {
+        "description": "Returns the activity history (views, downloads, verification checks) for the document current version. Both pk_ and sk_ keys are accepted; the API key owner must have access to the document.",
+        "operationId": "PublicApiController_getDocumentActivity",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "documentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document activity retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Get document activity log",
+        "tags": [
+          "PublicApi",
+          "Documents"
+        ]
+      }
+    },
+    "/api/v1/documents/{documentId}/comments": {
+      "get": {
+        "description": "Returns a paginated list of top-level comments on the document, each with its nested replies. Both pk_ and sk_ keys are accepted.",
+        "operationId": "PublicApiController_listDocumentComments",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "documentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageNumber",
+            "required": false,
+            "schema": {
+              "example": 1,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "schema": {
+              "example": 10,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comments retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "List document comments",
+        "tags": [
+          "PublicApi",
+          "Documents"
+        ]
+      },
+      "post": {
+        "description": "Requires secret key (sk_). Posts a top-level comment on the document current version. The API key owner must have collaborate access to the document.",
+        "operationId": "PublicApiController_addDocumentComment",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "documentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePublicCommentDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Comment added successfully"
+          },
+          "401": {
+            "description": "Secret key required for this operation"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Add a comment to a document",
+        "tags": [
+          "PublicApi",
+          "Documents"
+        ]
+      }
+    },
+    "/api/v1/documents/{documentId}/downloads": {
+      "get": {
+        "description": "Returns the list of download events recorded for the document. Both pk_ and sk_ keys are accepted; the API key owner must have access to the document.",
+        "operationId": "PublicApiController_getDocumentDownloads",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "documentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document downloads retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Get document download log",
         "tags": [
           "PublicApi",
           "Documents"
@@ -11473,6 +15207,282 @@
         ]
       }
     },
+    "/api/v1/documents/{documentId}/send-public-link": {
+      "post": {
+        "description": "Requires secret key (sk_). Emails a link to the document to the given recipient. The document must have a public access type.",
+        "operationId": "PublicApiController_sendDocumentPublicLink",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "documentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendPublicDocumentLinkDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Public document link sent successfully"
+          },
+          "401": {
+            "description": "Secret key required for this operation"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Email a public document link",
+        "tags": [
+          "PublicApi",
+          "Documents"
+        ]
+      }
+    },
+    "/api/v1/documents/{documentId}/versions": {
+      "get": {
+        "description": "Returns paginated list of all versions for the document with their media metadata. Both pk_ and sk_ keys are accepted.",
+        "operationId": "PublicApiController_getDocumentVersions",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "documentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageNumber",
+            "required": false,
+            "schema": {
+              "example": 1,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "schema": {
+              "example": 10,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Versions retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Get document versions",
+        "tags": [
+          "PublicApi",
+          "Documents"
+        ]
+      }
+    },
+    "/api/v1/documents/search": {
+      "get": {
+        "description": "Returns a paginated list of documents the API key owner can access, filtered by an optional free-text query and lifecycle status. Both pk_ and sk_ keys are accepted.",
+        "operationId": "PublicApiController_searchDocuments",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageNumber",
+            "required": false,
+            "schema": {
+              "example": 1,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "schema": {
+              "example": 10,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "description": "Free-text filter applied to document names.",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "example": "contract",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional lifecycle filter. When omitted, documents of every status are returned.",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "draft",
+                "published",
+                "published_not_signed"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Documents retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Search documents accessible to the API key owner",
+        "tags": [
+          "PublicApi",
+          "Documents"
+        ]
+      }
+    },
+    "/api/v1/documents/shared": {
+      "get": {
+        "description": "Returns a paginated list of documents explicitly shared with the API key owner (via direct or role-based access). Both pk_ and sk_ keys are accepted.",
+        "operationId": "PublicApiController_listSharedDocuments",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageNumber",
+            "required": false,
+            "schema": {
+              "example": 1,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "schema": {
+              "example": 10,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "description": "Free-text filter applied to document names.",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "example": "contract",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional lifecycle filter. When omitted, documents of every status are returned.",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "draft",
+                "published",
+                "published_not_signed"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shared documents retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "List documents shared with the API key owner",
+        "tags": [
+          "PublicApi",
+          "Documents"
+        ]
+      }
+    },
     "/api/v1/documents/verify": {
       "post": {
         "description": "Requires public key (pk_) or secret key (sk_). Verifies document authenticity using blockchain. This is a read-only verification lookup.",
@@ -11514,6 +15524,92 @@
         "tags": [
           "PublicApi",
           "Verification"
+        ]
+      }
+    },
+    "/api/v1/documents/versions/{versionId}/download": {
+      "get": {
+        "description": "Returns the document binary as an attachment. Both pk_ and sk_ keys are accepted; the API key owner must have access to the underlying document.",
+        "operationId": "PublicApiController_downloadDocumentVersion",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Document version UUID",
+            "in": "path",
+            "name": "versionId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document binary returned as attachment"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Download document version",
+        "tags": [
+          "PublicApi",
+          "Documents"
+        ]
+      }
+    },
+    "/api/v1/documents/versions/{versionId}/preview": {
+      "get": {
+        "description": "Returns the document binary inline (for in-browser preview). Identical content to the download endpoint but served inline and logged as a preview, not a download. Both pk_ and sk_ keys are accepted.",
+        "operationId": "PublicApiController_previewDocumentVersion",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Document version UUID",
+            "in": "path",
+            "name": "versionId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document binary returned inline"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Preview document version",
+        "tags": [
+          "PublicApi",
+          "Documents"
         ]
       }
     },
@@ -12622,6 +16718,132 @@
         ]
       }
     },
+    "/api/v1/invoices": {
+      "get": {
+        "description": "Requires secret key (sk_). Returns a paginated list of every invoice across all contracts owned by the API key owner, with status filters and aggregate counts.",
+        "operationId": "PublicInvoicesController_listAllInvoices",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "example": 10,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "draft",
+                "pending",
+                "unpaid",
+                "paid",
+                "partially_paid",
+                "overdue",
+                "cancelled",
+                "refunded"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "enum": [
+                "automatic",
+                "manual"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only return overdue invoices",
+            "in": "query",
+            "name": "overdue",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Due date lower bound (ISO 8601)",
+            "in": "query",
+            "name": "dueDateFrom",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Due date upper bound (ISO 8601)",
+            "in": "query",
+            "name": "dueDateTo",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Search by invoice number or contract title",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicInvoiceListAllResponseDto"
+                }
+              }
+            },
+            "description": "Invoices retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "List all invoices for the business",
+        "tags": [
+          "Invoices"
+        ]
+      }
+    },
     "/api/v1/me": {
       "get": {
         "description": "Requires public key (pk_) or secret key (sk_). Returns basic API key info.",
@@ -13566,11 +17788,53 @@
           "PublicApi",
           "Signatures"
         ]
+      },
+      "post": {
+        "description": "Requires secret key (sk_). Stores a reusable signature from an uploaded image. The returned `hash` identifies the signature when signing a contract as the business owner.",
+        "operationId": "PublicApiController_createUserSignature",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePublicUserSignatureDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Signature created successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Create a saved signature",
+        "tags": [
+          "PublicApi",
+          "Signatures"
+        ]
       }
     },
     "/api/v1/signatures/requests": {
       "get": {
-        "description": "Requires secret key (sk_). Returns paginated list of signature requests for the authenticated user.",
+        "description": "Requires secret key (sk_). Returns a paginated list of signature requests for the authenticated user. Use the optional `status` filter (all | pending | completed | declined).",
         "operationId": "PublicApiController_getMySignatureRequests",
         "parameters": [
           {
@@ -13584,17 +17848,38 @@
           {
             "in": "query",
             "name": "pageNumber",
-            "required": true,
+            "required": false,
             "schema": {
+              "example": 1,
+              "minimum": 1,
               "type": "number"
             }
           },
           {
             "in": "query",
             "name": "pageSize",
-            "required": true,
+            "required": false,
             "schema": {
+              "example": 10,
+              "maximum": 50,
+              "minimum": 1,
               "type": "number"
+            }
+          },
+          {
+            "description": "Filter requests by lifecycle bucket. \"all\" returns every request the user owns.",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "all",
+                "pending",
+                "completed",
+                "declined"
+              ],
+              "type": "string"
             }
           }
         ],
@@ -13657,6 +17942,155 @@
           }
         ],
         "summary": "Create signature request",
+        "tags": [
+          "PublicApi",
+          "Signatures"
+        ]
+      }
+    },
+    "/api/v1/signatures/requests/{requestId}/cancel": {
+      "post": {
+        "description": "Requires secret key (sk_). Cancels a pending or expired signature request owned by the API key.",
+        "operationId": "PublicApiController_cancelSignatureRequest",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Signature request UUID",
+            "in": "path",
+            "name": "requestId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Signature request cancelled successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Cancel signature request",
+        "tags": [
+          "PublicApi",
+          "Signatures"
+        ]
+      }
+    },
+    "/api/v1/signatures/requests/{requestId}/edit": {
+      "post": {
+        "description": "Requires secret key (sk_). Changes the recipient email of a signer slot on a PENDING signature request. The signer is identified by its UUID from the request summary.",
+        "operationId": "PublicApiController_editSignatureRequest",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Signature request UUID",
+            "in": "path",
+            "name": "requestId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicEditSignatureRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Signer reassigned successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Reassign a signer on a pending signature request",
+        "tags": [
+          "PublicApi",
+          "Signatures"
+        ]
+      }
+    },
+    "/api/v1/signatures/requests/{requestId}/remind": {
+      "post": {
+        "description": "Requires secret key (sk_). Sends a reminder email to pending signers on the request. When body.signerEmails is omitted, every pending signer is reminded; otherwise only the listed emails. Backend enforces a 12-hour per-signer cooldown; rate-limited signers are returned in the skipped array.",
+        "operationId": "PublicApiController_remindSignatureRequest",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Signature request UUID",
+            "in": "path",
+            "name": "requestId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicRemindSignatureRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Reminders dispatched (see remindedEmails / skipped)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Send reminder to signers",
         "tags": [
           "PublicApi",
           "Signatures"
@@ -13749,6 +18183,481 @@
         "tags": [
           "PublicApi",
           "Signatures"
+        ]
+      }
+    },
+    "/api/v1/signatures/validate-pdf": {
+      "post": {
+        "description": "Requires secret key (sk_). Runs DSS (EU Digital Signature Services) validation over an uploaded PDF and returns the validation report. The file is not stored.",
+        "operationId": "PublicApiController_validatePdfSignatures",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "file": {
+                    "description": "PDF file to validate",
+                    "format": "binary",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Signature validation report"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Validate the signatures in a PDF",
+        "tags": [
+          "PublicApi",
+          "Signatures"
+        ]
+      }
+    },
+    "/api/v1/signatures/versions/{versionId}/certificate": {
+      "get": {
+        "description": "Returns the audit-trail certificate (PDF) for a signed document version as an attachment. Both pk_ and sk_ keys are accepted.",
+        "operationId": "PublicApiController_downloadSignatureCertificate",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Document version UUID",
+            "in": "path",
+            "name": "versionId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Certificate binary returned as attachment"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Download signature certificate",
+        "tags": [
+          "PublicApi",
+          "Signatures"
+        ]
+      }
+    },
+    "/api/v1/signatures/versions/{versionId}/signed-document": {
+      "get": {
+        "description": "Returns the PAdES-signed PDF for a completed signature request as an attachment. Both pk_ and sk_ keys are accepted.",
+        "operationId": "PublicApiController_downloadSignedDocument",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Document version UUID",
+            "in": "path",
+            "name": "versionId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Signed document binary returned as attachment"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Download signed document (PAdES)",
+        "tags": [
+          "PublicApi",
+          "Signatures"
+        ]
+      }
+    },
+    "/api/v1/templates": {
+      "get": {
+        "description": "Returns paginated list of templates owned by the API key. Use status to filter draft / published / archived; search matches name and description.",
+        "operationId": "PublicTemplatesController_listTemplates",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Page number (1-indexed)",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "description": "Items per page (max 50)",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "example": 10,
+              "type": "number"
+            }
+          },
+          {
+            "description": "Filter by template status",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "draft",
+                "published",
+                "archived"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Free-text search across name/description",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "example": "NDA",
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicTemplateListEnvelopeDto"
+                }
+              }
+            },
+            "description": "Templates listed successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "List templates",
+        "tags": [
+          "Templates"
+        ]
+      },
+      "post": {
+        "description": "Requires secret key (sk_). Creates a DRAFT template with its first version (content, variables schema, signer slots). Publish it separately before rendering.",
+        "operationId": "PublicTemplatesController_createTemplate",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTemplateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicTemplateMutationEnvelopeDto"
+                }
+              }
+            },
+            "description": "Template created successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Create a template",
+        "tags": [
+          "Templates"
+        ]
+      }
+    },
+    "/api/v1/templates/{templateId}": {
+      "delete": {
+        "description": "Requires secret key (sk_). Permanently deletes the template and all of its versions.",
+        "operationId": "PublicTemplatesController_deleteTemplate",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Template UUID",
+            "in": "path",
+            "name": "templateId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicTemplateDeleteEnvelopeDto"
+                }
+              }
+            },
+            "description": "Template deleted successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Delete a template",
+        "tags": [
+          "Templates"
+        ]
+      },
+      "get": {
+        "description": "Returns the template with its current and last-published versions, including variables schema and signer slots. This is everything an integrator needs to render the template and call sendForSigning.",
+        "operationId": "PublicTemplatesController_getTemplate",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Template UUID",
+            "in": "path",
+            "name": "templateId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicTemplateGetEnvelopeDto"
+                }
+              }
+            },
+            "description": "Template details retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Get template details",
+        "tags": [
+          "Templates"
+        ]
+      },
+      "patch": {
+        "description": "Requires secret key (sk_). Updates a non-archived template. Editing a published template forks a new draft version; only provided fields are applied.",
+        "operationId": "PublicTemplatesController_updateTemplate",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Template UUID",
+            "in": "path",
+            "name": "templateId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTemplateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicTemplateMutationEnvelopeDto"
+                }
+              }
+            },
+            "description": "Template updated successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Update a template",
+        "tags": [
+          "Templates"
+        ]
+      }
+    },
+    "/api/v1/templates/{templateId}/archive": {
+      "post": {
+        "description": "Requires secret key (sk_). Soft-deletes a template — it is hidden from default listings and can no longer be edited until restored.",
+        "operationId": "PublicTemplatesController_archiveTemplate",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Template UUID",
+            "in": "path",
+            "name": "templateId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicTemplateMutationEnvelopeDto"
+                }
+              }
+            },
+            "description": "Template archived successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Archive a template",
+        "tags": [
+          "Templates"
         ]
       }
     },
@@ -13870,6 +18779,218 @@
         ]
       }
     },
+    "/api/v1/templates/{templateId}/preview-html": {
+      "post": {
+        "description": "Requires secret key (sk_). Renders the template with the supplied variable values and returns the rendered HTML. Intended for previews, not for storage.",
+        "operationId": "PublicTemplatesController_previewTemplateHtml",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Template UUID",
+            "in": "path",
+            "name": "templateId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewTemplateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Preview HTML returned"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Render a template to preview HTML",
+        "tags": [
+          "Templates"
+        ]
+      }
+    },
+    "/api/v1/templates/{templateId}/preview-pdf": {
+      "post": {
+        "description": "Requires secret key (sk_). Renders the template with the supplied variable values and returns the PDF inline. Intended for previews, not for storage.",
+        "operationId": "PublicTemplatesController_previewTemplatePdf",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Template UUID",
+            "in": "path",
+            "name": "templateId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewTemplateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Preview PDF returned inline"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Render a template to a preview PDF",
+        "tags": [
+          "Templates"
+        ]
+      }
+    },
+    "/api/v1/templates/{templateId}/publish": {
+      "post": {
+        "description": "Requires secret key (sk_). Promotes the current draft version to published so it can be rendered into documents and contracts.",
+        "operationId": "PublicTemplatesController_publishTemplate",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Template UUID",
+            "in": "path",
+            "name": "templateId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishTemplateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicTemplateMutationEnvelopeDto"
+                }
+              }
+            },
+            "description": "Template published successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Publish a template",
+        "tags": [
+          "Templates"
+        ]
+      }
+    },
+    "/api/v1/templates/{templateId}/restore": {
+      "post": {
+        "description": "Requires secret key (sk_). Returns an archived template to DRAFT status.",
+        "operationId": "PublicTemplatesController_restoreTemplate",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Template UUID",
+            "in": "path",
+            "name": "templateId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicTemplateMutationEnvelopeDto"
+                }
+              }
+            },
+            "description": "Template restored successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Restore an archived template",
+        "tags": [
+          "Templates"
+        ]
+      }
+    },
     "/api/v1/templates/{templateId}/signature-requests": {
       "post": {
         "description": "Requires secret key (sk_). Renders a published template, creates a document, and immediately creates a signature request.",
@@ -13929,6 +19050,98 @@
         ]
       }
     },
+    "/api/v1/templates/{templateId}/versions": {
+      "get": {
+        "description": "Returns the full version history for the template. Each version carries its own variables schema and signer slots.",
+        "operationId": "PublicTemplatesController_getTemplateVersions",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Template UUID",
+            "in": "path",
+            "name": "templateId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicTemplateVersionsEnvelopeDto"
+                }
+              }
+            },
+            "description": "Template versions retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Get template versions",
+        "tags": [
+          "Templates"
+        ]
+      }
+    },
+    "/api/v1/templates/preview-unsaved-pdf": {
+      "post": {
+        "description": "Requires secret key (sk_). Renders supplied Tiptap JSON content directly to a PDF, without a saved template. Intended for previews, not for storage.",
+        "operationId": "PublicTemplatesController_previewUnsavedTemplatePdf",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewUnsavedPdfDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Preview PDF returned inline"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Render ad-hoc content to a preview PDF",
+        "tags": [
+          "Templates"
+        ]
+      }
+    },
     "/api/v1/transactions/{transactionUuid}": {
       "get": {
         "description": "Requires secret key (sk_). Returns a single transaction by UUID, including related invoice and contract summaries.",
@@ -13973,6 +19186,172 @@
           }
         ],
         "summary": "Get transaction details",
+        "tags": [
+          "Transactions"
+        ]
+      }
+    },
+    "/api/v1/transactions/fee-estimate": {
+      "get": {
+        "description": "Requires secret key (sk_). Returns an estimated fee breakdown (Stripe + platform) per payment-method type for a given amount and currency. Pure calculation - no contract data.",
+        "operationId": "PublicTransactionsController_getFeeEstimate",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Invoice amount",
+            "in": "query",
+            "name": "amount",
+            "required": true,
+            "schema": {
+              "example": 1000,
+              "type": "number"
+            }
+          },
+          {
+            "description": "Currency code (ISO 4217)",
+            "in": "query",
+            "name": "currency",
+            "required": true,
+            "schema": {
+              "example": "EUR",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Custom platform fee percent override (default: 2.5)",
+            "in": "query",
+            "name": "platformFeePercent",
+            "required": false,
+            "schema": {
+              "example": 2.5,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicFeeEstimateResponseDto"
+                }
+              }
+            },
+            "description": "Fee estimate retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Estimate processing fees",
+        "tags": [
+          "Transactions"
+        ]
+      }
+    },
+    "/api/v1/transactions/payment-mix": {
+      "get": {
+        "description": "Requires secret key (sk_). Returns transaction totals grouped by payment-method type for contracts owned by the API key owner, within the given date range.",
+        "operationId": "PublicTransactionsController_getPaymentMix",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Start of date range (ISO 8601)",
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "example": "2025-01-01",
+              "type": "string"
+            }
+          },
+          {
+            "description": "End of date range (ISO 8601)",
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "example": "2025-12-31",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter by transaction status (default: SUCCESS)",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "SUCCESS",
+              "enum": [
+                "INITIALISED",
+                "PENDING",
+                "SUCCESS",
+                "FAILED",
+                "CANCELLED"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter by contract UUID",
+            "in": "query",
+            "name": "contractUuid",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter by currency code (e.g. USD, EUR)",
+            "in": "query",
+            "name": "currencyCode",
+            "required": false,
+            "schema": {
+              "example": "USD",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicPaymentMixResponseDto"
+                }
+              }
+            },
+            "description": "Payment-mix analytics retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Get payment-mix analytics",
         "tags": [
           "Transactions"
         ]

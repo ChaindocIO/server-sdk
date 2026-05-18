@@ -8,4 +8,5 @@
 
 export { Chaindoc } from "./chaindoc";
 export { ChaindocError } from "./client";
+export type { DownloadResult } from "./client";
 export * from "./types";

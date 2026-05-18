@@ -2,17 +2,28 @@
  * Signatures Module
  */
 
-import type { HttpClient } from '../client';
+import { ChaindocError } from '../client';
+import type { DownloadResult, HttpClient } from '../client';
 import type {
+  CancelSignatureRequestResponse,
+  CreateSignatureParams,
   CreateSignatureRequestParams,
+  CreateSignatureResponse,
+  EditSignatureRequestParams,
+  EditSignatureRequestResponse,
+  GetMyRequestsParams,
+  GetMyRequestsResponse,
+  GetSignaturesResponse,
+  PaginationParams,
+  RemindSignatureRequestParams,
+  RemindSignatureRequestResponse,
   SignDocumentParams,
   SignatureRequestResponse,
   SignatureRequestStatus,
-  PaginationParams,
-  GetMyRequestsResponse,
-  GetSignaturesResponse,
+  ValidatePdfSignaturesResponse,
 } from '../types';
-import { withNormalizedEmail, withNormalizedSignerEmail } from '../utils/normalize-email';
+import { normalizeEmail, withNormalizedEmail, withNormalizedSignerEmail } from '../utils/normalize-email';
+import { assertValidEmail } from '../utils/validate-email';
 
 export class Signatures {
   constructor(private client: HttpClient) {}
@@ -25,6 +36,12 @@ export class Signatures {
    * - Backend enforces KYC at signing time
    */
   async createRequest(params: CreateSignatureRequestParams): Promise<SignatureRequestResponse> {
+    params.recipients.forEach((r, i) =>
+      assertValidEmail(r?.email, `recipients[${i}].email`),
+    );
+    params.fields?.forEach((f, i) =>
+      assertValidEmail(f?.signerEmail, `fields[${i}].signerEmail`),
+    );
     return this.client.post<SignatureRequestResponse>('/api/v1/signatures/requests', {
       ...params,
       recipients: params.recipients.map(withNormalizedEmail),
@@ -41,15 +58,38 @@ export class Signatures {
   }
 
   /**
-   * Get all signature requests for current user
+   * Get all signature requests for the current user.
+   *
+   * Pass `status` to filter by lifecycle bucket (`pending` | `completed` |
+   * `declined`); omit it (or use `all`) to return every request.
    */
-  async getMyRequests(pagination?: PaginationParams): Promise<GetMyRequestsResponse> {
-    const params = new URLSearchParams();
-    if (pagination?.pageNumber) params.set('pageNumber', String(pagination.pageNumber));
-    if (pagination?.pageSize) params.set('pageSize', String(pagination.pageSize));
+  async getMyRequests(params?: GetMyRequestsParams): Promise<GetMyRequestsResponse> {
+    const query = new URLSearchParams();
+    if (params?.pageNumber) query.set('pageNumber', String(params.pageNumber));
+    if (params?.pageSize) query.set('pageSize', String(params.pageSize));
+    if (params?.status) query.set('status', params.status);
 
-    const query = params.toString();
-    return this.client.get<GetMyRequestsResponse>(`/api/v1/signatures/requests${query ? `?${query}` : ''}`);
+    const qs = query.toString();
+    return this.client.get<GetMyRequestsResponse>(
+      `/api/v1/signatures/requests${qs ? `?${qs}` : ''}`,
+    );
+  }
+
+  /**
+   * Reassign a signer slot on a PENDING signature request.
+   *
+   * Identify the slot by its `signerId` UUID (from a request summary's
+   * `signers[].id`); `recipient` is the new email for that slot.
+   */
+  async editRequest(
+    requestId: string,
+    params: EditSignatureRequestParams,
+  ): Promise<EditSignatureRequestResponse> {
+    assertValidEmail(params.recipient, 'recipient');
+    return this.client.post<EditSignatureRequestResponse>(
+      `/api/v1/signatures/requests/${requestId}/edit`,
+      { ...params, recipient: normalizeEmail(params.recipient) },
+    );
   }
 
   /**
@@ -61,7 +101,8 @@ export class Signatures {
   }
 
   /**
-   * Get user's signatures (signature requests where user is a signer)
+   * Get the API key owner's saved signatures.
+   * Each item carries a `hash` — the identifier used by `contracts.businessSign`.
    */
   async getSignatures(pagination?: PaginationParams): Promise<GetSignaturesResponse> {
     const params = new URLSearchParams();
@@ -70,5 +111,80 @@ export class Signatures {
 
     const query = params.toString();
     return this.client.get<GetSignaturesResponse>(`/api/v1/signatures${query ? `?${query}` : ''}`);
+  }
+
+  /**
+   * Create a reusable saved signature from an uploaded image.
+   * Upload the image first with `media.upload`, then pass the resulting media here.
+   * The returned `hash` identifies the signature for `contracts.businessSign`.
+   */
+  async createSignature(params: CreateSignatureParams): Promise<CreateSignatureResponse> {
+    return this.client.post<CreateSignatureResponse>('/api/v1/signatures', params);
+  }
+
+  /**
+   * Validate the digital signatures embedded in a PDF via the EU DSS service.
+   * Upload the PDF directly — it is not stored. Requires Node.js >= 18.
+   */
+  async validatePdfSignatures(file: File | Blob): Promise<ValidatePdfSignaturesResponse> {
+    return this.client.uploadFiles<ValidatePdfSignaturesResponse>(
+      '/api/v1/signatures/validate-pdf',
+      [file],
+      'file',
+    );
+  }
+
+  /**
+   * Cancel a pending signature request owned by the API key.
+   */
+  async cancel(requestId: string): Promise<CancelSignatureRequestResponse> {
+    return this.client.post<CancelSignatureRequestResponse>(
+      `/api/v1/signatures/requests/${requestId}/cancel`,
+      {},
+    );
+  }
+
+  /**
+   * Send a reminder to pending signers on the request.
+   *
+   * Pass `signerEmails` to target specific signers; omit it to remind every
+   * pending signer. Backend enforces a 12-hour cooldown per signer — rate-
+   * limited signers are returned in the response `skipped` array, not as a
+   * thrown error.
+   */
+  async remind(
+    requestId: string,
+    params?: RemindSignatureRequestParams,
+  ): Promise<RemindSignatureRequestResponse> {
+    const body: { signerEmails?: string[] } = {};
+    if (params?.signerEmails !== undefined) {
+      if (params.signerEmails.length === 0) {
+        throw new ChaindocError('signerEmails must contain at least one email when provided');
+      }
+      params.signerEmails.forEach((email, i) =>
+        assertValidEmail(email, `signerEmails[${i}]`),
+      );
+      body.signerEmails = params.signerEmails.map((e) => normalizeEmail(e));
+    }
+    return this.client.post<RemindSignatureRequestResponse>(
+      `/api/v1/signatures/requests/${requestId}/remind`,
+      body,
+    );
+  }
+
+  /**
+   * Download the audit-trail certificate (PDF) for a signed document version.
+   * Accepts both pk_ and sk_ keys.
+   */
+  async downloadCertificate(versionId: string): Promise<DownloadResult> {
+    return this.client.download(`/api/v1/signatures/versions/${versionId}/certificate`);
+  }
+
+  /**
+   * Download the PAdES-signed PDF for a completed signature request.
+   * Accepts both pk_ and sk_ keys.
+   */
+  async downloadSignedDocument(versionId: string): Promise<DownloadResult> {
+    return this.client.download(`/api/v1/signatures/versions/${versionId}/signed-document`);
   }
 }

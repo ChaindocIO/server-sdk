@@ -89,4 +89,77 @@ describe('Invoices module', () => {
       },
     );
   });
+
+  describe('finalize invoice helpers', () => {
+    it('update PATCHes the invoice route', async () => {
+      const client = { patch: vi.fn().mockResolvedValue({}) };
+      const invoices = new Invoices(client as any);
+
+      await invoices.update('contract-uuid', 'invoice-uuid', {
+        title: 'Revised retainer',
+        dueDate: '2026-05-15T00:00:00.000Z',
+      });
+
+      expect(client.patch).toHaveBeenCalledWith(
+        '/api/v1/contracts/contract-uuid/invoices/invoice-uuid',
+        { title: 'Revised retainer', dueDate: '2026-05-15T00:00:00.000Z' },
+      );
+    });
+
+    it('cancel POSTs to the cancel route with an empty body', async () => {
+      const client = { post: vi.fn().mockResolvedValue({}) };
+      const invoices = new Invoices(client as any);
+
+      await invoices.cancel('contract-uuid', 'invoice-uuid');
+
+      expect(client.post).toHaveBeenCalledWith(
+        '/api/v1/contracts/contract-uuid/invoices/invoice-uuid/cancel',
+        {},
+      );
+    });
+
+    it('downloadPdf delegates to the binary download path', async () => {
+      const fake = { data: new ArrayBuffer(8), contentType: 'application/pdf' };
+      const client = { download: vi.fn().mockResolvedValue(fake) };
+      const invoices = new Invoices(client as any);
+
+      const result = await invoices.downloadPdf('contract-uuid', 'invoice-uuid');
+
+      expect(client.download).toHaveBeenCalledWith(
+        '/api/v1/contracts/contract-uuid/invoices/invoice-uuid/pdf',
+      );
+      expect(result).toBe(fake);
+    });
+  });
+
+  describe('listAll (business-wide)', () => {
+    it('hits the business-wide invoices route with no query when called bare', async () => {
+      const client = { get: vi.fn().mockResolvedValue({}) };
+      const invoices = new Invoices(client as any);
+
+      await invoices.listAll();
+
+      expect(client.get).toHaveBeenCalledWith('/api/v1/invoices');
+    });
+
+    it('serializes filters onto the business-wide invoices route', async () => {
+      const client = { get: vi.fn().mockResolvedValue({}) };
+      const invoices = new Invoices(client as any);
+
+      await invoices.listAll({
+        page: 2,
+        limit: 25,
+        status: 'unpaid',
+        type: 'manual',
+        overdue: true,
+        dueDateFrom: '2026-04-01',
+        dueDateTo: '2026-04-30',
+        search: 'Retainer April',
+      });
+
+      expect(client.get).toHaveBeenCalledWith(
+        '/api/v1/invoices?page=2&limit=25&status=unpaid&type=manual&overdue=true&dueDateFrom=2026-04-01&dueDateTo=2026-04-30&search=Retainer+April',
+      );
+    });
+  });
 });
