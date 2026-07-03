@@ -6,6 +6,8 @@ import type { DownloadResult, HttpClient } from '../client';
 import type {
   AccessEmail,
   CreateDocumentParams,
+  CreateDocumentFromStorageParams,
+  UploadChunkedOptions,
   UpdateDocumentParams,
   UpdateDocumentRightsParams,
   DocumentResponse,
@@ -24,6 +26,7 @@ import type {
 import { normalizeEmail, withNormalizedEmail } from '../utils/normalize-email';
 import { assertValidEmail } from '../utils/validate-email';
 import { DocumentComments } from './document-comments';
+import { Media } from './media';
 
 function normalizeAccessEmails(accessEmails: AccessEmail[] | undefined): AccessEmail[] | undefined {
   return accessEmails?.map(withNormalizedEmail);
@@ -32,9 +35,11 @@ function normalizeAccessEmails(accessEmails: AccessEmail[] | undefined): AccessE
 export class Documents {
   /** Top-level commenting on a document plus reading the comment thread. */
   readonly comments: DocumentComments;
+  private readonly media: Media;
 
   constructor(private client: HttpClient) {
     this.comments = new DocumentComments(client);
+    this.media = new Media(client);
   }
 
   /**
@@ -46,6 +51,41 @@ export class Documents {
       ...params,
       accessEmails: normalizeAccessEmails(params.accessEmails),
     });
+  }
+
+  /**
+   * Create a document from a file already uploaded to the caller's Drive via
+   * `media.uploadChunked()`. The document gets its own copy (model C), so the source
+   * Drive file can be deleted afterwards (`deleteSourceFile: true`).
+   */
+  async createFromStorage(
+    params: CreateDocumentFromStorageParams,
+  ): Promise<DocumentResponse> {
+    return this.client.post<DocumentResponse>('/api/v1/documents/from-storage', {
+      ...params,
+      accessEmails: normalizeAccessEmails(params.accessEmails),
+    });
+  }
+
+  /**
+   * Convenience: chunked-upload a (potentially large) file and create a document from
+   * it in one call. Avoids the in-memory `/media` path that times out on large files.
+   *
+   * @example
+   * ```typescript
+   * const file = new Blob([await readFile('./contract.pdf')], { type: 'application/pdf' });
+   * const doc = await chaindoc.documents.createFromFile(file, {
+   *   name: 'Contract', description: 'Q3 contract', meta: [], hashtags: [], status: 'draft',
+   * }, { filename: 'contract.pdf' });
+   * ```
+   */
+  async createFromFile(
+    file: Blob,
+    params: Omit<CreateDocumentFromStorageParams, 'storageFileId'>,
+    options?: UploadChunkedOptions,
+  ): Promise<DocumentResponse> {
+    const { storageFileId } = await this.media.uploadChunked(file, options);
+    return this.createFromStorage({ ...params, storageFileId });
   }
 
   /**

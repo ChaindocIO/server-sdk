@@ -144,6 +144,52 @@ export interface MediaUploadResponse {
 }
 
 // ============================================================================
+// Chunked Upload Types (resumable, streams into the caller's Drive — model C)
+// ============================================================================
+
+export interface InitChunkedUploadParams {
+  filename: string;
+  mimeType: string;
+  size: number;
+}
+
+export interface InitChunkedUploadResponse {
+  uploadId: string;
+  expiresAt: string;
+  chunkSize: number;
+  uploadUrl: string;
+}
+
+/** Server acknowledgement for a single chunk. `storageFileId` is set on completion. */
+export interface ChunkAck {
+  offset: number;
+  complete: boolean;
+  storageFileId?: string;
+}
+
+export interface ChunkedUploadStatus {
+  uploadId: string;
+  currentOffset: number;
+  totalSize: number;
+  expiresAt: string;
+}
+
+export interface ChunkedUploadResult {
+  storageFileId: string;
+}
+
+export interface UploadChunkedOptions {
+  /** Overrides the filename (Blobs carry no name on the server side). */
+  filename?: string;
+  /** Progress callback fired after each acknowledged chunk. */
+  onProgress?: (progress: {
+    percent: number;
+    bytesUploaded: number;
+    totalBytes: number;
+  }) => void;
+}
+
+// ============================================================================
 // Document Types
 // ============================================================================
 
@@ -182,6 +228,26 @@ export interface CreateDocumentParams {
   accessType?: AccessType;
   accessEmails?: AccessEmail[];
   accessRoles?: AccessRole[];
+}
+
+/**
+ * Create a document from a file already uploaded to the caller's Drive (via
+ * `media.uploadChunked`). The document gets its own copy (model C), so deleting
+ * the source Drive file afterwards is safe.
+ */
+export interface CreateDocumentFromStorageParams {
+  storageFileId: string;
+  name: string;
+  description: string;
+  meta: MetaTag[];
+  hashtags: string[];
+  status: DocumentStatusForCreate;
+  isForSigning?: boolean;
+  accessType?: AccessType;
+  accessEmails?: AccessEmail[];
+  accessRoles?: AccessRole[];
+  /** Delete the source Drive file once the document is created. Default false. */
+  deleteSourceFile?: boolean;
 }
 
 export interface UpdateDocumentParams {

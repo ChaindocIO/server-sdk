@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-07-03
+
+Additive release — resumable chunked uploads for large files and a direct
+file-to-document convenience path. No breaking changes.
+
+### Added
+
+- **Resumable chunked upload** — `media.uploadChunked(file, options)` streams a
+  (potentially large) file into the caller's Drive in ordered chunks, resuming
+  from the server-reported offset after transient failures and aborting the
+  session on non-retryable errors. Low-level session controls:
+  `media.initChunkedUpload`, `media.getChunkedUploadStatus`,
+  `media.cancelChunkedUpload`.
+- **`documents.createFromStorage(storageFileId, ...)`** — create a document from
+  a file already in Drive. The document gets its own copy (model C).
+- **`documents.createFromFile(file, ...)`** — convenience: chunk-upload a large
+  file and create a document from the resulting storage file in one call.
+- **`HttpClient.sendChunk()`** — send a single raw binary chunk for a resumable
+  upload, with the same retry semantics as `request()`.
+
 ## [2.1.0] - 2026-05-18
 
 Additive release — extends the public API surface across templates, contracts,

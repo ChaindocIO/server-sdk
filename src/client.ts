@@ -136,9 +136,20 @@ export class HttpClient {
         "ENOTFOUND",
         "EAI_AGAIN",
       ];
+      // Node's global fetch wraps the real network error in `cause` and surfaces a
+      // generic "fetch failed" message — inspect both so transient network failures
+      // (and resumable chunk uploads) are correctly retried.
+      const haystack: string[] = [error.message];
+      const cause = (error as { cause?: unknown }).cause;
+      if (cause instanceof Error) {
+        haystack.push(cause.message);
+      } else if (cause && typeof cause === "object" && "code" in cause) {
+        haystack.push(String((cause as { code: unknown }).code));
+      }
       return (
-        networkErrors.some((e) => error.message.includes(e)) ||
-        error.name === "AbortError"
+        networkErrors.some((code) => haystack.some((m) => m.includes(code))) ||
+        error.name === "AbortError" ||
+        error.message === "fetch failed"
       );
     }
     return false;
@@ -289,6 +300,77 @@ export class HttpClient {
     options?: Omit<RequestOptions, "method" | "body">
   ): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: "DELETE" });
+  }
+
+  /**
+   * Send a single raw binary chunk for a resumable upload. Unlike `request()`, the
+   * body is sent verbatim (no JSON serialization) with the `application/offset+octet-stream`
+   * content type and the `Upload-Offset` header. No blind retry — the caller resumes
+   * from the server's reported offset on a transient failure.
+   */
+  async sendChunk<T>(
+    endpoint: string,
+    chunk: Blob | Uint8Array,
+    offset: number,
+    options?: { timeout?: number }
+  ): Promise<T> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      options?.timeout ?? this.timeout
+    );
+
+    try {
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${this.secretKey}`,
+          "Content-Type": "application/offset+octet-stream",
+          "Upload-Offset": String(offset),
+        },
+        body: chunk,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      const contentType = response.headers.get("content-type");
+      const data: unknown = contentType?.includes("application/json")
+        ? await response.json().catch(() => undefined)
+        : undefined;
+
+      if (!response.ok) {
+        const errorMessage =
+          data &&
+          typeof data === "object" &&
+          "message" in data &&
+          typeof data.message === "string"
+            ? data.message
+            : `Chunk upload failed with status ${response.status}`;
+        throw new ChaindocError(
+          errorMessage,
+          response.status,
+          data,
+          this.isRetryableError(null, response.status)
+        );
+      }
+
+      return data as T;
+    } catch (error) {
+      clearTimeout(timeoutId);
+
+      if (error instanceof ChaindocError) {
+        throw error;
+      }
+
+      if (error instanceof Error) {
+        const message =
+          error.name === "AbortError" ? "Request timeout" : error.message;
+        throw new ChaindocError(message, undefined, undefined, this.isRetryableError(error));
+      }
+
+      throw new ChaindocError("Unknown error occurred");
+    }
   }
 
   /**
