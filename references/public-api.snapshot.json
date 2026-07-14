@@ -1,24 +1,6 @@
 {
   "components": {
     "schemas": {
-      "AcceptGuarantorTermsDto": {
-        "properties": {
-          "accept": {
-            "description": "User accepts terms and conditions",
-            "type": "boolean"
-          },
-          "termsVersion": {
-            "description": "Terms version being accepted",
-            "example": "v1.0.0",
-            "type": "string"
-          }
-        },
-        "required": [
-          "accept",
-          "termsVersion"
-        ],
-        "type": "object"
-      },
       "AcceptTermsDto": {
         "properties": {
           "acceptTerms": {
@@ -38,7 +20,7 @@
       "AccessDto": {
         "properties": {
           "accessEmails": {
-            "description": "An array of user IDs with a maximum of 50 unique items.",
+            "description": "Recipients granted explicit access. Hard request ceiling of 100 unique items; the effective per-document sharing cap (branded emails) is enforced server-side.",
             "example": [
               {
                 "email": "ar@dev.com",
@@ -83,9 +65,6 @@
           "failedSubscriptionPayments": {
             "type": "number"
           },
-          "openEscrowDisputes": {
-            "type": "number"
-          },
           "pendingPublicProfilesInitial": {
             "type": "number"
           },
@@ -96,46 +75,7 @@
         "required": [
           "pendingPublicProfilesInitial",
           "pendingPublicProfilesUpdate",
-          "openEscrowDisputes",
           "failedSubscriptionPayments"
-        ],
-        "type": "object"
-      },
-      "AddDisputeEvidenceDto": {
-        "properties": {
-          "description": {
-            "description": "Description of the evidence",
-            "example": "Email correspondence showing delivery delay",
-            "maxLength": 500,
-            "type": "string"
-          },
-          "documentId": {
-            "description": "Document ID from MediaModule",
-            "example": 12345,
-            "type": "number"
-          }
-        },
-        "required": [
-          "documentId"
-        ],
-        "type": "object"
-      },
-      "AddDisputeMessageDto": {
-        "properties": {
-          "isInternal": {
-            "default": false,
-            "description": "Mark as internal note (only visible to guarantor)",
-            "type": "boolean"
-          },
-          "message": {
-            "description": "Message content",
-            "example": "I have attempted to contact the seller multiple times with no response.",
-            "maxLength": 5000,
-            "type": "string"
-          }
-        },
-        "required": [
-          "message"
         ],
         "type": "object"
       },
@@ -242,15 +182,16 @@
       "AddressDto": {
         "properties": {
           "city": {
-            "example": "London",
+            "example": "New York",
             "type": "string"
           },
           "country": {
-            "example": "GB",
+            "description": "ISO 3166-1 alpha-2 country code",
+            "example": "US",
             "type": "string"
           },
           "line1": {
-            "example": "123 High Street",
+            "example": "123 Main Street",
             "type": "string"
           },
           "line2": {
@@ -258,11 +199,11 @@
             "type": "string"
           },
           "postalCode": {
-            "example": "SW1A 1AA",
+            "example": "10001",
             "type": "string"
           },
           "state": {
-            "example": "Greater London",
+            "example": "NY",
             "type": "string"
           }
         },
@@ -274,133 +215,64 @@
         ],
         "type": "object"
       },
-      "AmountChangeListResponseDto": {
+      "AnalyzeDto": {
         "properties": {
-          "items": {
+          "displayInstruction": {
+            "description": "Clean typed instruction shown in the chat bubble (refine).",
+            "type": "string"
+          },
+          "instruction": {
+            "example": "Add a 30-day termination clause and a governing-law section.",
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "generate",
+              "extract",
+              "refine"
+            ],
+            "type": "string"
+          },
+          "prompt": {
+            "example": "A mutual NDA between two startups in California.",
+            "type": "string"
+          },
+          "referenceFileNames": {
+            "description": "Names of attached reference files, shown as chips.",
             "items": {
-              "$ref": "#/components/schemas/AmountChangeRequestResponseDto"
+              "type": "string"
             },
             "type": "array"
           },
-          "limit": {
-            "example": 20,
-            "type": "number"
+          "referenceFileUuids": {
+            "description": "UUIDs of stored files to use as REFERENCE context for a refine (max 3).",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
-          "page": {
-            "example": 1,
-            "type": "number"
+          "selections": {
+            "description": "Quoted passage(s) attached to the turn, shown as chips.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
-          "total": {
-            "example": 3,
-            "type": "number"
-          },
-          "totalPages": {
-            "example": 1,
-            "type": "number"
-          }
-        },
-        "required": [
-          "items",
-          "total",
-          "page",
-          "limit",
-          "totalPages"
-        ],
-        "type": "object"
-      },
-      "AmountChangeRequestResponseDto": {
-        "properties": {
-          "createdAt": {
-            "format": "date-time",
+          "sourceFileUuid": {
+            "description": "UUID of a stored source file to extract from.",
             "type": "string"
           },
-          "currencyCode": {
-            "description": "Currency code",
-            "example": "USD",
+          "templateUuid": {
+            "description": "UUID of the template to refine.",
             "type": "string"
           },
-          "decidedAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "decision": {
-            "description": "Decision by guarantor",
-            "enum": [
-              "approved",
-              "rejected"
-            ],
-            "type": "string"
-          },
-          "decisionNotes": {
-            "description": "Guarantor decision notes",
-            "example": "Both parties confirmed agreement",
-            "type": "string"
-          },
-          "difference": {
-            "description": "Difference (refund amount)",
-            "example": "10000.00",
-            "type": "string"
-          },
-          "escrowUuid": {
-            "example": "esc_a1b2c3d4e5f6",
-            "type": "string"
-          },
-          "id": {
-            "example": 1,
-            "type": "number"
-          },
-          "initiatedByEmail": {
-            "example": "seller@example.com",
-            "type": "string"
-          },
-          "initiatedByRole": {
-            "description": "Who initiated the request",
-            "example": "seller",
-            "type": "string"
-          },
-          "newAmount": {
-            "description": "Requested new amount",
-            "example": "90000.00",
-            "type": "string"
-          },
-          "originalAmount": {
-            "description": "Original amount",
-            "example": "100000.00",
-            "type": "string"
-          },
-          "reason": {
-            "description": "Reason for change",
-            "example": "Buyer agreed to deduct for repairs",
-            "type": "string"
-          },
-          "status": {
-            "description": "Request status",
-            "enum": [
-              "pending",
-              "approved",
-              "rejected"
-            ],
-            "example": "pending",
-            "type": "string"
-          },
-          "updatedAt": {
-            "format": "date-time",
+          "text": {
+            "description": "Pasted source text to convert into a template (extract).",
             "type": "string"
           }
         },
         "required": [
-          "id",
-          "escrowUuid",
-          "originalAmount",
-          "newAmount",
-          "difference",
-          "currencyCode",
-          "reason",
-          "status",
-          "initiatedByRole",
-          "initiatedByEmail",
-          "createdAt",
-          "updatedAt"
+          "mode"
         ],
         "type": "object"
       },
@@ -525,6 +397,28 @@
         ],
         "type": "object"
       },
+      "AttributeReferralDto": {
+        "properties": {
+          "code": {
+            "example": "A3KP7QXM",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "AttributeReferralResponseDto": {
+        "properties": {
+          "attributed": {
+            "description": "Whether the referral attribution was recorded",
+            "example": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "attributed"
+        ],
+        "type": "object"
+      },
       "AvailablePaymentMethodDto": {
         "properties": {
           "available": {
@@ -598,32 +492,44 @@
       },
       "BankDetailsDto": {
         "properties": {
-          "accountHolderName": {
-            "description": "Bank account holder name",
-            "example": "John Smith",
-            "maxLength": 255,
+          "accountNumber": {
             "type": "string"
           },
           "bankName": {
-            "description": "Bank name",
-            "example": "Barclays Bank UK PLC",
-            "maxLength": 255,
-            "type": "string"
-          },
-          "bic": {
-            "description": "BIC/SWIFT code",
-            "example": "WESTGB2L",
             "type": "string"
           },
           "iban": {
-            "description": "IBAN (International Bank Account Number)",
-            "example": "GB82WEST12345698765432",
+            "type": "string"
+          },
+          "region": {
+            "enum": [
+              "eu",
+              "us",
+              "custom"
+            ],
+            "type": "string"
+          },
+          "routingNumber": {
+            "type": "string"
+          },
+          "swift": {
             "type": "string"
           }
         },
         "required": [
-          "accountHolderName",
-          "iban"
+          "region"
+        ],
+        "type": "object"
+      },
+      "BanUserDto": {
+        "properties": {
+          "reason": {
+            "example": "Repeated upload of malicious files",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
         ],
         "type": "object"
       },
@@ -801,46 +707,6 @@
         ],
         "type": "object"
       },
-      "BuyerSignDto": {
-        "properties": {
-          "meta": {
-            "description": "Signature metadata (position, page, etc.)",
-            "items": {
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "paymentMethodId": {
-            "description": "Stripe PaymentMethod ID",
-            "example": "pm_1234567890abcdef",
-            "type": "string"
-          },
-          "signatureId": {
-            "description": "User signature ID from the signature library",
-            "example": 123,
-            "type": "number"
-          }
-        },
-        "required": [
-          "paymentMethodId",
-          "signatureId"
-        ],
-        "type": "object"
-      },
-      "CancelEscrowDto": {
-        "properties": {
-          "reason": {
-            "description": "Reason for cancellation",
-            "example": "Buyer withdrew from the deal",
-            "maxLength": 2000,
-            "type": "string"
-          }
-        },
-        "required": [
-          "reason"
-        ],
-        "type": "object"
-      },
       "CancelSubscriptionDto": {
         "properties": {
           "subscriptionId": {
@@ -910,10 +776,6 @@
             "example": "Doe",
             "type": "string"
           },
-          "referrerCode": {
-            "example": "UA",
-            "type": "string"
-          },
           "textColor": {
             "type": "string"
           }
@@ -922,7 +784,6 @@
           "firstName",
           "lastName",
           "countryCode",
-          "referrerCode",
           "image",
           "backgroundColor",
           "textColor"
@@ -1034,16 +895,6 @@
         "required": [
           "confirmInfo"
         ],
-        "type": "object"
-      },
-      "ConfirmReleaseDto": {
-        "properties": {
-          "notes": {
-            "description": "Optional notes about confirmation",
-            "maxLength": 1000,
-            "type": "string"
-          }
-        },
         "type": "object"
       },
       "ContractBusinessUserDto": {
@@ -1579,26 +1430,6 @@
         ],
         "type": "object"
       },
-      "ConvertToTemplateDto": {
-        "properties": {
-          "category": {
-            "example": "contract",
-            "type": "string"
-          },
-          "templateDescription": {
-            "example": "Standard service agreement",
-            "type": "string"
-          },
-          "templateName": {
-            "example": "Service Agreement Template",
-            "type": "string"
-          }
-        },
-        "required": [
-          "templateName"
-        ],
-        "type": "object"
-      },
       "CreateAdditionalAgreementDto": {
         "properties": {
           "description": {
@@ -1632,39 +1463,6 @@
         "required": [
           "documentId",
           "title"
-        ],
-        "type": "object"
-      },
-      "CreateAiSessionDto": {
-        "properties": {
-          "initialPrompt": {
-            "example": "Draft a service agreement for software development",
-            "type": "string"
-          },
-          "title": {
-            "example": "Contract for Acme Inc.",
-            "type": "string"
-          }
-        },
-        "type": "object"
-      },
-      "CreateAmountChangeRequestDto": {
-        "properties": {
-          "newAmount": {
-            "description": "New requested amount (must be less than current amount)",
-            "example": "90000.00",
-            "type": "string"
-          },
-          "reason": {
-            "description": "Reason for the amount change",
-            "example": "Buyer agreed to deduct $10,000 for property repairs",
-            "maxLength": 2000,
-            "type": "string"
-          }
-        },
-        "required": [
-          "newAmount",
-          "reason"
         ],
         "type": "object"
       },
@@ -1961,38 +1759,10 @@
         ],
         "type": "object"
       },
-      "CreateDisputeDto": {
-        "properties": {
-          "description": {
-            "description": "Detailed description of the dispute",
-            "example": "Seller has not delivered the property documents after 30 days from the agreed date.",
-            "maxLength": 5000,
-            "type": "string"
-          },
-          "reason": {
-            "description": "Reason for the dispute",
-            "enum": [
-              "goods_not_delivered",
-              "not_as_described",
-              "seller_unresponsive",
-              "buyer_unresponsive",
-              "documentation_issues",
-              "other"
-            ],
-            "example": "goods_not_delivered",
-            "type": "string"
-          }
-        },
-        "required": [
-          "reason",
-          "description"
-        ],
-        "type": "object"
-      },
       "CreateDocumentDto": {
         "properties": {
           "accessEmails": {
-            "description": "An array of user IDs with a maximum of 50 unique items.",
+            "description": "Recipients granted explicit access. Hard request ceiling of 100 unique items; the effective per-document sharing cap (branded emails) is enforced server-side.",
             "example": [
               {
                 "email": "ar@dev.com",
@@ -2096,6 +1866,114 @@
         ],
         "type": "object"
       },
+      "CreateDocumentFromStorageDto": {
+        "properties": {
+          "accessEmails": {
+            "description": "Recipients granted explicit access. Hard request ceiling of 100 unique items; the effective per-document sharing cap (branded emails) is enforced server-side.",
+            "example": [
+              {
+                "email": "ar@dev.com",
+                "level": "read"
+              }
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "accessRoles": {
+            "description": "An array of user IDs with a maximum of 50 unique items.",
+            "example": [
+              {
+                "level": "read",
+                "roleId": 1
+              }
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "accessType": {
+            "description": "The ID of the user creating the document.",
+            "example": "private",
+            "type": "string"
+          },
+          "description": {
+            "example": "This is a document description.",
+            "type": "string"
+          },
+          "documentMeta": {
+            "example": [
+              {
+                "key": "author",
+                "value": "John Doe"
+              }
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "hashtags": {
+            "description": "An array of category IDs with a maximum of 3 unique items.",
+            "example": [
+              "#tag1",
+              "#tag2",
+              "#tag3"
+            ],
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "isForSigning": {
+            "example": true,
+            "type": "boolean"
+          },
+          "meta": {
+            "example": [
+              {
+                "key": "author",
+                "value": "John Doe"
+              }
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "example": "Doc 1",
+            "type": "string"
+          },
+          "pipedriveDealId": {
+            "example": 1,
+            "type": "string"
+          },
+          "status": {
+            "example": "draft",
+            "type": "string"
+          },
+          "storageFileId": {
+            "description": "UUID of a READY Drive storage file to turn into a document.",
+            "example": "b3f1c2d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "isForSigning",
+          "meta",
+          "documentMeta",
+          "hashtags",
+          "status",
+          "pipedriveDealId",
+          "storageFileId"
+        ],
+        "type": "object"
+      },
       "CreateDocumentFromTemplateDto": {
         "properties": {
           "documentDescription": {
@@ -2125,12 +2003,29 @@
             "type": "string"
           },
           "metadata": {
+            "additionalProperties": true,
             "description": "Session metadata. Provide either documentId (for standalone signing) or contractId (for contract signing). When using contractId, documentId, signatureRequestId, and contractSigningRequestId are resolved automatically.",
-            "example": {
-              "contractSigningRequestId": "contract-signing-request-uuid",
-              "documentId": "doc-uuid",
-              "returnUrl": "https://example.com/callback",
-              "signatureRequestId": "request-uuid"
+            "properties": {
+              "contractId": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "contractSigningRequestId": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "documentId": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "returnUrl": {
+                "format": "uri",
+                "type": "string"
+              },
+              "signatureRequestId": {
+                "format": "uuid",
+                "type": "string"
+              }
             },
             "type": "object"
           }
@@ -2173,193 +2068,8 @@
         ],
         "type": "object"
       },
-      "CreateEscrowContractDto": {
-        "properties": {
-          "buyerEmail": {
-            "description": "Buyer email address",
-            "example": "buyer@example.com",
-            "type": "string"
-          },
-          "currencyCode": {
-            "default": "USD",
-            "description": "Currency code (ISO 4217)",
-            "example": "USD",
-            "type": "string"
-          },
-          "dealDetails": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/DealDetailsDto"
-              }
-            ],
-            "description": "Deal details (property, conditions, etc.)"
-          },
-          "description": {
-            "description": "Escrow contract description",
-            "example": "Escrow for property sale between parties",
-            "maxLength": 2000,
-            "type": "string"
-          },
-          "documentId": {
-            "description": "Document ID for the escrow agreement",
-            "example": 12345,
-            "type": "number"
-          },
-          "escrowAmount": {
-            "description": "Escrow amount (decimal string)",
-            "example": "100000.00",
-            "type": "string"
-          },
-          "guarantorFeeFixed": {
-            "description": "Guarantor fixed fee (optional)",
-            "example": "500.00",
-            "type": "string"
-          },
-          "guarantorFeePercent": {
-            "description": "Guarantor fee percent",
-            "example": "1.5",
-            "maximum": 50,
-            "minimum": 0,
-            "type": "string"
-          },
-          "releaseConfirmationMode": {
-            "description": "Release confirmation mode",
-            "enum": [
-              "all_parties",
-              "guarantor_plus_one",
-              "guarantor_only"
-            ],
-            "example": "guarantor_plus_one",
-            "type": "string"
-          },
-          "sellerEmail": {
-            "description": "Seller email address",
-            "example": "seller@example.com",
-            "type": "string"
-          },
-          "title": {
-            "description": "Escrow contract title",
-            "example": "Property Sale - 123 Main St",
-            "maxLength": 255,
-            "type": "string"
-          }
-        },
-        "required": [
-          "title",
-          "sellerEmail",
-          "buyerEmail",
-          "escrowAmount",
-          "guarantorFeePercent",
-          "releaseConfirmationMode",
-          "documentId"
-        ],
-        "type": "object"
-      },
       "CreateFolderDto": {
         "properties": {},
-        "type": "object"
-      },
-      "CreateGuarantorProfileDto": {
-        "properties": {
-          "address": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/AddressDto"
-              }
-            ],
-            "description": "Business address"
-          },
-          "businessName": {
-            "description": "Legal business name",
-            "example": "Acme Escrow Ltd",
-            "type": "string"
-          },
-          "contactEmail": {
-            "description": "Contact email",
-            "example": "escrow@acme.com",
-            "type": "string"
-          },
-          "contactPhone": {
-            "description": "Contact phone",
-            "example": "+44 20 7123 4567",
-            "type": "string"
-          },
-          "country": {
-            "description": "Country of registration (ISO 2)",
-            "example": "GB",
-            "type": "string"
-          },
-          "defaultFeeFixed": {
-            "description": "Default fixed fee",
-            "example": "25.00",
-            "type": "string"
-          },
-          "defaultFeePercent": {
-            "description": "Default fee percentage",
-            "example": "2.50",
-            "type": "string"
-          },
-          "maximumEscrowAmount": {
-            "description": "Maximum escrow amount",
-            "example": "1000000.00",
-            "type": "string"
-          },
-          "minimumEscrowAmount": {
-            "description": "Minimum escrow amount",
-            "example": "1000.00",
-            "type": "string"
-          },
-          "registrationNumber": {
-            "description": "Business registration number",
-            "example": "12345678",
-            "type": "string"
-          },
-          "serviceDescription": {
-            "description": "Description of escrow services offered",
-            "type": "string"
-          },
-          "supportedCurrencies": {
-            "description": "Supported currencies",
-            "example": [
-              "GBP",
-              "EUR",
-              "USD"
-            ],
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "tradingName": {
-            "description": "Trading name if different",
-            "example": "Acme Escrow",
-            "type": "string"
-          },
-          "transactionTypes": {
-            "description": "Types of transactions handled",
-            "example": [
-              "property",
-              "vehicle",
-              "services"
-            ],
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "vatNumber": {
-            "description": "VAT number if applicable",
-            "example": "GB123456789",
-            "type": "string"
-          }
-        },
-        "required": [
-          "businessName",
-          "registrationNumber",
-          "country",
-          "contactEmail",
-          "address"
-        ],
         "type": "object"
       },
       "CreateImportContractDto": {
@@ -2489,6 +2199,102 @@
         ],
         "type": "object"
       },
+      "CreateLibraryTemplateDto": {
+        "properties": {
+          "category": {
+            "enum": [
+              "contract",
+              "agreement",
+              "invoice",
+              "nda",
+              "proposal",
+              "letter",
+              "other"
+            ],
+            "example": "nda",
+            "type": "string"
+          },
+          "description": {
+            "example": "Mutual NDA for B2B engagements.",
+            "type": "string"
+          },
+          "jurisdiction": {
+            "example": "US",
+            "type": "string"
+          },
+          "language": {
+            "default": "en",
+            "example": "en",
+            "type": "string"
+          },
+          "name": {
+            "example": "Standard NDA",
+            "type": "string"
+          },
+          "publisherSlug": {
+            "description": "Publisher slug. Defaults to \"system\" in MVP — only one publisher exists. Future marketplace will route user-published templates to other publishers.",
+            "example": "system",
+            "type": "string"
+          },
+          "slug": {
+            "description": "Optional manual slug. When omitted the service auto-generates one from `name`. A manual collision returns HTTP 409.",
+            "example": "standard-nda",
+            "type": "string"
+          },
+          "tags": {
+            "example": [
+              "nda",
+              "employment"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "category"
+        ],
+        "type": "object"
+      },
+      "CreateLibraryVersionDto": {
+        "properties": {
+          "changelog": {
+            "example": "Tweak intro paragraph",
+            "type": "string"
+          },
+          "contentJson": {
+            "description": "Tiptap JSON AST",
+            "type": "object"
+          },
+          "renderConfig": {
+            "$ref": "#/components/schemas/RenderConfigDto"
+          },
+          "signatureRequirements": {
+            "items": {
+              "$ref": "#/components/schemas/SignatureRequirementDto"
+            },
+            "type": "array"
+          },
+          "signerSlots": {
+            "items": {
+              "$ref": "#/components/schemas/SignerSlotDto"
+            },
+            "type": "array"
+          },
+          "variablesSchema": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateVariableDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "contentJson"
+        ],
+        "type": "object"
+      },
       "CreateMinimalContractDto": {
         "properties": {
           "contragentEmail": {
@@ -2594,6 +2400,106 @@
           "type",
           "name",
           "amount"
+        ],
+        "type": "object"
+      },
+      "CreatePipedriveDocumentFromStorageDto": {
+        "properties": {
+          "accessEmails": {
+            "example": [
+              {
+                "email": "user@example.com",
+                "level": "read"
+              }
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "accessRoles": {
+            "example": [
+              {
+                "level": "read",
+                "roleId": 1
+              }
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "accessType": {
+            "example": "private",
+            "type": "string"
+          },
+          "dealId": {
+            "example": "456",
+            "type": "string"
+          },
+          "description": {
+            "example": "Document description",
+            "type": "string"
+          },
+          "documentMeta": {
+            "example": [
+              {
+                "key": "pipedriveDealStage",
+                "value": "qualified"
+              }
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "hashtags": {
+            "example": [
+              "#tag1",
+              "#tag2"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "isForSigning": {
+            "example": true,
+            "type": "boolean"
+          },
+          "meta": {
+            "example": [
+              {
+                "key": "author",
+                "value": "John Doe"
+              }
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "example": "My Document",
+            "type": "string"
+          },
+          "status": {
+            "description": "Set to \"published\" to verify in blockchain after creation",
+            "example": "draft",
+            "type": "string"
+          },
+          "storageFileId": {
+            "description": "UUID of a READY storage file to turn into a document.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "hashtags",
+          "status",
+          "isForSigning",
+          "storageFileId"
         ],
         "type": "object"
       },
@@ -2935,6 +2841,95 @@
           "hashtags",
           "status",
           "isForSigning"
+        ],
+        "type": "object"
+      },
+      "CreatePublicDocumentFromStorageDto": {
+        "properties": {
+          "accessEmails": {
+            "example": [
+              {
+                "email": "user@example.com",
+                "level": "read"
+              }
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "accessRoles": {
+            "example": [
+              {
+                "level": "read",
+                "roleId": 1
+              }
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "accessType": {
+            "example": "private",
+            "type": "string"
+          },
+          "deleteSourceFile": {
+            "default": false,
+            "description": "Delete the source storage file after the document is created. The document keeps its own copy.",
+            "type": "boolean"
+          },
+          "description": {
+            "example": "Document description",
+            "type": "string"
+          },
+          "hashtags": {
+            "example": [
+              "#tag1",
+              "#tag2"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "isForSigning": {
+            "example": true,
+            "type": "boolean"
+          },
+          "meta": {
+            "example": [
+              {
+                "key": "author",
+                "value": "John Doe"
+              }
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "example": "My Document",
+            "type": "string"
+          },
+          "status": {
+            "description": "Set to \"published\" to verify in blockchain after creation",
+            "example": "draft",
+            "type": "string"
+          },
+          "storageFileId": {
+            "description": "UUID of a READY storage file (from chunked or simple upload) to turn into a document.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "hashtags",
+          "status",
+          "isForSigning",
+          "storageFileId"
         ],
         "type": "object"
       },
@@ -3596,60 +3591,6 @@
         ],
         "type": "object"
       },
-      "DealDetailsDto": {
-        "properties": {
-          "closingDate": {
-            "description": "Closing date",
-            "example": "2026-02-15",
-            "type": "string"
-          },
-          "conditions": {
-            "description": "Conditions for the deal",
-            "example": [
-              "Inspection complete",
-              "Title clear"
-            ],
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "propertyAddress": {
-            "description": "Property address",
-            "example": "123 Main St, London",
-            "type": "string"
-          },
-          "propertyType": {
-            "description": "Property type",
-            "example": "residential",
-            "type": "string"
-          }
-        },
-        "type": "object"
-      },
-      "DecideAmountChangeDto": {
-        "properties": {
-          "decision": {
-            "description": "Decision on the amount change",
-            "enum": [
-              "approved",
-              "rejected"
-            ],
-            "example": "approved",
-            "type": "string"
-          },
-          "notes": {
-            "description": "Notes about the decision",
-            "example": "Both parties have agreed to the reduced amount.",
-            "maxLength": 2000,
-            "type": "string"
-          }
-        },
-        "required": [
-          "decision"
-        ],
-        "type": "object"
-      },
       "DeclineSignatureRequestDto": {
         "properties": {
           "comment": {
@@ -3669,204 +3610,6 @@
             "type": "string"
           }
         },
-        "type": "object"
-      },
-      "DisputeEvidenceResponseDto": {
-        "properties": {
-          "createdAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "description": {
-            "example": "Email correspondence",
-            "type": "string"
-          },
-          "documentId": {
-            "example": 12345,
-            "type": "number"
-          },
-          "id": {
-            "example": 1,
-            "type": "number"
-          },
-          "uploadedByRole": {
-            "example": "seller",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "documentId",
-          "uploadedByRole",
-          "createdAt"
-        ],
-        "type": "object"
-      },
-      "DisputeListResponseDto": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/DisputeResponseDto"
-            },
-            "type": "array"
-          },
-          "limit": {
-            "example": 20,
-            "type": "number"
-          },
-          "page": {
-            "example": 1,
-            "type": "number"
-          },
-          "total": {
-            "example": 5,
-            "type": "number"
-          },
-          "totalPages": {
-            "example": 1,
-            "type": "number"
-          }
-        },
-        "required": [
-          "items",
-          "total",
-          "page",
-          "limit",
-          "totalPages"
-        ],
-        "type": "object"
-      },
-      "DisputeMessageResponseDto": {
-        "properties": {
-          "createdAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "id": {
-            "example": 1,
-            "type": "number"
-          },
-          "isInternal": {
-            "example": false,
-            "type": "boolean"
-          },
-          "message": {
-            "example": "I have not received the documents as agreed.",
-            "type": "string"
-          },
-          "senderEmail": {
-            "example": "buyer@example.com",
-            "type": "string"
-          },
-          "senderRole": {
-            "example": "buyer",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "message",
-          "senderRole",
-          "senderEmail",
-          "isInternal",
-          "createdAt"
-        ],
-        "type": "object"
-      },
-      "DisputeResponseDto": {
-        "properties": {
-          "createdAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "description": {
-            "example": "Seller has not delivered the property documents.",
-            "type": "string"
-          },
-          "escrowUuid": {
-            "example": "esc_a1b2c3d4e5f6",
-            "type": "string"
-          },
-          "evidence": {
-            "items": {
-              "$ref": "#/components/schemas/DisputeEvidenceResponseDto"
-            },
-            "type": "array"
-          },
-          "id": {
-            "example": 1,
-            "type": "number"
-          },
-          "initiatedByEmail": {
-            "example": "buyer@example.com",
-            "type": "string"
-          },
-          "initiatedByRole": {
-            "example": "buyer",
-            "type": "string"
-          },
-          "messages": {
-            "items": {
-              "$ref": "#/components/schemas/DisputeMessageResponseDto"
-            },
-            "type": "array"
-          },
-          "partialAmount": {
-            "example": "80000.00",
-            "type": "string"
-          },
-          "reason": {
-            "enum": [
-              "goods_not_delivered",
-              "not_as_described",
-              "seller_unresponsive",
-              "buyer_unresponsive",
-              "documentation_issues",
-              "other"
-            ],
-            "example": "goods_not_delivered",
-            "type": "string"
-          },
-          "resolution": {
-            "enum": [
-              "release_to_seller",
-              "refund_to_buyer",
-              "partial_release",
-              "cancelled"
-            ],
-            "example": "partial_release",
-            "type": "string"
-          },
-          "resolutionNotes": {
-            "example": "After review, partial release approved.",
-            "type": "string"
-          },
-          "resolvedAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "status": {
-            "example": "open",
-            "type": "string"
-          },
-          "updatedAt": {
-            "format": "date-time",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "escrowUuid",
-          "reason",
-          "status",
-          "description",
-          "initiatedByRole",
-          "initiatedByEmail",
-          "messages",
-          "evidence",
-          "createdAt",
-          "updatedAt"
-        ],
         "type": "object"
       },
       "EditSignatureRequestDto": {
@@ -3899,434 +3642,6 @@
         ],
         "type": "object"
       },
-      "EscrowBriefResponseDto": {
-        "properties": {
-          "createdAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "currencyCode": {
-            "example": "USD",
-            "type": "string"
-          },
-          "escrowAmount": {
-            "example": "100000.00",
-            "type": "string"
-          },
-          "myRole": {
-            "example": "guarantor",
-            "type": "string"
-          },
-          "status": {
-            "enum": [
-              "draft",
-              "pending_signatures",
-              "awaiting_funds",
-              "funded",
-              "ready_for_release",
-              "disputed",
-              "completed",
-              "cancelled",
-              "refunded"
-            ],
-            "example": "funded",
-            "type": "string"
-          },
-          "title": {
-            "example": "Property Sale - 123 Main St",
-            "type": "string"
-          },
-          "uuid": {
-            "example": "esc_a1b2c3d4e5f6",
-            "type": "string"
-          }
-        },
-        "required": [
-          "uuid",
-          "title",
-          "status",
-          "escrowAmount",
-          "currencyCode",
-          "myRole",
-          "createdAt"
-        ],
-        "type": "object"
-      },
-      "EscrowContractListResponseDto": {
-        "properties": {
-          "items": {
-            "description": "List of escrow contracts",
-            "items": {
-              "$ref": "#/components/schemas/EscrowContractResponseDto"
-            },
-            "type": "array"
-          },
-          "limit": {
-            "description": "Items per page",
-            "example": 20,
-            "type": "number"
-          },
-          "page": {
-            "description": "Current page",
-            "example": 1,
-            "type": "number"
-          },
-          "total": {
-            "description": "Total count",
-            "example": 45,
-            "type": "number"
-          },
-          "totalPages": {
-            "description": "Total pages",
-            "example": 3,
-            "type": "number"
-          }
-        },
-        "required": [
-          "items",
-          "total",
-          "page",
-          "limit",
-          "totalPages"
-        ],
-        "type": "object"
-      },
-      "EscrowContractResponseDto": {
-        "properties": {
-          "createdAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "currencyCode": {
-            "description": "Currency code",
-            "example": "USD",
-            "type": "string"
-          },
-          "dealDetails": {
-            "description": "Deal details (property, conditions)",
-            "type": "object"
-          },
-          "description": {
-            "description": "Description",
-            "example": "Escrow for property sale between parties",
-            "type": "string"
-          },
-          "document": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/EscrowDocumentDto"
-              }
-            ],
-            "description": "Document for the escrow agreement"
-          },
-          "escrowAmount": {
-            "description": "Escrow amount",
-            "example": "100000.00",
-            "type": "string"
-          },
-          "fundedAt": {
-            "description": "Date when funds were deposited",
-            "format": "date-time",
-            "type": "string"
-          },
-          "guarantor": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/GuarantorInfoDto"
-              }
-            ],
-            "description": "Guarantor information"
-          },
-          "guarantorFeeFixed": {
-            "description": "Guarantor fixed fee",
-            "example": "500.00",
-            "type": "string"
-          },
-          "guarantorFeePercent": {
-            "description": "Guarantor fee percent",
-            "example": "1.5",
-            "type": "string"
-          },
-          "platformFeePercent": {
-            "description": "Platform fee percent",
-            "example": "0.5",
-            "type": "string"
-          },
-          "releaseConfirmationMode": {
-            "description": "Release confirmation mode",
-            "enum": [
-              "all_parties",
-              "guarantor_plus_one",
-              "guarantor_only"
-            ],
-            "example": "guarantor_plus_one",
-            "type": "string"
-          },
-          "releasedAt": {
-            "description": "Date when funds were released",
-            "format": "date-time",
-            "type": "string"
-          },
-          "signedAt": {
-            "description": "Date when all parties signed",
-            "format": "date-time",
-            "type": "string"
-          },
-          "signers": {
-            "description": "Contract signers",
-            "items": {
-              "$ref": "#/components/schemas/EscrowSignerResponseDto"
-            },
-            "type": "array"
-          },
-          "status": {
-            "description": "Current status",
-            "enum": [
-              "draft",
-              "pending_signatures",
-              "awaiting_funds",
-              "funded",
-              "ready_for_release",
-              "disputed",
-              "completed",
-              "cancelled",
-              "refunded"
-            ],
-            "example": "funded",
-            "type": "string"
-          },
-          "title": {
-            "description": "Escrow contract title",
-            "example": "Property Sale - 123 Main St",
-            "type": "string"
-          },
-          "updatedAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "uuid": {
-            "description": "Unique identifier",
-            "example": "esc_a1b2c3d4e5f6",
-            "type": "string"
-          }
-        },
-        "required": [
-          "uuid",
-          "title",
-          "status",
-          "escrowAmount",
-          "currencyCode",
-          "guarantorFeePercent",
-          "platformFeePercent",
-          "releaseConfirmationMode",
-          "guarantor",
-          "signers",
-          "document",
-          "createdAt",
-          "updatedAt"
-        ],
-        "type": "object"
-      },
-      "EscrowDocumentDto": {
-        "properties": {
-          "currentVersionId": {
-            "example": 67,
-            "type": "number"
-          },
-          "id": {
-            "example": 12345,
-            "type": "number"
-          },
-          "title": {
-            "example": "Escrow Agreement - Property Sale",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "title"
-        ],
-        "type": "object"
-      },
-      "EscrowSignerResponseDto": {
-        "properties": {
-          "bankDetails": {
-            "description": "Bank details (only for seller, masked)",
-            "type": "object"
-          },
-          "email": {
-            "example": "john@example.com",
-            "type": "string"
-          },
-          "hasOnboarded": {
-            "example": true,
-            "type": "boolean"
-          },
-          "hasPaymentMethod": {
-            "description": "Payment method attached (only for buyer)",
-            "type": "boolean"
-          },
-          "hasSigned": {
-            "example": false,
-            "type": "boolean"
-          },
-          "id": {
-            "example": 1,
-            "type": "number"
-          },
-          "name": {
-            "example": "John Smith",
-            "type": "string"
-          },
-          "role": {
-            "example": "guarantor",
-            "type": "string"
-          },
-          "signedAt": {
-            "format": "date-time",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "role",
-          "email",
-          "hasSigned",
-          "hasOnboarded"
-        ],
-        "type": "object"
-      },
-      "EscrowTransactionListResponseDto": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/EscrowTransactionResponseDto"
-            },
-            "type": "array"
-          },
-          "limit": {
-            "example": 20,
-            "type": "number"
-          },
-          "page": {
-            "example": 1,
-            "type": "number"
-          },
-          "total": {
-            "example": 3,
-            "type": "number"
-          },
-          "totalPages": {
-            "example": 1,
-            "type": "number"
-          }
-        },
-        "required": [
-          "items",
-          "total",
-          "page",
-          "limit",
-          "totalPages"
-        ],
-        "type": "object"
-      },
-      "EscrowTransactionResponseDto": {
-        "properties": {
-          "amount": {
-            "description": "Transaction amount",
-            "example": "100000.00",
-            "type": "string"
-          },
-          "completedAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "createdAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "currencyCode": {
-            "description": "Currency code",
-            "example": "USD",
-            "type": "string"
-          },
-          "escrowUuid": {
-            "example": "esc_a1b2c3d4e5f6",
-            "type": "string"
-          },
-          "externalTransferRef": {
-            "description": "External transfer reference (for releases)",
-            "example": "TRN-2026-01-15-001",
-            "type": "string"
-          },
-          "failureReason": {
-            "description": "Failure reason",
-            "type": "string"
-          },
-          "feeAmount": {
-            "description": "Fee amount",
-            "example": "2500.00",
-            "type": "string"
-          },
-          "id": {
-            "example": 1,
-            "type": "number"
-          },
-          "netAmount": {
-            "description": "Net amount after fees",
-            "example": "97500.00",
-            "type": "string"
-          },
-          "status": {
-            "description": "Transaction status",
-            "enum": [
-              "pending",
-              "processing",
-              "completed",
-              "failed",
-              "cancelled"
-            ],
-            "example": "completed",
-            "type": "string"
-          },
-          "stripePaymentIntentId": {
-            "description": "Stripe PaymentIntent ID",
-            "example": "pi_1234567890abcdef",
-            "type": "string"
-          },
-          "stripeRefundId": {
-            "description": "Stripe Refund ID (for refund transactions)",
-            "example": "re_1234567890abcdef",
-            "type": "string"
-          },
-          "type": {
-            "description": "Transaction type",
-            "enum": [
-              "deposit",
-              "release",
-              "refund",
-              "partial_refund"
-            ],
-            "example": "deposit",
-            "type": "string"
-          },
-          "updatedAt": {
-            "format": "date-time",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "escrowUuid",
-          "type",
-          "status",
-          "amount",
-          "currencyCode",
-          "createdAt",
-          "updatedAt"
-        ],
-        "type": "object"
-      },
       "EstimatedFeeDto": {
         "properties": {
           "fixed": {
@@ -4351,31 +3666,6 @@
           "fixed",
           "total",
           "isEstimate"
-        ],
-        "type": "object"
-      },
-      "ExecuteReleaseDto": {
-        "properties": {
-          "amount": {
-            "description": "Amount released to seller",
-            "example": "97500.00",
-            "type": "string"
-          },
-          "notes": {
-            "description": "Notes about the transfer",
-            "maxLength": 1000,
-            "type": "string"
-          },
-          "transferReference": {
-            "description": "External transfer reference (bank transfer ID)",
-            "example": "TRN-2026-01-15-001",
-            "maxLength": 255,
-            "type": "string"
-          }
-        },
-        "required": [
-          "transferReference",
-          "amount"
         ],
         "type": "object"
       },
@@ -4407,82 +3697,6 @@
         "required": [
           "feature",
           "value"
-        ],
-        "type": "object"
-      },
-      "FeeBreakdownResponseDto": {
-        "properties": {
-          "amountToCharge": {
-            "description": "Amount to be charged to buyer",
-            "example": "100000.00",
-            "type": "string"
-          },
-          "currencyCode": {
-            "description": "Currency code",
-            "example": "USD",
-            "type": "string"
-          },
-          "currencyConversion": {
-            "description": "Currency conversion info (if applicable)",
-            "type": "object"
-          },
-          "escrowAmount": {
-            "description": "Original escrow amount",
-            "example": "100000.00",
-            "type": "string"
-          },
-          "guarantorFee": {
-            "description": "Guarantor fee total",
-            "example": "2000.00",
-            "type": "string"
-          },
-          "guarantorFeeFixed": {
-            "description": "Guarantor fixed fee",
-            "example": "500.00",
-            "type": "string"
-          },
-          "guarantorFeePercent": {
-            "description": "Guarantor fee percent",
-            "example": "1.5",
-            "type": "string"
-          },
-          "netAmountToSeller": {
-            "description": "Net amount to seller",
-            "example": "94600.00",
-            "type": "string"
-          },
-          "platformFee": {
-            "description": "Platform fee (ChainDoc)",
-            "example": "500.00",
-            "type": "string"
-          },
-          "platformFeePercent": {
-            "description": "Platform fee percent",
-            "example": "0.5",
-            "type": "string"
-          },
-          "stripeProcessingFee": {
-            "description": "Stripe processing fee (estimated)",
-            "example": "2900.00",
-            "type": "string"
-          },
-          "totalFees": {
-            "description": "Total fees",
-            "example": "5400.00",
-            "type": "string"
-          }
-        },
-        "required": [
-          "escrowAmount",
-          "currencyCode",
-          "platformFee",
-          "platformFeePercent",
-          "guarantorFee",
-          "guarantorFeePercent",
-          "stripeProcessingFee",
-          "totalFees",
-          "netAmountToSeller",
-          "amountToCharge"
         ],
         "type": "object"
       },
@@ -4673,19 +3887,18 @@
         ],
         "type": "object"
       },
-      "FinalizeSessionDto": {
+      "GenerateDto": {
         "properties": {
-          "documentDescription": {
-            "example": "Service agreement for Acme Inc.",
-            "type": "string"
+          "answers": {
+            "description": "Answers to the clarifying questions, keyed by question index or text.",
+            "type": "object"
           },
-          "documentName": {
-            "example": "My Service Agreement",
+          "jobUuid": {
             "type": "string"
           }
         },
         "required": [
-          "documentName"
+          "jobUuid"
         ],
         "type": "object"
       },
@@ -4759,204 +3972,6 @@
         ],
         "type": "object"
       },
-      "GuarantorInfoDto": {
-        "properties": {
-          "businessName": {
-            "example": "TrustGuard Escrow Services",
-            "type": "string"
-          },
-          "completedEscrows": {
-            "example": 156,
-            "type": "number"
-          },
-          "email": {
-            "example": "guarantor@trustguard.com",
-            "type": "string"
-          },
-          "id": {
-            "example": 1,
-            "type": "number"
-          },
-          "rating": {
-            "example": 4.8,
-            "type": "number"
-          }
-        },
-        "required": [
-          "id",
-          "businessName",
-          "email"
-        ],
-        "type": "object"
-      },
-      "GuarantorListItemDto": {
-        "properties": {
-          "businessName": {
-            "example": "TrustGuard Escrow Services",
-            "type": "string"
-          },
-          "completedEscrows": {
-            "example": 189,
-            "type": "number"
-          },
-          "feeFixed": {
-            "example": "500.00",
-            "type": "string"
-          },
-          "feePercent": {
-            "example": "1.5",
-            "type": "string"
-          },
-          "id": {
-            "example": 1,
-            "type": "number"
-          },
-          "isVerified": {
-            "example": true,
-            "type": "boolean"
-          },
-          "rating": {
-            "example": 4.8,
-            "type": "number"
-          },
-          "reviews": {
-            "example": 156,
-            "type": "number"
-          },
-          "supportedCurrencies": {
-            "example": [
-              "USD",
-              "EUR",
-              "GBP"
-            ],
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "id",
-          "businessName",
-          "rating",
-          "reviews",
-          "completedEscrows",
-          "feePercent",
-          "supportedCurrencies",
-          "isVerified"
-        ],
-        "type": "object"
-      },
-      "GuarantorListResponseDto": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/GuarantorListItemDto"
-            },
-            "type": "array"
-          },
-          "limit": {
-            "example": 20,
-            "type": "number"
-          },
-          "page": {
-            "example": 1,
-            "type": "number"
-          },
-          "total": {
-            "example": 25,
-            "type": "number"
-          },
-          "totalPages": {
-            "example": 2,
-            "type": "number"
-          }
-        },
-        "required": [
-          "items",
-          "total",
-          "page",
-          "limit",
-          "totalPages"
-        ],
-        "type": "object"
-      },
-      "GuarantorReputationResponseDto": {
-        "properties": {
-          "averageRating": {
-            "description": "Average rating (1-5)",
-            "example": 4.8,
-            "type": "number"
-          },
-          "averageResolutionDays": {
-            "description": "Average resolution time (days)",
-            "example": 3.2,
-            "type": "number"
-          },
-          "businessName": {
-            "example": "TrustGuard Escrow Services",
-            "type": "string"
-          },
-          "completedEscrows": {
-            "description": "Total completed escrows",
-            "example": 189,
-            "type": "number"
-          },
-          "disputesResolved": {
-            "description": "Disputes resolved count",
-            "example": 12,
-            "type": "number"
-          },
-          "guarantorId": {
-            "example": 1,
-            "type": "number"
-          },
-          "isVerified": {
-            "description": "Is verified by platform",
-            "example": true,
-            "type": "boolean"
-          },
-          "memberSince": {
-            "description": "Member since",
-            "format": "date-time",
-            "type": "string"
-          },
-          "primaryCurrency": {
-            "description": "Primary currency",
-            "example": "USD",
-            "type": "string"
-          },
-          "totalReviews": {
-            "description": "Total number of reviews",
-            "example": 156,
-            "type": "number"
-          },
-          "totalVolume": {
-            "description": "Total escrow volume",
-            "example": "5600000.00",
-            "type": "string"
-          },
-          "verifiedAt": {
-            "description": "Verification date",
-            "format": "date-time",
-            "type": "string"
-          }
-        },
-        "required": [
-          "guarantorId",
-          "businessName",
-          "averageRating",
-          "totalReviews",
-          "completedEscrows",
-          "totalVolume",
-          "primaryCurrency",
-          "disputesResolved",
-          "averageResolutionDays",
-          "isVerified",
-          "memberSince"
-        ],
-        "type": "object"
-      },
       "HourlyTrendPointDto": {
         "properties": {
           "failed": {
@@ -5014,6 +4029,20 @@
           "fileId",
           "hashtags"
         ],
+        "type": "object"
+      },
+      "ImportLibraryTemplateDto": {
+        "properties": {
+          "customDescription": {
+            "example": "Imported from library",
+            "type": "string"
+          },
+          "customName": {
+            "description": "Name for the resulting personal Template copy. When omitted defaults to `<library.name> (imported)`.",
+            "example": "Acme NDA",
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "ImportPipedriveDocumentDto": {
@@ -5153,22 +4182,49 @@
         ],
         "type": "object"
       },
-      "InitiateRefundDto": {
+      "InitPipedriveChunkedUploadDto": {
         "properties": {
-          "amount": {
-            "description": "Partial refund amount (leave empty for full refund)",
-            "example": "50000.00",
+          "filename": {
+            "example": "contract.pdf",
             "type": "string"
           },
-          "reason": {
-            "description": "Reason for the refund",
-            "example": "Deal cancelled by mutual agreement",
-            "maxLength": 2000,
+          "mimeType": {
+            "example": "application/pdf",
             "type": "string"
+          },
+          "size": {
+            "description": "Total file size in bytes",
+            "example": 1048576,
+            "type": "number"
           }
         },
         "required": [
-          "reason"
+          "filename",
+          "mimeType",
+          "size"
+        ],
+        "type": "object"
+      },
+      "InitPublicChunkedUploadDto": {
+        "properties": {
+          "filename": {
+            "example": "contract.pdf",
+            "type": "string"
+          },
+          "mimeType": {
+            "example": "application/pdf",
+            "type": "string"
+          },
+          "size": {
+            "description": "Total file size in bytes",
+            "example": 1048576,
+            "type": "number"
+          }
+        },
+        "required": [
+          "filename",
+          "mimeType",
+          "size"
         ],
         "type": "object"
       },
@@ -5413,6 +4469,38 @@
         ],
         "type": "object"
       },
+      "JsonImportLibraryTemplateDto": {
+        "properties": {
+          "autoPublish": {
+            "description": "When true, publish the template after creating the first version.",
+            "example": false,
+            "type": "boolean"
+          },
+          "content": {
+            "$ref": "#/components/schemas/CreateLibraryVersionDto"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/CreateLibraryTemplateDto"
+          },
+          "sourceMetadata": {
+            "example": [
+              {
+                "key": "importedFrom",
+                "value": "legacy-doc-x"
+              }
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "metadata",
+          "content"
+        ],
+        "type": "object"
+      },
       "LinkPaymentMethodDto": {
         "properties": {
           "paymentMethodId": {
@@ -5473,40 +4561,6 @@
         "properties": {},
         "type": "object"
       },
-      "MyEscrowsListResponseDto": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/EscrowBriefResponseDto"
-            },
-            "type": "array"
-          },
-          "limit": {
-            "example": 20,
-            "type": "number"
-          },
-          "page": {
-            "example": 1,
-            "type": "number"
-          },
-          "total": {
-            "example": 12,
-            "type": "number"
-          },
-          "totalPages": {
-            "example": 1,
-            "type": "number"
-          }
-        },
-        "required": [
-          "items",
-          "total",
-          "page",
-          "limit",
-          "totalPages"
-        ],
-        "type": "object"
-      },
       "MySigningStatusDto": {
         "properties": {
           "canSign": {
@@ -5540,11 +4594,86 @@
         ],
         "type": "object"
       },
-      "NotificationEntityDto": {
+      "NotificationDto": {
         "properties": {
-          "body": {
-            "example": 1,
-            "type": "object"
+          "actionUrl": {
+            "description": "Frontend link the row navigates to",
+            "type": "string"
+          },
+          "category": {
+            "enum": [
+              "DOCUMENTS",
+              "SIGNATURES",
+              "CONTRACTS",
+              "CONTRACT_PAYMENTS",
+              "SUBSCRIPTION",
+              "TEAM"
+            ],
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "entityId": {
+            "example": 42,
+            "type": "number"
+          },
+          "entityType": {
+            "enum": [
+              "contract",
+              "document",
+              "invoice",
+              "signature_request",
+              "team",
+              "user"
+            ],
+            "type": "string"
+          },
+          "event": {
+            "enum": [
+              "CONTRACT_CREATED",
+              "CONTRACT_CONTRAGENT_LINKED",
+              "CONTRACT_SIGNING_REQUEST_CREATED",
+              "CONTRACT_SIGNING_REQUEST_DECLINED",
+              "CONTRACT_SIGNED",
+              "CONTRACT_ACTIVATED",
+              "CONTRACT_SUSPENDED",
+              "CONTRACT_REJECTED",
+              "CONTRACT_EXPIRED",
+              "CONTRACT_RECURRING_REQUESTED",
+              "CONTRACT_RECURRING_APPROVED",
+              "CONTRACT_RECURRING_REJECTED",
+              "CONTRACT_TERMINATION_REQUESTED",
+              "CONTRACT_TERMINATION_APPROVED",
+              "CONTRACT_TERMINATION_REJECTED",
+              "CONTRACT_TERMINATION_CANCELLED",
+              "CONTRACT_TERMINATED",
+              "CONTRACT_INVOICE_CREATED",
+              "CONTRACT_INVOICE_SENT",
+              "CONTRACT_INVOICE_PENDING",
+              "CONTRACT_INVOICE_PAID",
+              "CONTRACT_INVOICE_OVERDUE",
+              "CONTRACT_INVOICE_CANCELLED",
+              "CONTRACT_PAYMENT_SUCCEEDED",
+              "CONTRACT_PAYMENT_FAILED",
+              "CONTRACT_REFUND_RECEIVED",
+              "CONTRACT_BANK_TRANSFER_RECEIVED",
+              "CONTRACT_BANK_TRANSFER_EXPIRED",
+              "SIGNATURE_INVITE_RECEIVED",
+              "SIGNATURE_REQUEST_REMINDER",
+              "SIGNATURE_REQUEST_CREATED",
+              "DOCUMENT_SIGNED",
+              "SIGNATURE_REQUEST_COMPLETED",
+              "SIGNATURE_REQUEST_CANCELLED",
+              "SIGNATURE_REQUEST_DECLINED",
+              "DOCUMENT_SHARED",
+              "DOCUMENT_COMMENT_CREATED",
+              "TEAM_INVITE_SENT",
+              "TEAM_INVITE_ACCEPTED",
+              "TEAM_MEMBER_ROLE_CHANGED",
+              "TEAM_MEMBER_REMOVED"
+            ],
+            "type": "string"
           },
           "id": {
             "example": 1,
@@ -5554,16 +4683,74 @@
             "example": false,
             "type": "boolean"
           },
-          "userId": {
-            "example": 1,
-            "type": "number"
+          "message": {
+            "description": "Rendered message in the recipient language",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": true,
+            "description": "Structured render-at-read payload",
+            "type": "object"
+          },
+          "readAt": {
+            "description": "When the recipient marked it read",
+            "type": "string"
+          },
+          "title": {
+            "description": "Rendered title in the recipient language",
+            "type": "string"
           }
         },
         "required": [
           "id",
-          "userId",
-          "body",
-          "isRead"
+          "event",
+          "category",
+          "params",
+          "isRead",
+          "createdAt",
+          "title",
+          "message"
+        ],
+        "type": "object"
+      },
+      "NotificationFeedResponseDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationDto"
+            },
+            "type": "array"
+          },
+          "pageNumber": {
+            "example": 1,
+            "type": "number"
+          },
+          "pageSize": {
+            "example": 20,
+            "type": "number"
+          },
+          "total": {
+            "description": "Total notifications matching the filter",
+            "example": 124,
+            "type": "number"
+          },
+          "totalPages": {
+            "example": 7,
+            "type": "number"
+          },
+          "unreadCount": {
+            "description": "Unread count across the whole feed (ignores filters)",
+            "example": 7,
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "unreadCount",
+          "pageNumber",
+          "pageSize",
+          "totalPages"
         ],
         "type": "object"
       },
@@ -5581,14 +4768,6 @@
             "description": "Email notifications for documents",
             "type": "boolean"
           },
-          "emailEscrow": {
-            "description": "Email notifications for escrow",
-            "type": "boolean"
-          },
-          "emailEscrowDisputes": {
-            "description": "Email notifications for escrow disputes",
-            "type": "boolean"
-          },
           "emailMarketing": {
             "description": "Marketing emails",
             "type": "boolean"
@@ -5604,6 +4783,30 @@
           "emailTeam": {
             "description": "Email notifications for team",
             "type": "boolean"
+          },
+          "inAppContractPayments": {
+            "description": "In-app notifications for contract payments",
+            "type": "boolean"
+          },
+          "inAppContracts": {
+            "description": "In-app notifications for contracts",
+            "type": "boolean"
+          },
+          "inAppDocuments": {
+            "description": "In-app notifications for documents",
+            "type": "boolean"
+          },
+          "inAppSignatures": {
+            "description": "In-app notifications for signatures",
+            "type": "boolean"
+          },
+          "inAppSubscription": {
+            "description": "In-app notifications for subscription",
+            "type": "boolean"
+          },
+          "inAppTeam": {
+            "description": "In-app notifications for team",
+            "type": "boolean"
           }
         },
         "required": [
@@ -5611,11 +4814,15 @@
           "emailSignatures",
           "emailContracts",
           "emailContractPayments",
-          "emailEscrow",
-          "emailEscrowDisputes",
           "emailTeam",
           "emailSubscription",
-          "emailMarketing"
+          "emailMarketing",
+          "inAppDocuments",
+          "inAppSignatures",
+          "inAppContracts",
+          "inAppContractPayments",
+          "inAppTeam",
+          "inAppSubscription"
         ],
         "type": "object"
       },
@@ -5632,17 +4839,12 @@
           "lastName": {
             "example": "Doe",
             "type": "string"
-          },
-          "referrerCode": {
-            "example": "UA",
-            "type": "string"
           }
         },
         "required": [
           "firstName",
           "lastName",
-          "countryCode",
-          "referrerCode"
+          "countryCode"
         ],
         "type": "object"
       },
@@ -6244,6 +5446,25 @@
             "type": "object"
           }
         },
+        "type": "object"
+      },
+      "PreviewUnsavedLibrarySnapshotDto": {
+        "properties": {
+          "contentJson": {
+            "description": "Tiptap JSON AST",
+            "type": "object"
+          },
+          "renderConfig": {
+            "$ref": "#/components/schemas/RenderConfigDto"
+          },
+          "variables": {
+            "description": "Variable values to substitute (key → value)",
+            "type": "object"
+          }
+        },
+        "required": [
+          "contentJson"
+        ],
         "type": "object"
       },
       "PreviewUnsavedPdfDto": {
@@ -8834,6 +8055,15 @@
         ],
         "type": "object"
       },
+      "PublishLibraryTemplateDto": {
+        "properties": {
+          "changelog": {
+            "example": "First public release",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "PublishTemplateDto": {
         "properties": {
           "changelog": {
@@ -8890,6 +8120,24 @@
           "active",
           "delayed",
           "failed"
+        ],
+        "type": "object"
+      },
+      "ReferralMeResponseDto": {
+        "properties": {
+          "code": {
+            "example": "A3KP7QXM",
+            "type": "string"
+          },
+          "invitedCount": {
+            "description": "How many users this user has referred",
+            "example": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "code",
+          "invitedCount"
         ],
         "type": "object"
       },
@@ -9064,37 +8312,6 @@
         ],
         "type": "object"
       },
-      "ResolveDisputeDto": {
-        "properties": {
-          "partialAmount": {
-            "description": "Partial amount (if resolution is partial_release)",
-            "example": "80000.00",
-            "type": "string"
-          },
-          "resolution": {
-            "description": "Resolution decision",
-            "enum": [
-              "release_to_seller",
-              "refund_to_buyer",
-              "partial_release",
-              "cancelled"
-            ],
-            "example": "partial_release",
-            "type": "string"
-          },
-          "resolutionNotes": {
-            "description": "Notes about the resolution",
-            "example": "After reviewing evidence from both parties, a partial release of 80% to seller is appropriate.",
-            "maxLength": 2000,
-            "type": "string"
-          }
-        },
-        "required": [
-          "resolution",
-          "resolutionNotes"
-        ],
-        "type": "object"
-      },
       "RevenueStatsDto": {
         "properties": {
           "currency": {
@@ -9123,27 +8340,6 @@
           "outstanding",
           "overdue",
           "trend30d"
-        ],
-        "type": "object"
-      },
-      "RewriteSelectionDto": {
-        "properties": {
-          "instruction": {
-            "example": "Make it more formal and concise",
-            "type": "string"
-          },
-          "language": {
-            "example": "English",
-            "type": "string"
-          },
-          "selectedText": {
-            "example": "The party of the first part hereby agrees...",
-            "type": "string"
-          }
-        },
-        "required": [
-          "selectedText",
-          "instruction"
         ],
         "type": "object"
       },
@@ -9211,35 +8407,6 @@
         "required": [
           "items",
           "total"
-        ],
-        "type": "object"
-      },
-      "SellerSignDto": {
-        "properties": {
-          "bankDetails": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/BankDetailsDto"
-              }
-            ],
-            "description": "Seller bank details for receiving funds"
-          },
-          "meta": {
-            "description": "Signature metadata (position, page, etc.)",
-            "items": {
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "signatureId": {
-            "description": "User signature ID from the signature library",
-            "example": 123,
-            "type": "number"
-          }
-        },
-        "required": [
-          "bankDetails",
-          "signatureId"
         ],
         "type": "object"
       },
@@ -9312,18 +8479,6 @@
         ],
         "type": "object"
       },
-      "SendMessageDto": {
-        "properties": {
-          "message": {
-            "example": "Make the payment terms section more detailed",
-            "type": "string"
-          }
-        },
-        "required": [
-          "message"
-        ],
-        "type": "object"
-      },
       "SendPublicDocumentLinkDto": {
         "properties": {
           "email": {
@@ -9332,7 +8487,7 @@
             "type": "string"
           },
           "text": {
-            "description": "Optional message included in the share email.",
+            "description": "Optional message included in the share email (max 1000 characters).",
             "example": "Please review this document.",
             "type": "string"
           }
@@ -10867,6 +10022,18 @@
         ],
         "type": "object"
       },
+      "UnreadCountDto": {
+        "properties": {
+          "count": {
+            "example": 7,
+            "type": "number"
+          }
+        },
+        "required": [
+          "count"
+        ],
+        "type": "object"
+      },
       "UpcomingPaymentsDto": {
         "properties": {
           "count": {
@@ -11095,6 +10262,78 @@
         ],
         "type": "object"
       },
+      "UpdateDocumentFromStorageDto": {
+        "properties": {
+          "description": {
+            "example": "This is a document description.",
+            "type": "string"
+          },
+          "documentMeta": {
+            "example": [
+              {
+                "key": "author",
+                "value": "John Doe"
+              }
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "hashtags": {
+            "description": "An array of category IDs with a maximum of 3 unique items.",
+            "example": [
+              "#tag1",
+              "#tag2",
+              "#tag3"
+            ],
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "isForSigning": {
+            "example": true,
+            "type": "boolean"
+          },
+          "meta": {
+            "example": [
+              {
+                "key": "author",
+                "value": "John Doe"
+              }
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "example": "Doc 1",
+            "type": "string"
+          },
+          "status": {
+            "example": "draft",
+            "type": "string"
+          },
+          "storageFileId": {
+            "description": "UUID of a READY Drive storage file to set as the new document version.",
+            "example": "b3f1c2d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "isForSigning",
+          "meta",
+          "documentMeta",
+          "hashtags",
+          "status",
+          "storageFileId"
+        ],
+        "type": "object"
+      },
       "UpdateDocumentRightsDto": {
         "properties": {
           "accessEmails": {
@@ -11131,139 +10370,8 @@
         ],
         "type": "object"
       },
-      "UpdateEscrowContractDto": {
-        "properties": {
-          "buyerEmail": {
-            "description": "Buyer email address",
-            "example": "new-buyer@example.com",
-            "type": "string"
-          },
-          "currencyCode": {
-            "description": "Currency code (ISO 4217)",
-            "example": "EUR",
-            "type": "string"
-          },
-          "dealDetails": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/DealDetailsDto"
-              }
-            ],
-            "description": "Deal details"
-          },
-          "description": {
-            "description": "Escrow contract description",
-            "maxLength": 2000,
-            "type": "string"
-          },
-          "documentId": {
-            "description": "Document ID",
-            "example": 12346,
-            "type": "number"
-          },
-          "escrowAmount": {
-            "description": "Escrow amount (decimal string)",
-            "example": "120000.00",
-            "type": "string"
-          },
-          "guarantorFeeFixed": {
-            "description": "Guarantor fixed fee",
-            "example": "750.00",
-            "type": "string"
-          },
-          "guarantorFeePercent": {
-            "description": "Guarantor fee percent",
-            "example": "2.0",
-            "type": "string"
-          },
-          "releaseConfirmationMode": {
-            "description": "Release confirmation mode",
-            "enum": [
-              "all_parties",
-              "guarantor_plus_one",
-              "guarantor_only"
-            ],
-            "type": "string"
-          },
-          "sellerEmail": {
-            "description": "Seller email address",
-            "example": "new-seller@example.com",
-            "type": "string"
-          },
-          "title": {
-            "description": "Escrow contract title",
-            "example": "Updated Property Sale",
-            "maxLength": 255,
-            "type": "string"
-          }
-        },
-        "type": "object"
-      },
       "UpdateFileDto": {
         "properties": {},
-        "type": "object"
-      },
-      "UpdateGuarantorProfileDto": {
-        "properties": {
-          "address": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/AddressDto"
-              }
-            ],
-            "description": "Business address"
-          },
-          "contactEmail": {
-            "description": "Contact email",
-            "type": "string"
-          },
-          "contactPhone": {
-            "description": "Contact phone",
-            "type": "string"
-          },
-          "defaultFeeFixed": {
-            "description": "Default fixed fee",
-            "type": "string"
-          },
-          "defaultFeePercent": {
-            "description": "Default fee percentage",
-            "type": "string"
-          },
-          "maximumEscrowAmount": {
-            "description": "Maximum escrow amount",
-            "type": "string"
-          },
-          "minimumEscrowAmount": {
-            "description": "Minimum escrow amount",
-            "type": "string"
-          },
-          "serviceDescription": {
-            "description": "Description of escrow services offered",
-            "type": "string"
-          },
-          "supportedCurrencies": {
-            "description": "Supported currencies",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "tradingName": {
-            "description": "Trading name if different",
-            "type": "string"
-          },
-          "transactionTypes": {
-            "description": "Types of transactions handled",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "vatNumber": {
-            "description": "VAT number if applicable",
-            "type": "string"
-          }
-        },
         "type": "object"
       },
       "UpdateInvoiceDto": {
@@ -11302,6 +10410,51 @@
         ],
         "type": "object"
       },
+      "UpdateLibraryTemplateDto": {
+        "properties": {
+          "category": {
+            "enum": [
+              "contract",
+              "agreement",
+              "invoice",
+              "nda",
+              "proposal",
+              "letter",
+              "other"
+            ],
+            "example": "nda",
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "jurisdiction": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "name": {
+            "example": "Updated NDA",
+            "type": "string"
+          },
+          "slug": {
+            "example": "standard-nda",
+            "type": "string"
+          },
+          "tags": {
+            "example": [
+              "nda",
+              "employment"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
       "UpdateNotificationSettingsDto": {
         "properties": {
           "emailContractPayments": {
@@ -11311,12 +10464,6 @@
             "type": "boolean"
           },
           "emailDocuments": {
-            "type": "boolean"
-          },
-          "emailEscrow": {
-            "type": "boolean"
-          },
-          "emailEscrowDisputes": {
             "type": "boolean"
           },
           "emailMarketing": {
@@ -11329,6 +10476,24 @@
             "type": "boolean"
           },
           "emailTeam": {
+            "type": "boolean"
+          },
+          "inAppContractPayments": {
+            "type": "boolean"
+          },
+          "inAppContracts": {
+            "type": "boolean"
+          },
+          "inAppDocuments": {
+            "type": "boolean"
+          },
+          "inAppSignatures": {
+            "type": "boolean"
+          },
+          "inAppSubscription": {
+            "type": "boolean"
+          },
+          "inAppTeam": {
             "type": "boolean"
           }
         },
@@ -11669,16 +10834,19 @@
             "type": "array"
           },
           "countryCode": {
-            "type": "string"
+            "nullable": true,
+            "type": "object"
           },
           "coverFileId": {
-            "type": "number"
+            "nullable": true,
+            "type": "object"
           },
           "fullDescription": {
             "type": "string"
           },
           "headline": {
-            "type": "string"
+            "nullable": true,
+            "type": "object"
           },
           "highlights": {
             "items": {
@@ -11693,7 +10861,8 @@
             "type": "array"
           },
           "logoFileId": {
-            "type": "number"
+            "nullable": true,
+            "type": "object"
           },
           "noIndex": {
             "default": false,
@@ -11701,28 +10870,35 @@
           },
           "ogDescription": {
             "maxLength": 200,
-            "type": "string"
+            "nullable": true,
+            "type": "object"
           },
           "ogImageFileId": {
-            "type": "number"
+            "nullable": true,
+            "type": "object"
           },
           "ogTitle": {
             "maxLength": 60,
-            "type": "string"
+            "nullable": true,
+            "type": "object"
           },
           "publicEmail": {
-            "type": "string"
+            "nullable": true,
+            "type": "object"
           },
           "publicPhone": {
-            "type": "string"
+            "nullable": true,
+            "type": "object"
           },
           "seoDescription": {
             "maxLength": 160,
-            "type": "string"
+            "nullable": true,
+            "type": "object"
           },
           "seoTitle": {
             "maxLength": 60,
-            "type": "string"
+            "nullable": true,
+            "type": "object"
           },
           "serviceRegions": {
             "items": {
@@ -11823,6 +10999,10 @@
       },
       "UpdateTemplateDto": {
         "properties": {
+          "allowEmpty": {
+            "description": "Permit persisting an empty document (intentional revert: discard / restore). Without it the backend no-ops a blank overwrite of a populated version (data-loss guard).",
+            "type": "boolean"
+          },
           "category": {
             "enum": [
               "contract",
@@ -11893,10 +11073,6 @@
             "example": "John",
             "type": "string"
           },
-          "isBanned": {
-            "example": false,
-            "type": "boolean"
-          },
           "isVerifiedEmail": {
             "example": false,
             "type": "boolean"
@@ -11929,8 +11105,7 @@
           "firstName",
           "lastName",
           "isVerifiedEmail",
-          "isVerifiedKYC",
-          "isBanned"
+          "isVerifiedKYC"
         ],
         "type": "object"
       },
@@ -15325,6 +14500,50 @@
         ]
       }
     },
+    "/api/v1/documents/from-storage": {
+      "post": {
+        "description": "Requires secret key (sk_). Turns a previously-uploaded storage file (chunked or simple upload) into a document with a first version. Set status to \"published\" to verify in blockchain immediately.",
+        "operationId": "PublicApiController_createDocumentFromStorage",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePublicDocumentFromStorageDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Create a document from an uploaded storage file (sk_)",
+        "tags": [
+          "PublicApi",
+          "Documents"
+        ]
+      }
+    },
     "/api/v1/documents/search": {
       "get": {
         "description": "Returns a paginated list of documents the API key owner can access, filtered by an optional free-text query and lifecycle status. Both pk_ and sk_ keys are accepted.",
@@ -16878,6 +16097,176 @@
         ]
       }
     },
+    "/api/v1/media/chunked": {
+      "post": {
+        "operationId": "PublicApiController_initChunkedUpload",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InitPublicChunkedUploadDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Initialize a resumable chunked upload (sk_)",
+        "tags": [
+          "PublicApi",
+          "Media"
+        ]
+      }
+    },
+    "/api/v1/media/chunked/{uploadId}": {
+      "delete": {
+        "operationId": "PublicApiController_cancelChunkedUpload",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "uploadId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Cancel a chunked upload (sk_)",
+        "tags": [
+          "PublicApi",
+          "Media"
+        ]
+      },
+      "get": {
+        "operationId": "PublicApiController_getChunkedUploadStatus",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "uploadId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Get chunked upload status (sk_)",
+        "tags": [
+          "PublicApi",
+          "Media"
+        ]
+      },
+      "patch": {
+        "operationId": "PublicApiController_uploadChunk",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "uploadId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "upload-offset",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Upload a chunk (sk_). Raw binary body with the Upload-Offset header.",
+        "tags": [
+          "PublicApi",
+          "Media"
+        ]
+      }
+    },
     "/api/v1/media/upload": {
       "post": {
         "description": "Requires secret key (sk_). Uploads files to temporary storage and returns media objects that can be used in document creation.\n\n**Supported file types:**\n- Documents: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT\n- Images: JPG, JPEG, PNG, GIF, WEBP, SVG\n- Videos: MP4, AVI, MOV, WMV\n\n**Response includes:**\n- `type`: Media type (document/image/video)\n- `key`: S3 storage key (use this in document creation)\n- `url`: Full URL to access the file\n- `hash`: File hash for verification\n- `size`: File size in bytes\n- `thumbnail`: Thumbnail URL (for images)\n\n**Usage:**\n1. Upload files using this endpoint\n2. Use the returned `key` or full media object in document creation\n",
@@ -17347,6 +16736,36 @@
         ]
       }
     },
+    "/api/v1/pipedrive/documents/create-from-file": {
+      "post": {
+        "operationId": "PipedriveController_createDocumentFromFile",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePipedriveDocumentFromStorageDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a document from an uploaded storage file",
+        "tags": [
+          "Pipedrive Integration"
+        ]
+      }
+    },
     "/api/v1/pipedrive/documents/download/{documentVersion}": {
       "get": {
         "operationId": "PipedriveController_downloadDocument",
@@ -17533,6 +16952,45 @@
         ]
       }
     },
+    "/api/v1/pipedrive/documents/update/{documentId}/from-file": {
+      "post": {
+        "operationId": "PipedriveController_updateDocumentFromFile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "documentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDocumentFromStorageDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a new document version from an uploaded storage file",
+        "tags": [
+          "Pipedrive Integration"
+        ]
+      }
+    },
     "/api/v1/pipedrive/files": {
       "get": {
         "operationId": "PipedriveController_listFiles",
@@ -17591,6 +17049,127 @@
           }
         ],
         "summary": "List files from Pipedrive",
+        "tags": [
+          "Pipedrive Integration"
+        ]
+      }
+    },
+    "/api/v1/pipedrive/media/chunked": {
+      "post": {
+        "operationId": "PipedriveController_initChunkedUpload",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InitPipedriveChunkedUploadDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Initialize a resumable chunked upload",
+        "tags": [
+          "Pipedrive Integration"
+        ]
+      }
+    },
+    "/api/v1/pipedrive/media/chunked/{uploadId}": {
+      "delete": {
+        "operationId": "PipedriveController_cancelChunkedUpload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "uploadId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel a chunked upload",
+        "tags": [
+          "Pipedrive Integration"
+        ]
+      },
+      "get": {
+        "operationId": "PipedriveController_getChunkedUploadStatus",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "uploadId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get chunked upload status",
+        "tags": [
+          "Pipedrive Integration"
+        ]
+      },
+      "patch": {
+        "operationId": "PipedriveController_uploadChunk",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "uploadId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "upload-offset",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Upload a chunk (raw binary body with the Upload-Offset header)",
         "tags": [
           "Pipedrive Integration"
         ]
