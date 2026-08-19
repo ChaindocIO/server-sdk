@@ -1493,7 +1493,6 @@
           "email",
           "code",
           "name",
-          "description",
           "media"
         ],
         "type": "object"
@@ -1809,20 +1808,16 @@
             "type": "array"
           },
           "hashtags": {
-            "description": "An array of category IDs with a maximum of 3 unique items.",
+            "description": "An array of hashtags with a maximum of 3 unique items.",
             "example": [
               "#tag1",
               "#tag2",
               "#tag3"
             ],
             "items": {
-              "type": "number"
+              "type": "string"
             },
             "type": "array"
-          },
-          "isForSigning": {
-            "example": true,
-            "type": "boolean"
           },
           "media": {
             "example": "post",
@@ -1855,12 +1850,8 @@
         },
         "required": [
           "name",
-          "description",
           "media",
-          "isForSigning",
-          "meta",
           "documentMeta",
-          "hashtags",
           "status",
           "pipedriveDealId"
         ],
@@ -1916,20 +1907,16 @@
             "type": "array"
           },
           "hashtags": {
-            "description": "An array of category IDs with a maximum of 3 unique items.",
+            "description": "An array of hashtags with a maximum of 3 unique items.",
             "example": [
               "#tag1",
               "#tag2",
               "#tag3"
             ],
             "items": {
-              "type": "number"
+              "type": "string"
             },
             "type": "array"
-          },
-          "isForSigning": {
-            "example": true,
-            "type": "boolean"
           },
           "meta": {
             "example": [
@@ -1963,11 +1950,7 @@
         },
         "required": [
           "name",
-          "description",
-          "isForSigning",
-          "meta",
           "documentMeta",
-          "hashtags",
           "status",
           "pipedriveDealId",
           "storageFileId"
@@ -2463,10 +2446,6 @@
             },
             "type": "array"
           },
-          "isForSigning": {
-            "example": true,
-            "type": "boolean"
-          },
           "meta": {
             "example": [
               {
@@ -2495,10 +2474,7 @@
         },
         "required": [
           "name",
-          "description",
-          "hashtags",
           "status",
-          "isForSigning",
           "storageFileId"
         ],
         "type": "object"
@@ -2801,10 +2777,6 @@
             },
             "type": "array"
           },
-          "isForSigning": {
-            "example": true,
-            "type": "boolean"
-          },
           "media": {
             "example": {
               "key": "/path/to/file.pdf",
@@ -2836,11 +2808,8 @@
         },
         "required": [
           "name",
-          "description",
           "media",
-          "hashtags",
-          "status",
-          "isForSigning"
+          "status"
         ],
         "type": "object"
       },
@@ -2893,10 +2862,6 @@
             },
             "type": "array"
           },
-          "isForSigning": {
-            "example": true,
-            "type": "boolean"
-          },
           "meta": {
             "example": [
               {
@@ -2925,10 +2890,7 @@
         },
         "required": [
           "name",
-          "description",
-          "hashtags",
           "status",
-          "isForSigning",
           "storageFileId"
         ],
         "type": "object"
@@ -3483,67 +3445,6 @@
         ],
         "type": "object"
       },
-      "CreateUserDto": {
-        "properties": {
-          "accountType": {
-            "type": "string"
-          },
-          "businessAddress": {
-            "default": null,
-            "type": "string"
-          },
-          "businessName": {
-            "default": null,
-            "type": "string"
-          },
-          "email": {
-            "example": "example@mail.com",
-            "type": "string"
-          },
-          "firstName": {
-            "example": "John",
-            "type": "string"
-          },
-          "isBanned": {
-            "example": false,
-            "type": "boolean"
-          },
-          "isVerifiedEmail": {
-            "example": false,
-            "type": "boolean"
-          },
-          "isVerifiedKYC": {
-            "example": false,
-            "type": "boolean"
-          },
-          "language": {
-            "example": "en",
-            "type": "string"
-          },
-          "lastName": {
-            "example": "Doe",
-            "type": "string"
-          },
-          "password": {
-            "example": "#Pass$123",
-            "type": "string"
-          },
-          "role": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "email",
-          "password",
-          "language",
-          "firstName",
-          "lastName",
-          "isVerifiedEmail",
-          "isVerifiedKYC",
-          "isBanned"
-        ],
-        "type": "object"
-      },
       "CreateUserSignatureEmbeddedDto": {
         "properties": {
           "media": {
@@ -3887,6 +3788,23 @@
         ],
         "type": "object"
       },
+      "FinalizeQesSignatureDto": {
+        "properties": {
+          "sessionId": {
+            "description": "Opaque signing-session id returned by prepare.",
+            "type": "string"
+          },
+          "signatureValueB64": {
+            "description": "Base64 signature value the device computed over the ToBeSigned bytes.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId",
+          "signatureValueB64"
+        ],
+        "type": "object"
+      },
       "GenerateDto": {
         "properties": {
           "answers": {
@@ -4105,10 +4023,6 @@
             },
             "type": "array"
           },
-          "isForSigning": {
-            "example": true,
-            "type": "boolean"
-          },
           "media": {
             "example": {
               "key": "/path/to/file.pdf",
@@ -4140,11 +4054,8 @@
         },
         "required": [
           "name",
-          "description",
           "media",
-          "hashtags",
-          "status",
-          "isForSigning"
+          "status"
         ],
         "type": "object"
       },
@@ -5436,6 +5347,22 @@
           "price",
           "subscriptionPeriod",
           "features"
+        ],
+        "type": "object"
+      },
+      "PrepareQesSignatureDto": {
+        "properties": {
+          "chainPem": {
+            "description": "PEM of the issuer certificate chain (X.509 blocks only).",
+            "type": "string"
+          },
+          "signerCertPem": {
+            "description": "PEM of the signer end-entity (qualified) certificate — public material.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "signerCertPem"
         ],
         "type": "object"
       },
@@ -8410,6 +8337,58 @@
         ],
         "type": "object"
       },
+      "SeedOnboardingDto": {
+        "properties": {
+          "countryCode": {
+            "example": "PL",
+            "type": "string"
+          },
+          "firstName": {
+            "example": "Test",
+            "type": "string"
+          },
+          "lastName": {
+            "example": "User",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "not_started",
+              "completed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "type": "object"
+      },
+      "SeedUserDto": {
+        "properties": {
+          "accountType": {
+            "default": "personal",
+            "description": "BUSINESS means business setup is not yet complete (no BusinessProfile).",
+            "enum": [
+              "personal",
+              "business"
+            ],
+            "type": "string"
+          },
+          "email": {
+            "example": "qa+contract-42@idealogic.dev",
+            "type": "string"
+          },
+          "onboarding": {
+            "$ref": "#/components/schemas/SeedOnboardingDto"
+          }
+        },
+        "required": [
+          "email",
+          "onboarding"
+        ],
+        "type": "object"
+      },
       "SendForSigningDto": {
         "properties": {
           "deadline": {
@@ -10210,20 +10189,16 @@
             "type": "array"
           },
           "hashtags": {
-            "description": "An array of category IDs with a maximum of 3 unique items.",
+            "description": "An array of hashtags with a maximum of 3 unique items.",
             "example": [
               "#tag1",
               "#tag2",
               "#tag3"
             ],
             "items": {
-              "type": "number"
+              "type": "string"
             },
             "type": "array"
-          },
-          "isForSigning": {
-            "example": true,
-            "type": "boolean"
           },
           "media": {
             "example": "post",
@@ -10252,12 +10227,8 @@
         },
         "required": [
           "name",
-          "description",
           "media",
-          "isForSigning",
-          "meta",
           "documentMeta",
-          "hashtags",
           "status"
         ],
         "type": "object"
@@ -10281,20 +10252,16 @@
             "type": "array"
           },
           "hashtags": {
-            "description": "An array of category IDs with a maximum of 3 unique items.",
+            "description": "An array of hashtags with a maximum of 3 unique items.",
             "example": [
               "#tag1",
               "#tag2",
               "#tag3"
             ],
             "items": {
-              "type": "number"
+              "type": "string"
             },
             "type": "array"
-          },
-          "isForSigning": {
-            "example": true,
-            "type": "boolean"
           },
           "meta": {
             "example": [
@@ -10324,11 +10291,7 @@
         },
         "required": [
           "name",
-          "description",
-          "isForSigning",
-          "meta",
           "documentMeta",
-          "hashtags",
           "status",
           "storageFileId"
         ],
@@ -10575,10 +10538,6 @@
             },
             "type": "array"
           },
-          "isForSigning": {
-            "example": true,
-            "type": "boolean"
-          },
           "media": {
             "example": {
               "key": "/path/to/updated-file.pdf",
@@ -10610,11 +10569,8 @@
         },
         "required": [
           "name",
-          "description",
           "media",
-          "hashtags",
-          "status",
-          "isForSigning"
+          "status"
         ],
         "type": "object"
       },
@@ -10685,10 +10641,6 @@
             },
             "type": "array"
           },
-          "isForSigning": {
-            "example": true,
-            "type": "boolean"
-          },
           "media": {
             "example": {
               "key": "/path/to/updated-file.pdf",
@@ -10720,11 +10672,8 @@
         },
         "required": [
           "name",
-          "description",
           "media",
-          "hashtags",
-          "status",
-          "isForSigning"
+          "status"
         ],
         "type": "object"
       },

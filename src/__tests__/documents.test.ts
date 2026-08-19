@@ -168,3 +168,62 @@ describe('Documents module comments + distribution', () => {
     expect(client.post).not.toHaveBeenCalled();
   });
 });
+
+describe('Documents module write-surface (title-only)', () => {
+  const media = {
+    type: 'document' as const,
+    name: 'contract.pdf',
+    key: 'drive/abc/contract.pdf',
+    url: 'https://example.test/contract.pdf',
+  };
+
+  it('create sends a title-only body with no description/meta/hashtags keys', async () => {
+    const client = { post: vi.fn().mockResolvedValue({}) };
+    const documents = new Documents(client as any);
+
+    await documents.create({ name: 'Untitled document', media, status: 'draft' });
+
+    const [url, body] = client.post.mock.calls[0];
+    expect(url).toBe('/api/v1/documents');
+    expect(body).toMatchObject({ name: 'Untitled document', media, status: 'draft' });
+    expect(body).not.toHaveProperty('description');
+    expect(body).not.toHaveProperty('meta');
+    expect(body).not.toHaveProperty('hashtags');
+  });
+
+  it('createFromStorage sends a title-only body to the from-storage route', async () => {
+    const client = { post: vi.fn().mockResolvedValue({}) };
+    const documents = new Documents(client as any);
+
+    await documents.createFromStorage({
+      storageFileId: '00000000-0000-0000-0000-000000000000',
+      name: 'Untitled document',
+      status: 'draft',
+    });
+
+    const [url, body] = client.post.mock.calls[0];
+    expect(url).toBe('/api/v1/documents/from-storage');
+    expect(body).toMatchObject({
+      storageFileId: '00000000-0000-0000-0000-000000000000',
+      name: 'Untitled document',
+      status: 'draft',
+    });
+    expect(body).not.toHaveProperty('description');
+    expect(body).not.toHaveProperty('meta');
+    expect(body).not.toHaveProperty('hashtags');
+  });
+
+  it('update sends a title-only body without description/meta/hashtags', async () => {
+    const client = { put: vi.fn().mockResolvedValue({}) };
+    const documents = new Documents(client as any);
+
+    await documents.update('doc-uuid', { name: 'Renamed', media, status: 'draft' });
+
+    const [url, body] = client.put.mock.calls[0];
+    expect(url).toBe('/api/v1/documents/doc-uuid');
+    expect(body).toMatchObject({ name: 'Renamed', media, status: 'draft' });
+    expect(body).not.toHaveProperty('description');
+    expect(body).not.toHaveProperty('meta');
+    expect(body).not.toHaveProperty('hashtags');
+  });
+});

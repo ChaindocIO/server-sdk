@@ -219,12 +219,14 @@ export interface AccessRole {
 
 export interface CreateDocumentParams {
   name: string;
-  description: string;
+  /** Optional — omit to leave the description unset (stored as null). */
+  description?: string;
   media: Media;
-  meta: MetaTag[];
-  hashtags: string[];
+  /** Optional — omit for a document with no metadata. */
+  meta?: MetaTag[];
+  /** Optional — omit for a document with no hashtags. */
+  hashtags?: string[];
   status: DocumentStatusForCreate;
-  isForSigning?: boolean;
   accessType?: AccessType;
   accessEmails?: AccessEmail[];
   accessRoles?: AccessRole[];
@@ -238,11 +240,13 @@ export interface CreateDocumentParams {
 export interface CreateDocumentFromStorageParams {
   storageFileId: string;
   name: string;
-  description: string;
-  meta: MetaTag[];
-  hashtags: string[];
+  /** Optional — omit to leave the description unset (stored as null). */
+  description?: string;
+  /** Optional — omit for a document with no metadata. */
+  meta?: MetaTag[];
+  /** Optional — omit for a document with no hashtags. */
+  hashtags?: string[];
   status: DocumentStatusForCreate;
-  isForSigning?: boolean;
   accessType?: AccessType;
   accessEmails?: AccessEmail[];
   accessRoles?: AccessRole[];
@@ -252,12 +256,14 @@ export interface CreateDocumentFromStorageParams {
 
 export interface UpdateDocumentParams {
   name: string;
-  description: string;
+  /** Optional — omit to leave the description unset (stored as null). */
+  description?: string;
   media: Media;
-  meta: MetaTag[];
-  hashtags: string[];
+  /** Optional — omit for a document with no metadata. */
+  meta?: MetaTag[];
+  /** Optional — omit for a document with no hashtags. */
+  hashtags?: string[];
   status: DocumentStatusForCreate;
-  isForSigning?: boolean;
 }
 
 export interface UpdateDocumentRightsParams {
@@ -278,7 +284,6 @@ export interface DocumentVersion {
   description?: string;
   media?: Media;
   meta?: MetaTag[];
-  isForSigning: boolean;
   status: DocumentStatus;
   versionHash?: string;
   documentId: string;
@@ -321,7 +326,6 @@ export interface PublicDocumentVersion {
   description?: string | null;
   status: DocumentStatus;
   versionHash?: string | null;
-  isForSigning: boolean;
   media: PublicDocumentMediaSummary | null;
   meta: MetaTag[];
   tags: string[];

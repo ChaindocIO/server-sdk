@@ -277,12 +277,11 @@ async create(params: CreateDocumentParams): Promise<DocumentResponse>
 | Property       | Type             | Required | Description                         |
 | -------------- | ---------------- | -------- | ----------------------------------- |
 | `name`         | `string`         | **Yes**  | Document name                       |
-| `description`  | `string`         | **Yes**  | Document description                |
 | `media`        | `Media`          | **Yes**  | Uploaded file (from `media.upload`) |
-| `status`       | `DocumentStatus` | **Yes**  | `'draft'` \| `'published'`          |
-| `meta`         | `MetaTag[]`      | **Yes**  | Metadata key-value pairs            |
-| `hashtags`     | `string[]`       | **Yes**  | Search tags                         |
-| `isForSigning` | `boolean`        | No       | Enable signing                      |
+| `status`       | `DocumentStatusForCreate` | **Yes** | `'draft'` \| `'published'`    |
+| `description`  | `string`         | No       | Document description                |
+| `meta`         | `MetaTag[]`      | No       | Metadata key-value pairs            |
+| `hashtags`     | `string[]`       | No       | Search tags                         |
 | `accessType`   | `AccessType`     | No       | Access level                        |
 | `accessEmails` | `AccessEmail[]`  | No       | Email-based access                  |
 | `accessRoles`  | `AccessRole[]`   | No       | Role-based access                   |

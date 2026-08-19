@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0-alpha.0]
+
+**BREAKING** — removes the deprecated `isForSigning` field. The flag never
+affected signability (a document is signable purely from its signature-request
+state), so there is no behavioural replacement.
+
+### Removed
+
+- `isForSigning` from the document write params `CreateDocumentParams`,
+  `CreateDocumentFromStorageParams` and `UpdateDocumentParams`.
+- `isForSigning` from the response types `DocumentVersion` and
+  `PublicDocumentVersion`; the public API no longer returns the field.
+
+**Migration:** delete `isForSigning` from any create/update calls; if you read
+`version.isForSigning` on a response, remove that read (there is no replacement
+— signability is determined by the signature request).
+
+## [2.3.0-alpha.0]
+
+Additive, non-breaking — relaxes the document write params to match the
+backend, which now accepts a title-only document. `create` and `update` need
+only `name` + `media` + `status`; `createFromStorage` needs `storageFileId` +
+`name` + `status`.
+
+### Changed
+
+- **`description`, `meta` and `hashtags` are now optional** on
+  `CreateDocumentParams`, `CreateDocumentFromStorageParams` and
+  `UpdateDocumentParams`. Existing callers that pass them keep working
+  unchanged; you may now omit them for a title-only create/update. Mirrors the
+  relaxed backend DTOs.
+- Public OpenAPI reference snapshot (`references/public-api.snapshot.json`)
+  re-synced to the current backend public API.
+
+### Internal
+
+- Added a title-only compile-time fixture and runtime write-surface tests so a
+  regression back to required `description`/`meta`/`hashtags` fails CI.
+
 ## [2.2.0] - 2026-07-03
 
 Additive release — resumable chunked uploads for large files and a direct
