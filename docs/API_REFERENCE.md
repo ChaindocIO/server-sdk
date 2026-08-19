@@ -282,9 +282,8 @@ async create(params: CreateDocumentParams): Promise<DocumentResponse>
 | `description`  | `string`         | No       | Document description                |
 | `meta`         | `MetaTag[]`      | No       | Metadata key-value pairs            |
 | `hashtags`     | `string[]`       | No       | Search tags                         |
-| `accessType`   | `AccessType`     | No       | Access level                        |
+| `accessType`   | `AccessTypeInput` | No      | `'private'` \| `'public'` \| `'restricted'` |
 | `accessEmails` | `AccessEmail[]`  | No       | Email-based access                  |
-| `accessRoles`  | `AccessRole[]`   | No       | Role-based access                   |
 
 #### DocumentStatus
 
@@ -376,9 +375,8 @@ async updateRights(documentId: string, params: UpdateDocumentRightsParams): Prom
 
 | Property       | Type            | Required | Description                                             |
 | -------------- | --------------- | -------- | ------------------------------------------------------- |
-| `accessType`   | `AccessType`    | **Yes**  | `'private'` \| `'public'` \| `'restricted'` \| `'team'` |
+| `accessType`   | `AccessTypeInput` | **Yes** | `'private'` \| `'public'` \| `'restricted'` |
 | `accessEmails` | `AccessEmail[]` | No       | Email-based permissions                                 |
-| `accessRoles`  | `AccessRole[]`  | No       | Role-based permissions                                  |
 
 #### Example
 
@@ -872,8 +870,8 @@ import {
   DocumentVersion,
   DocumentStatus,
   AccessType,
+  AccessTypeInput,
   AccessEmail,
-  AccessRole,
   VerifyDocumentParams,
   VerifyDocumentResponse,
 

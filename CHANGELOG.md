@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+**BREAKING** — the team audience is withdrawn from the input types. Not published yet: the version
+is unchanged and nothing has been released from this section.
+
+### Removed
+
+- **`AccessRole` — the exported interface is gone.** It was `{ roleId: number; level: "read" |
+  "write" }`. **What breaks:** any code that imports the type by name
+  (`import type { AccessRole } from "@chaindoc/server-sdk"`) stops compiling. **What to write
+  instead:** nothing — there is no replacement, because a team role no longer grants access to
+  anything. Grant to a person: `accessEmails: [{ email, level }]`.
+- **`accessRoles` — the field is gone from all three input types**: `CreateDocumentParams`,
+  `CreateDocumentFromStorageParams`, `UpdateDocumentRightsParams`. **What breaks:** passing it is
+  now an excess-property error at compile time, and the API refuses it at runtime rather than
+  accepting and ignoring it. **What to write instead:** `accessEmails`, one entry per person.
+
+### Changed
+
+- **`accessType` on inputs narrows from `AccessType` (four values) to the new `AccessTypeInput`
+  (three).** Affects the same three types. **What breaks:** `accessType: "team"` on a create, a
+  create-from-storage or a rights update no longer compiles. **What to write instead:**
+  `"restricted"` plus `accessEmails` for a named audience, `"public"` for anyone with the link, or
+  `"private"`.
+- **`AccessType` itself is unchanged and still has four values, deliberately.** It is the RESPONSE
+  type. A document shared to a team before that audience was withdrawn still exists, and a response
+  type that could not express the stored state would be a new lie in place of a removed one.
+  `"team"` there is **historical and non-authorising**: it grants nothing, and no new document can
+  be given it. Reading it is safe; writing it is what stopped being possible.
+
+### Added
+
+- **`AccessTypeInput`** — exported, and is what every input now takes.
+
+### Migration
+
+| you had | you write |
+|---|---|
+| `accessType: "team"` | `accessType: "restricted"` + `accessEmails: [{ email, level }]` per person |
+| `accessRoles: [{ roleId, level }]` | `accessEmails: [{ email, level }]` per person |
+| `import type { AccessRole }` | delete the import — no replacement type exists |
+| reading `doc.accessType === "team"` | ⚠️ **unchanged** — keep it; that is the historical value |
+
+
 ## [3.0.0-alpha.0]
 
 **BREAKING** — removes the deprecated `isForSigning` field. The flag never

@@ -353,12 +353,19 @@ async function storeVerificationProof(
 
 ### Access Types
 
+A document you create or update is one of three things:
+
 | Type         | Description                 |
 | ------------ | --------------------------- |
 | `private`    | Only owner can access       |
 | `public`     | Anyone with link can access |
-| `restricted` | Specific emails/roles only  |
-| `team`       | Team members only           |
+| `restricted` | Specific emails only        |
+
+A fourth value, `team`, can still be **returned** for a document shared to a team before that
+audience was withdrawn. It is historical and non-authorising: the document grants nothing to a
+team, and no request can ask for it. That is why the input type is `AccessTypeInput` (three
+values) while the output type `AccessType` keeps all four — writing `accessType: "team"` on a
+create or an update does not compile.
 
 ### Email-Based Access
 
@@ -386,20 +393,11 @@ await chaindoc.documents.updateRights(documentId, {
 });
 ```
 
-### Role-Based Access
+### Role-Based Access — removed
 
-```typescript
-await chaindoc.documents.create({
-  name: "Company Policy",
-  // ... other fields
-  accessType: "restricted",
-  accessRoles: [
-    { roleId: 1, level: "write" }, // Admin role
-    { roleId: 2, level: "read" }, // Manager role
-    { roleId: 3, level: "read" }, // Employee role
-  ],
-});
-```
+Role recipients (`accessRoles`, `{ roleId, level }`) are gone from every input type. A team role no
+longer grants access to anything, so the field could only ever have been accepted and ignored.
+Name the people instead, with `accessEmails`.
 
 ---
 

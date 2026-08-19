@@ -205,15 +205,27 @@ export type DocumentStatus =
  * are derived states managed by the server (publishing, signature lifecycle).
  */
 export type DocumentStatusForCreate = "draft" | "published";
+/**
+ * What a document IS.
+ *
+ * `"team"` is still here and is not deprecated as a value: documents shared to a team before that
+ * audience was withdrawn still exist, and a response type that could not express the stored state
+ * would be a new lie in place of a removed one. It is **historical and non-authorising** — a
+ * document carrying it grants nothing to a team, and no new document can be given it.
+ */
 export type AccessType = "private" | "public" | "restricted" | "team";
+
+/**
+ * What a document may be ASKED to be.
+ *
+ * The team audience is not offered: the API refuses it, so it is not in the input union either —
+ * an integrator who writes `accessType: "team"` on a create or an update fails to compile rather
+ * than discovering it at runtime.
+ */
+export type AccessTypeInput = "private" | "public" | "restricted";
 
 export interface AccessEmail {
   email: string;
-  level: "read" | "write";
-}
-
-export interface AccessRole {
-  roleId: number;
   level: "read" | "write";
 }
 
@@ -227,9 +239,8 @@ export interface CreateDocumentParams {
   /** Optional — omit for a document with no hashtags. */
   hashtags?: string[];
   status: DocumentStatusForCreate;
-  accessType?: AccessType;
+  accessType?: AccessTypeInput;
   accessEmails?: AccessEmail[];
-  accessRoles?: AccessRole[];
 }
 
 /**
@@ -247,9 +258,8 @@ export interface CreateDocumentFromStorageParams {
   /** Optional — omit for a document with no hashtags. */
   hashtags?: string[];
   status: DocumentStatusForCreate;
-  accessType?: AccessType;
+  accessType?: AccessTypeInput;
   accessEmails?: AccessEmail[];
-  accessRoles?: AccessRole[];
   /** Delete the source Drive file once the document is created. Default false. */
   deleteSourceFile?: boolean;
 }
@@ -267,9 +277,8 @@ export interface UpdateDocumentParams {
 }
 
 export interface UpdateDocumentRightsParams {
-  accessType: AccessType;
+  accessType: AccessTypeInput;
   accessEmails?: AccessEmail[];
-  accessRoles?: AccessRole[];
 }
 
 export interface DocumentTag {
