@@ -10,6 +10,13 @@ import type {
 
 const SNAPSHOT_PATH = path.resolve(__dirname, '../../references/public-api.snapshot.json');
 
+/**
+ * ⛔ The published enum is DERIVED from the backend's vocabulary now, and this list is the third
+ * copy of it — kept because this package cannot import that enum, and updated here to the
+ * twenty-eight the API actually delivers. It listed seventeen, which is what let `T18`'s ten route
+ * events and `additional_agreement.signed` go undeclared on the published surface for as long as
+ * they have existed.
+ */
 const EXPECTED_WEBHOOK_EVENTS: WebhookEventType[] = [
   'document.created',
   'document.verified',
@@ -20,6 +27,7 @@ const EXPECTED_WEBHOOK_EVENTS: WebhookEventType[] = [
   'contract.created',
   'contract.status_changed',
   'contract.signed',
+  'additional_agreement.signed',
   'contract.cancelled',
   'contract.terminated',
   'invoice.created',
@@ -28,6 +36,16 @@ const EXPECTED_WEBHOOK_EVENTS: WebhookEventType[] = [
   'invoice.cancelled',
   'transaction.created',
   'transaction.updated',
+  'workflow.run.started',
+  'workflow.step.opened',
+  'workflow.assignment.approved',
+  'workflow.run.returned',
+  'workflow.run.rejected',
+  'workflow.assignment.consented',
+  'workflow.proofs.issued',
+  'workflow.run.completed',
+  'workflow.run.cancelled',
+  'workflow.run.expired',
 ];
 
 const EXPECTED_CONTRACT_WEBHOOK_EVENTS: ContractWebhookEventType[] = [
@@ -51,9 +69,18 @@ const EXPECTED_TRANSACTION_WEBHOOK_EVENTS: TransactionWebhookEventType[] = [
 ];
 
 const EXPECTED_ROUTE_MATRIX: Record<string, Record<string, string[]>> = {
+  /**
+   * ⛔ `W4-12` / `AC-28.5` — **the `400` is the backend's and always was; this matrix was written
+   * against a snapshot that predated it.** `openapi/public-api.json` has carried
+   * `PublicStripeCascadeErrorDto` on this route since `af230c04` — before the WORKSPACES_FOUNDATION
+   * run began — while the snapshot beside this file was 129 paths against the backend's 147.
+   * `W3-28` regenerated the snapshot from the finished tree, which is what made the staleness
+   * visible: this file went red naming the response set, and the repair is the expectation rather
+   * than the snapshot.
+   */
   '/api/v1/contracts': {
     get: ['200'],
-    post: ['201'],
+    post: ['201', '400'],
   },
   '/api/v1/contracts/empty': {
     post: ['201'],
@@ -155,7 +182,7 @@ const EXPECTED_ROUTE_MATRIX: Record<string, Record<string, string[]>> = {
   },
   '/api/v1/contracts/{contractId}/invoices': {
     get: ['200'],
-    post: ['201'],
+    post: ['201', '400'],
   },
   '/api/v1/contracts/{contractId}/invoices/{invoiceUuid}': {
     get: ['200'],
@@ -171,7 +198,7 @@ const EXPECTED_ROUTE_MATRIX: Record<string, Record<string, string[]>> = {
     post: ['200'],
   },
   '/api/v1/contracts/{contractId}/invoices/{invoiceUuid}/charge': {
-    post: ['200'],
+    post: ['200', '403'],
   },
   '/api/v1/contracts/{contractId}/invoices/{invoiceUuid}/mark-paid': {
     post: ['200'],

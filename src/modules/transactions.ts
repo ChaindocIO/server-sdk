@@ -31,7 +31,7 @@ export class Transactions {
 
   /**
    * Get payment-mix analytics: transaction totals grouped by payment-method
-   * type for the API key owner's contracts within a date range.
+   * type for the contracts of the WORKSPACE the API key belongs to, within a date range.
    */
   async getPaymentMix(params: PaymentMixParams): Promise<PaymentMixResponse> {
     const query = new URLSearchParams();

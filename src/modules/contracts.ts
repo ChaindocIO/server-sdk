@@ -305,11 +305,16 @@ export class Contracts {
   }
 
   /**
-   * Sign a contract as the business owner.
+   * Sign a contract on the workspace's behalf, **as the integration key**.
    *
-   * `signatureHash` references one of the API key owner's saved signatures —
-   * list them with `signatures.getSignatures()` or create one with
-   * `signatures.createSignature()`.
+   * ⛔ This is not the business owner's own act, and the package used to say it was. The signature
+   * is given by the key that authenticated the call: the key is the acting subject, it is recorded
+   * as such in the document's audit trail, and the person who happens to own the key is not the
+   * signatory. The distinction matters the moment a key is issued for an organization rather than
+   * for one person — which is what a workspace is.
+   *
+   * `signatureHash` references one of the workspace's saved signatures — list them with
+   * `signatures.getSignatures()` or create one with `signatures.createSignature()`.
    */
   async businessSign(
     contractId: string,

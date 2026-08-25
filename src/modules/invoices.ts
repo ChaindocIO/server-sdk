@@ -46,7 +46,7 @@ export class Invoices {
   }
 
   /**
-   * List every invoice across all of the API key owner's contracts, with
+   * List every invoice across all of the contracts of the WORKSPACE the key belongs to, with
    * aggregate status counts. Not scoped to a single contract.
    */
   async listAll(params?: InvoiceListAllParams): Promise<InvoiceListAllResponse> {

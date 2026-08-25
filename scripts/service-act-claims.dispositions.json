@@ -1,0 +1,200 @@
+{
+ "0441d6d593962de4": {
+  "file": "src/types/index.ts",
+  "line": 734,
+  "text": "* Parameters for signing a contract on the workspace's behalf, as the integration key.",
+  "verdict": "states the service act — the line says the act is the KEY’s"
+ },
+ "0776316e5344998b": {
+  "file": "docs/ADVANCED_USAGE.md",
+  "line": 360,
+  "text": "| `private`    | Only owner can access       |",
+  "verdict": "not-a-claim: document ACCESS, not signing"
+ },
+ "15857f425499e102": {
+  "file": "references/public-api.snapshot.json",
+  "line": 9404,
+  "text": "\"summary\": \"Search documents accessible to the API key owner\",",
+  "verdict": "not-a-claim: ACCESS or SCOPE — “the API key owner must have access”, “contracts owned by the API key owner”"
+ },
+ "18646acda4030f6b": {
+  "file": "references/public-api.snapshot.json",
+  "line": 9075,
+  "text": "\"description\": \"Returns the list of download events recorded for the document. Both pk_ and sk_ keys are accepted; the API key owner must have access to the document.\",",
+  "verdict": "not-a-claim: ACCESS or SCOPE — “the API key owner must have access”, “contracts owned by the API key owner”"
+ },
+ "1c1d3d48483d9613": {
+  "file": "src/modules/contracts.ts",
+  "line": 308,
+  "text": "* Sign a contract on the workspace's behalf, **as the integration key**.",
+  "verdict": "states the service act — the line says the act is the KEY’s"
+ },
+ "1c839f5424bf4cb8": {
+  "file": "references/public-api.snapshot.json",
+  "line": 7844,
+  "text": "\"description\": \"Requires secret key (sk_). Applies the business-side signature to a signing request using a saved signature, identified by its hash from GET /api/v1/signatures. The act is the integrat",
+  "verdict": "states the service act — “the act is the integration key’s … not the key owner as a person”"
+ },
+ "1fe4b291f185f6a0": {
+  "file": "src/__tests__/normalize-email.test.ts",
+  "line": 75,
+  "text": "expect.objectContaining({ signerEmail: 'owner@example.com' }),",
+  "verdict": "not-a-claim: a fixture address"
+ },
+ "2c08bfdee4b1a35b": {
+  "file": "src/__tests__/normalize-email.test.ts",
+  "line": 79,
+  "text": "expect(recipients[0]?.email).toBe('Owner@Example.com');",
+  "verdict": "not-a-claim: a fixture address"
+ },
+ "413e4f34a003c4e1": {
+  "file": "docs/ADVANCED_USAGE.md",
+  "line": 252,
+  "text": "// Notify document owner",
+  "verdict": "not-a-claim: document ACCESS, not signing"
+ },
+ "42e9587da94a3b7f": {
+  "file": "references/public-api.snapshot.json",
+  "line": 9334,
+  "text": "\"description\": \"Returns a paginated list of documents the API key owner can access, filtered by an optional free-text query and lifecycle status. Both pk_ and sk_ keys are accepted.\",",
+  "verdict": "not-a-claim: ACCESS or SCOPE — “the API key owner must have access”, “contracts owned by the API key owner”"
+ },
+ "4f14173f4ad0f953": {
+  "file": "references/public-api.snapshot.json",
+  "line": 9020,
+  "text": "\"description\": \"Requires secret key (sk_). Posts a top-level comment on the document current version. The API key owner must have collaborate access to the document.\",",
+  "verdict": "not-a-claim: ACCESS or SCOPE — “the API key owner must have access”, “contracts owned by the API key owner”"
+ },
+ "51f80acfb9b9b955": {
+  "file": "src/types/index.ts",
+  "line": 2246,
+  "text": "* owner's contracts, plus aggregate status counts.",
+  "verdict": "not-a-claim: SCOPE — whose contracts are listed"
+ },
+ "56e6fbb74138d0c9": {
+  "file": "src/__tests__/normalize-email.test.ts",
+  "line": 46,
+  "text": "{ email: 'Owner@Example.com', signingMethod: 'delegated' as const },",
+  "verdict": "not-a-claim: a fixture address"
+ },
+ "5a235fd2cf33c9e3": {
+  "file": "references/public-api.snapshot.json",
+  "line": 9413,
+  "text": "\"description\": \"Returns a paginated list of documents explicitly shared with the API key owner (via direct or role-based access). Both pk_ and sk_ keys are accepted.\",",
+  "verdict": "not-a-claim: ACCESS or SCOPE — “the API key owner must have access”, “contracts owned by the API key owner”"
+ },
+ "60e6bc1dafacefcb": {
+  "file": "references/public-api.snapshot.json",
+  "line": 9536,
+  "text": "\"description\": \"Returns the document binary as an attachment. Both pk_ and sk_ keys are accepted; the API key owner must have access to the underlying document.\",",
+  "verdict": "not-a-claim: ACCESS or SCOPE — “the API key owner must have access”, “contracts owned by the API key owner”"
+ },
+ "6fdf5efd6e0909e5": {
+  "file": "references/public-api.snapshot.json",
+  "line": 13052,
+  "text": "\"description\": \"Requires secret key (sk_). Signs the signer row this key is entitled to act on — the row bound to the key owner's account, or an unbound row the invitation was delivered to; a row boun",
+  "verdict": "states the service act — corrected at its source (public-api.controller.ts) and regenerated"
+ },
+ "73a5c5e37c7ec9c8": {
+  "file": "docs/API_REFERENCE.md",
+  "line": 621,
+  "text": "comes from that row, never from the key owner's e-mail address matching it.",
+  "verdict": "states the service act — this is the corrected sentence"
+ },
+ "747f1e7d924772f5": {
+  "file": "src/__tests__/normalize-email.test.ts",
+  "line": 80,
+  "text": "expect(fields[0]?.signerEmail).toBe('Owner@Example.com');",
+  "verdict": "not-a-claim: a fixture address"
+ },
+ "7da3a27cde7fd930": {
+  "file": "src/__tests__/normalize-email.test.ts",
+  "line": 51,
+  "text": "signerEmail: 'Owner@Example.com',",
+  "verdict": "not-a-claim: a fixture address"
+ },
+ "7f278a0d34c58322": {
+  "file": "src/__tests__/signatures.test.ts",
+  "line": 47,
+  "text": "signerEmail: 'owner@example.com',",
+  "verdict": "not-a-claim: a fixture address"
+ },
+ "877532277bd7cd68": {
+  "file": "src/types/index.ts",
+  "line": 736,
+  "text": "* ⛔ Named `BusinessSign…` for wire compatibility; the ACT is the key's, not the key owner's",
+  "verdict": "states the service act — the line says the act is the KEY’s"
+ },
+ "8dabb2004d78bbcd": {
+  "file": "references/public-api.snapshot.json",
+  "line": 8917,
+  "text": "\"description\": \"Returns the activity history (views, downloads, verification checks) for the document current version. Both pk_ and sk_ keys are accepted; the API key owner must have access to the doc",
+  "verdict": "not-a-claim: ACCESS or SCOPE — “the API key owner must have access”, “contracts owned by the API key owner”"
+ },
+ "9f86ccaabc44960c": {
+  "file": "references/public-api.snapshot.json",
+  "line": 6393,
+  "text": "\"description\": \"Requires secret key (sk_). Attaches an existing document to a DRAFT contract that does not have one yet (typically created via /empty or /minimal). Document must belong to the API key ",
+  "verdict": "not-a-claim: ACCESS or SCOPE — “the API key owner must have access”, “contracts owned by the API key owner”"
+ },
+ "a7952b8653e7540a": {
+  "file": "docs/API_REFERENCE.md",
+  "line": 620,
+  "text": "key's human owner; the signer row it acts on is named by `signatureId` and the right to act on it",
+  "verdict": "states the service act — this is the corrected sentence"
+ },
+ "b675c02b92697414": {
+  "file": "src/__tests__/signatures.test.ts",
+  "line": 39,
+  "text": "{ email: 'owner@example.com', signingMethod: 'delegated' },",
+  "verdict": "not-a-claim: a fixture address"
+ },
+ "b70f8154a49934e7": {
+  "file": "src/__tests__/templates.test.ts",
+  "line": 75,
+  "text": "email: 'owner@example.com',",
+  "verdict": "not-a-claim: a fixture address"
+ },
+ "b94ae23fb8a7cef6": {
+  "file": "references/public-api.snapshot.json",
+  "line": 14207,
+  "text": "\"description\": \"Requires secret key (sk_). Returns transaction totals grouped by payment-method type for contracts owned by the API key owner, within the given date range.\",",
+  "verdict": "not-a-claim: ACCESS or SCOPE — “the API key owner must have access”, “contracts owned by the API key owner”"
+ },
+ "c06f394cceba9bf4": {
+  "file": "references/public-api.snapshot.json",
+  "line": 10909,
+  "text": "\"description\": \"Requires secret key (sk_). Returns a paginated list of every invoice across all contracts owned by the API key owner, with status filters and aggregate counts.\",",
+  "verdict": "not-a-claim: ACCESS or SCOPE — “the API key owner must have access”, “contracts owned by the API key owner”"
+ },
+ "e0e1a6ca37980470": {
+  "file": "src/modules/contracts.ts",
+  "line": 310,
+  "text": "* ⛔ This is not the business owner's own act, and the package used to say it was. The signature",
+  "verdict": "states the service act — the line says the act is the KEY’s"
+ },
+ "e1044e7eb8261305": {
+  "file": "docs/ADVANCED_USAGE.md",
+  "line": 496,
+  "text": "- Store template UUIDs and signer-slot keys in your own integration config.",
+  "verdict": "not-a-claim: about the integrator’s own config"
+ },
+ "e1eb67af8c03ea3a": {
+  "file": "references/public-api.snapshot.json",
+  "line": 9483,
+  "text": "\"summary\": \"List documents shared with the API key owner\",",
+  "verdict": "not-a-claim: ACCESS or SCOPE — “the API key owner must have access”, “contracts owned by the API key owner”"
+ },
+ "e65f64ae52b0c90b": {
+  "file": "src/__tests__/normalize-email.test.ts",
+  "line": 71,
+  "text": "{ email: 'owner@example.com', signingMethod: 'delegated' },",
+  "verdict": "not-a-claim: a fixture address"
+ },
+ "ed869904198ac3ea": {
+  "file": "src/__tests__/validate-email.test.ts",
+  "line": 64,
+  "text": "recipients: [{ email: 'owner@example.com', signingMethod: 'delegated' }],",
+  "verdict": "not-a-claim: a fixture address"
+ }
+}

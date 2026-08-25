@@ -616,7 +616,9 @@ interface GetSignaturesResponse {
 
 ### `sign(params)`
 
-Sign a document (API key owner must be a recipient).
+Sign a document. The act is the integration key's and is attributed to the key (`К20`), not to the
+key's human owner; the signer row it acts on is named by `signatureId` and the right to act on it
+comes from that row, never from the key owner's e-mail address matching it.
 
 ```typescript
 async sign(params: SignDocumentParams): Promise<SignResponse>
@@ -645,11 +647,21 @@ Create a session for embedded document signing.
 async createSession(params: CreateEmbeddedSessionParams): Promise<EmbeddedSessionResponse>
 ```
 
+**What `email` decides.** The address selects, at creation and once, which signer on the signature
+request this session is for; the session then acts on that signer and on no other, whatever happens
+to the address afterwards. The one-time code sent to it is what authorises the acts performed in the
+session — signing, filling variables, starting KYC.
+
+A session is refused when the address is on no signer of the request. It is also refused, at the
+moment it tries to act, when the signer it names is already linked to a **different** Chaindoc
+account: holding an address is not the same as being the person the document was sent to, and a
+signer whose account is known is only ever acted for by that account.
+
 #### CreateEmbeddedSessionParams
 
 | Property                      | Type     | Required | Description                |
 | ----------------------------- | -------- | -------- | -------------------------- |
-| `email`                       | `string` | **Yes**  | Signer's email             |
+| `email`                       | `string` | **Yes**  | Signer's email — see below  |
 | `metadata`                    | `object` | **Yes**  | Session metadata           |
 | `metadata.documentId`         | `string` | **Yes**  | Document ID                |
 | `metadata.signatureRequestId` | `string` | No       | Signature request ID       |

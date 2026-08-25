@@ -165,7 +165,7 @@ export class Documents {
   }
 
   /**
-   * List documents explicitly shared with the API key owner (direct or role-based
+   * List documents explicitly shared with the key's WORKSPACE (direct or role-based
    * access). Accepts both pk_ and sk_ keys.
    */
   async listShared(params?: DocumentSearchParams): Promise<DocumentListResponse> {
@@ -175,7 +175,7 @@ export class Documents {
   }
 
   /**
-   * Search documents the API key owner can access, filtered by an optional
+   * Search documents the key's WORKSPACE can access, filtered by an optional
    * free-text query and lifecycle status. Accepts both pk_ and sk_ keys.
    */
   async search(params?: DocumentSearchParams): Promise<DocumentListResponse> {

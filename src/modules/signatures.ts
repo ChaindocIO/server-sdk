@@ -94,14 +94,14 @@ export class Signatures {
 
   /**
    * Sign a document
-   * API key owner must be one of the signatories.
+   * The key's workspace must be one of the signatories.
    */
   async sign(params: SignDocumentParams): Promise<{ success: boolean; requestId: string; signedAt: string; message: string }> {
     return this.client.post('/api/v1/signatures/sign', params);
   }
 
   /**
-   * Get the API key owner's saved signatures.
+   * Get the saved signatures of the WORKSPACE the API key belongs to.
    * Each item carries a `hash` — the identifier used by `contracts.businessSign`.
    */
   async getSignatures(pagination?: PaginationParams): Promise<GetSignaturesResponse> {

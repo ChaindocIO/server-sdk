@@ -730,9 +730,14 @@ export interface ValidatePdfSignaturesResponse {
   details: Record<string, unknown>;
 }
 
-/** Parameters for signing a contract as the business owner. */
+/**
+ * Parameters for signing a contract on the workspace's behalf, as the integration key.
+ *
+ * ⛔ Named `BusinessSign…` for wire compatibility; the ACT is the key's, not the key owner's
+ * personal signature. See `contracts.businessSign`.
+ */
 export interface BusinessSignParams {
-  /** Hash of a saved signature owned by the API key (from `signatures.getSignatures`). */
+  /** Hash of a saved signature of the workspace (from `signatures.getSignatures`). */
   signatureHash: string;
   /** Optional metadata tags attached to the signature. */
   meta?: MetaTag[];
@@ -798,9 +803,26 @@ export interface HealthCheckResponse {
 // ============================================================================
 
 /**
- * Webhook event types emitted by the Chaindoc API
+ * Webhook event types emitted by the Chaindoc API.
+ *
+ * ⛔ `AC-27.10` — **this listed seventeen and the API delivers twenty-eight.** `T18`'s ten
+ * approval-route events and `additional_agreement.signed` all reach the same delivery lane and go
+ * out to every active key of the workspace, so an integrator handling them had no type for them and
+ * an exhaustive `switch` over this union silently missed eleven kinds of delivery. It was seventeen
+ * at the backend's baseline too — a pre-existing gap, corrected here rather than introduced.
  */
 export type WebhookEventType =
+  | "additional_agreement.signed"
+  | "workflow.run.started"
+  | "workflow.step.opened"
+  | "workflow.assignment.approved"
+  | "workflow.run.returned"
+  | "workflow.run.rejected"
+  | "workflow.assignment.consented"
+  | "workflow.proofs.issued"
+  | "workflow.run.completed"
+  | "workflow.run.cancelled"
+  | "workflow.run.expired"
   | "document.created"
   | "document.verified"
   | "document.signed"
@@ -832,6 +854,21 @@ export interface WebhookEnvelope<T = Record<string, unknown>> {
   createdAt: string;
   /** Event-specific payload */
   data: T;
+}
+
+/**
+ * The workspace an event is about, carried in the payload of every event whose object has one.
+ *
+ * An additional field: nothing that was in a payload before has changed, and no event that had no
+ * workspace has gained a meaningless one. It exists because one integration key can now serve more
+ * than one workspace, and without it two events about two different organizations are
+ * indistinguishable.
+ *
+ * `uuid` is the same identifier the API uses everywhere else for a workspace; there is no numeric
+ * form of it on this surface.
+ */
+export interface WebhookEventWorkspace {
+  uuid: string | null;
 }
 
 /**
