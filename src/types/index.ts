@@ -805,24 +805,11 @@ export interface HealthCheckResponse {
 /**
  * Webhook event types emitted by the Chaindoc API.
  *
- * ⛔ `AC-27.10` — **this listed seventeen and the API delivers twenty-eight.** `T18`'s ten
- * approval-route events and `additional_agreement.signed` all reach the same delivery lane and go
- * out to every active key of the workspace, so an integrator handling them had no type for them and
- * an exhaustive `switch` over this union silently missed eleven kinds of delivery. It was seventeen
- * at the backend's baseline too — a pre-existing gap, corrected here rather than introduced.
+ * The retired development-only approval route events were never published in this SDK.
+ * Independent contract and signature events, including amendment signing, remain available.
  */
 export type WebhookEventType =
   | "additional_agreement.signed"
-  | "workflow.run.started"
-  | "workflow.step.opened"
-  | "workflow.assignment.approved"
-  | "workflow.run.returned"
-  | "workflow.run.rejected"
-  | "workflow.assignment.consented"
-  | "workflow.proofs.issued"
-  | "workflow.run.completed"
-  | "workflow.run.cancelled"
-  | "workflow.run.expired"
   | "document.created"
   | "document.verified"
   | "document.signed"
@@ -839,7 +826,9 @@ export type WebhookEventType =
   | "invoice.paid"
   | "invoice.cancelled"
   | "transaction.created"
-  | "transaction.updated";
+  | "transaction.updated"
+  | "transaction.edited"
+  | "transaction.removed";
 
 /**
  * Canonical webhook envelope.
@@ -2258,5 +2247,5 @@ export type InvoiceWebhookEventType = Extract<
 /** Transaction webhook event types */
 export type TransactionWebhookEventType = Extract<
   WebhookEventType,
-  'transaction.created' | 'transaction.updated'
+  'transaction.created' | 'transaction.updated' | 'transaction.edited' | 'transaction.removed'
 >;

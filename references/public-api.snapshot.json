@@ -17,6 +17,151 @@
         ],
         "type": "object"
       },
+      "AccessGrantDto": {
+        "properties": {
+          "account": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountChoiceDto"
+              }
+            ],
+            "description": "Optional. One of the options the account lookup (`POST /api/v1/accounts/lookup` for a secret key) returned for this address: `personal`, or a `workspace` with its `workspaceId`. A workspace option gives the access on that workspace — it holds while the person is an active member of it and it is active; `personal` gives it to the person; without it the address is granted as before (on an update, a grant already given keeps its place). An option the lookup does not show now is refused with `ACCOUNT_OPTION_UNAVAILABLE`."
+          },
+          "email": {
+            "example": "user@example.com",
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              "read",
+              "write"
+            ],
+            "example": "read",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      },
+      "AccountChoiceDto": {
+        "properties": {
+          "kind": {
+            "description": "`personal` — the person themselves: a personal row. `workspace` — the person in the workspace `workspaceId`: the row is assigned to them in it, and the workspace is the party.",
+            "enum": [
+              "personal",
+              "workspace"
+            ],
+            "type": "string"
+          },
+          "workspaceId": {
+            "description": "The `workspaceId` the lookup returned for this option. Only on `workspace`.",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "type": "object"
+      },
+      "AccountLookupDto": {
+        "properties": {
+          "emails": {
+            "description": "The addresses to look up, 1 to 25. A batch over the limit is refused whole. Repeated addresses are answered once.",
+            "example": [
+              "anna@acme.example",
+              "nobody@example.com"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "emails"
+        ],
+        "type": "object"
+      },
+      "AccountLookupResponseDto": {
+        "properties": {
+          "results": {
+            "description": "One answer per distinct address, in the order the addresses were given.",
+            "items": {
+              "$ref": "#/components/schemas/AccountLookupResultDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "type": "object"
+      },
+      "AccountLookupResultDto": {
+        "properties": {
+          "email": {
+            "description": "The address, as looked up (trimmed, lower-case).",
+            "type": "string"
+          },
+          "options": {
+            "description": "Present on `options` only: `personal` first, then the workspaces by name.",
+            "items": {
+              "$ref": "#/components/schemas/AccountOptionDto"
+            },
+            "type": "array"
+          },
+          "status": {
+            "description": "`not_registered` — no Chaindoc account has this address. `hidden` — the person has chosen not to reveal where they can be sent; nothing else about them is answered. `options` — where they can be sent, in `options`.",
+            "enum": [
+              "not_registered",
+              "hidden",
+              "options"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "status"
+        ],
+        "type": "object"
+      },
+      "AccountOptionDto": {
+        "properties": {
+          "kind": {
+            "description": "`personal` — the person themselves, outside any workspace. `workspace` — the person in one of their workspaces: active, with team capabilities, and the person an active member.",
+            "enum": [
+              "personal",
+              "workspace"
+            ],
+            "type": "string"
+          },
+          "memberCount": {
+            "description": "How many active members the workspace has. Present on `workspace`.",
+            "type": "number"
+          },
+          "personName": {
+            "description": "The person’s name. Present on `personal`.",
+            "type": "string"
+          },
+          "workspaceId": {
+            "description": "The workspace identifier to send back as the option. Present on `workspace`.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "workspaceName": {
+            "description": "The workspace’s name. Present on `workspace`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "type": "object"
+      },
       "AttachPublicDocumentDto": {
         "properties": {
           "documentId": {
@@ -195,13 +340,19 @@
             "type": "string"
           },
           "address": {
+            "description": "The wallet's address on its network, its checksum checked (Base58Check on Tron and legacy Bitcoin, EIP-55 for a mixed-case 0x address, bech32 / bech32m for segwit Bitcoin, a 32-byte key on Solana). Refused at field `address`: another network’s (PAYMENT_INSTRUCTION_CRYPTO_ADDRESS_WRONG_NETWORK), nobody’s — a bech32 address in mixed case too (PAYMENT_INSTRUCTION_CRYPTO_ADDRESS_FORMAT), one that does not add up (PAYMENT_INSTRUCTION_CRYPTO_ADDRESS_CHECKSUM).",
             "type": "string"
           },
           "asset": {
-            "description": "Asset, e.g. USDT",
+            "description": "Asset — one its network carries: TRC20 USDT; ERC20 USDT, USDC, ETH; BEP20 USDT, USDC; Bitcoin BTC; Solana USDT, USDC, SOL. Another is refused: 400, field `asset`, errorKey PAYMENT_INSTRUCTION_CRYPTO_ASSET_NOT_ON_NETWORK.",
             "type": "string"
           },
           "bankName": {
+            "type": "string"
+          },
+          "currencyCode": {
+            "description": "ISO 4217 code (e.g. \"EUR\"); absent or null — any currency. Crypto is always any currency.",
+            "nullable": true,
             "type": "string"
           },
           "iban": {
@@ -212,11 +363,15 @@
             "type": "string"
           },
           "isDefault": {
-            "description": "Make this the business default instruction",
+            "description": "Make this the default of its currency — of Any currency when it has none. The first instruction of a currency is its default whatever this says.",
             "type": "boolean"
           },
           "label": {
             "description": "Display label, e.g. \"Main EUR account\"",
+            "type": "string"
+          },
+          "localCode": {
+            "description": "Local bank code (sort code, BSB, IFSC…) — other countries",
             "type": "string"
           },
           "memo": {
@@ -224,8 +379,12 @@
             "type": "string"
           },
           "network": {
-            "description": "Chain — MANDATORY for crypto (e.g. TRC20, ERC20, BEP20)",
+            "description": "Chain — MANDATORY for crypto: TRC20 (Tron), ERC20 (Ethereum), BEP20 (BNB Smart Chain), Bitcoin or Solana, written as before (e.g. TRC20, Tron, ERC20, BEP20, BSC). Another network is refused: 400, field `network`, errorKey PAYMENT_INSTRUCTION_CRYPTO_NETWORK_UNKNOWN.",
             "type": "string"
+          },
+          "qr": {
+            "description": "Print an EPC QR on invoices — an EU account in EUR only",
+            "type": "boolean"
           },
           "region": {
             "enum": [
@@ -265,7 +424,7 @@
               }
             ],
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/AccessGrantDto"
             },
             "type": "array"
           },
@@ -282,7 +441,8 @@
             "enum": [
               "public",
               "private",
-              "restricted"
+              "restricted",
+              "team"
             ],
             "example": "private",
             "type": "string"
@@ -438,6 +598,14 @@
           "contragent": {
             "$ref": "#/components/schemas/PublicContragentInfoDto"
           },
+          "contragentAccount": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountChoiceDto"
+              }
+            ],
+            "description": "Optional. One of the options `POST /api/v1/accounts/lookup` returned for the counterparty's address, proposed to them. `workspace` — until the counterparty accepts, the contract waits for them in that workspace (while they are an active member of it, it is active and their role there may view contracts), and their acceptance preselects it where they may accept for it; the counterparty still chooses. A contract in force from its creation (imported, invoice-only) waits there only while they may also manage contracts in it (they own it, or its owner assigned them to contract management), and otherwise where it would wait without a proposal: their main workspace. `personal` — no proposal. Refused with `ACCOUNT_OPTION_UNAVAILABLE` when the lookup would not show it now, and with `CONTRACT_PROPOSAL_IS_ITS_BUSINESS_SIDE` for the workspace the contract is created for."
+          },
           "currencyCode": {
             "description": "ISO 4217 currency code",
             "example": "USD",
@@ -527,6 +695,14 @@
           },
           "contragent": {
             "$ref": "#/components/schemas/PublicContragentInfoDto"
+          },
+          "contragentAccount": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountChoiceDto"
+              }
+            ],
+            "description": "Optional. One of the options `POST /api/v1/accounts/lookup` returned for the counterparty's address, proposed to them. `workspace` — until the counterparty accepts, the contract waits for them in that workspace (while they are an active member of it, it is active and their role there may view contracts), and their acceptance preselects it where they may accept for it; the counterparty still chooses. A contract in force from its creation (imported, invoice-only) waits there only while they may also manage contracts in it (they own it, or its owner assigned them to contract management), and otherwise where it would wait without a proposal: their main workspace. `personal` — no proposal. Refused with `ACCOUNT_OPTION_UNAVAILABLE` when the lookup would not show it now, and with `CONTRACT_PROPOSAL_IS_ITS_BUSINESS_SIDE` for the workspace the contract is created for."
           },
           "currencyCode": {
             "default": "USD",
@@ -668,7 +844,7 @@
               }
             ],
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/AccessGrantDto"
             },
             "type": "array"
           },
@@ -685,7 +861,8 @@
             "enum": [
               "public",
               "private",
-              "restricted"
+              "restricted",
+              "team"
             ],
             "example": "private",
             "type": "string"
@@ -750,7 +927,7 @@
               }
             ],
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/AccessGrantDto"
             },
             "type": "array"
           },
@@ -767,7 +944,8 @@
             "enum": [
               "public",
               "private",
-              "restricted"
+              "restricted",
+              "team"
             ],
             "example": "private",
             "type": "string"
@@ -855,6 +1033,14 @@
             ],
             "description": "The counterparty's full billing identity — the same object, with the same validation, that the full `POST /contracts` and `PATCH /contracts/:id` already accept. Every field it carries wins over the flat equivalent; the flat fields fill in what it omits. Entirely optional: nothing here is ever required to create a contract."
           },
+          "contragentAccount": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountChoiceDto"
+              }
+            ],
+            "description": "Optional. One of the options `POST /api/v1/accounts/lookup` returned for the counterparty's address, proposed to them. `workspace` — until the counterparty accepts, the contract waits for them in that workspace (while they are an active member of it, it is active and their role there may view contracts), and their acceptance preselects it where they may accept for it; the counterparty still chooses. A contract in force from its creation (imported, invoice-only) waits there only while they may also manage contracts in it (they own it, or its owner assigned them to contract management), and otherwise where it would wait without a proposal: their main workspace. `personal` — no proposal. Refused with `ACCOUNT_OPTION_UNAVAILABLE` when the lookup would not show it now, and with `CONTRACT_PROPOSAL_IS_ITS_BUSINESS_SIDE` for the workspace the contract is created for."
+          },
           "contragentEmail": {
             "description": "Counterparty email. Required unless `contragent.email` is sent. If both are sent they must be the same address — a request carrying two different ones is rejected, never reconciled.",
             "example": "partner@example.com",
@@ -892,6 +1078,14 @@
               }
             ],
             "description": "The counterparty's full billing identity — the same object, with the same validation, that the full `POST /contracts` and `PATCH /contracts/:id` already accept. Every field it carries wins over the flat equivalent; the flat fields fill in what it omits. Entirely optional: nothing here is ever required to create a contract."
+          },
+          "contragentAccount": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountChoiceDto"
+              }
+            ],
+            "description": "Optional. One of the options `POST /api/v1/accounts/lookup` returned for the counterparty's address, proposed to them. `workspace` — until the counterparty accepts, the contract waits for them in that workspace (while they are an active member of it, it is active and their role there may view contracts), and their acceptance preselects it where they may accept for it; the counterparty still chooses. A contract in force from its creation (imported, invoice-only) waits there only while they may also manage contracts in it (they own it, or its owner assigned them to contract management), and otherwise where it would wait without a proposal: their main workspace. `personal` — no proposal. Refused with `ACCOUNT_OPTION_UNAVAILABLE` when the lookup would not show it now, and with `CONTRACT_PROPOSAL_IS_ITS_BUSINESS_SIDE` for the workspace the contract is created for."
           },
           "contragentEmail": {
             "description": "Counterparty email. Required unless `contragent.email` is sent. If both are sent they must be the same address — a request carrying two different ones is rejected, never reconciled.",
@@ -948,7 +1142,7 @@
             "type": "boolean"
           },
           "currencyCode": {
-            "description": "ISO 4217 currency code. Defaults to the contract currency.",
+            "description": "ISO 4217 currency code. Defaults to the contract currency — for an invoice-only contract, to the counterparty's invoice currency when one is set.",
             "type": "string"
           },
           "description": {
@@ -982,12 +1176,20 @@
             "description": "Send the invoice immediately after creation",
             "type": "boolean"
           },
+          "showUnpaid": {
+            "description": "Whether the invoice, when it is sent, also prints under its totals what the partner still owes on their other open invoices in its currency — «Not part of this invoice» and «Total outstanding, with this invoice». Omitted → true; false prints none. Read once, when the invoice is sent.",
+            "type": "boolean"
+          },
           "stripePaymentAllowed": {
-            "description": "Whether this invoice may be paid by card via Stripe. Omit to inherit the contract setting. Send false for a deliberately manual, offline-paid invoice. Sending true under a contract that forbids Stripe payment is rejected with code STRIPE_NOT_ALLOWED_BY_CASCADE. The value is only resolved and frozen when the invoice is sent.",
+            "description": "Whether this invoice may be paid by card via Stripe. Omit to inherit: the contract, the counterparty (whose card payments the business may turn off) and the business decide, each of which may only turn card payments off. Send false for a deliberately manual, offline-paid invoice. Sending true under a contract that forbids Stripe payment, or to a counterparty whose card payments are turned off, is rejected with code STRIPE_NOT_ALLOWED_BY_CASCADE. The value is only resolved and frozen when the invoice is sent.",
+            "type": "boolean"
+          },
+          "takePaidAhead": {
+            "description": "Whether the invoice takes the partner’s paid ahead when it is sent — their money that came over earlier invoices in its currency, taken off what is left to pay. Omitted → true; false keeps it for a later invoice. Read once, when the invoice is sent.",
             "type": "boolean"
           },
           "taxTreatmentId": {
-            "description": "Uuid of one of this business's tax treatments, applied to every line that does not carry its own. Omit to use the business default. List them, and learn their ids, through /api/v1/tax-treatments. An invoice created from a bare `amount` with no treatment keeps the legacy no-tax behaviour and makes no tax claim.",
+            "description": "Uuid of one of this business's tax treatments, applied to every line that does not carry its own. Omit to use the counterparty's VAT setting, else the business default. List them, and learn their ids, through /api/v1/tax-treatments. An invoice created from a bare `amount` with no treatment keeps the legacy no-tax behaviour and makes no tax claim.",
             "type": "string"
           },
           "title": {
@@ -1011,6 +1213,14 @@
               }
             ],
             "description": "The counterparty's full billing identity — the same object, with the same validation, that the full `POST /contracts` and `PATCH /contracts/:id` already accept. Every field it carries wins over the flat equivalent; the flat fields fill in what it omits. Entirely optional: nothing here is ever required to create a contract."
+          },
+          "contragentAccount": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountChoiceDto"
+              }
+            ],
+            "description": "Optional. One of the options `POST /api/v1/accounts/lookup` returned for the counterparty's address, proposed to them. `workspace` — until the counterparty accepts, the contract waits for them in that workspace (while they are an active member of it, it is active and their role there may view contracts), and their acceptance preselects it where they may accept for it; the counterparty still chooses. A contract in force from its creation (imported, invoice-only) waits there only while they may also manage contracts in it (they own it, or its owner assigned them to contract management), and otherwise where it would wait without a proposal: their main workspace. `personal` — no proposal. Refused with `ACCOUNT_OPTION_UNAVAILABLE` when the lookup would not show it now, and with `CONTRACT_PROPOSAL_IS_ITS_BUSINESS_SIDE` for the workspace the contract is created for."
           },
           "contragentEmail": {
             "description": "Counterparty email. Required unless `contragent.email` is sent. If both are sent they must be the same address — a request carrying two different ones is rejected, never reconciled.",
@@ -1079,10 +1289,12 @@
           },
           "recipients": {
             "example": [
-              "signer@example.com"
+              {
+                "email": "signer@example.com"
+              }
             ],
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/PublicSignatureRecipientDto"
             },
             "type": "array"
           },
@@ -1480,7 +1692,7 @@
               }
             ],
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/AccessGrantDto"
             },
             "type": "array"
           },
@@ -1497,7 +1709,8 @@
             "enum": [
               "public",
               "private",
-              "restricted"
+              "restricted",
+              "team"
             ],
             "example": "private",
             "type": "string"
@@ -2072,6 +2285,14 @@
       },
       "PublicEditSignatureRequestDto": {
         "properties": {
+          "account": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountChoiceDto"
+              }
+            ],
+            "description": "Optional. One of the options `POST /api/v1/accounts/lookup` returned for the new recipient: `personal`, or a `workspace` with its `workspaceId`. It decides where the signer row goes. An option the lookup does not show now is refused with `ACCOUNT_OPTION_UNAVAILABLE`. Without it the recipient is addressed as before."
+          },
           "recipient": {
             "description": "New recipient email",
             "example": "new-signer@example.com",
@@ -2522,8 +2743,20 @@
           "amount": {
             "type": "string"
           },
+          "appendix": {
+            "description": "true — the invoice is an appendix to its contract (New invoice’s Make it an appendix): it prints as part of the contract and is numbered among the contract’s appendices and amendments as it is issued. Absent on every other invoice.",
+            "type": "boolean"
+          },
+          "appendixNumber": {
+            "description": "The appendix’s number among its contract’s appendices and amendments, drawn as it is issued. Absent on a draft and on an invoice that is no appendix.",
+            "type": "number"
+          },
           "buyer": {
             "$ref": "#/components/schemas/PublicInvoiceBuyerDto"
+          },
+          "canCancel": {
+            "description": "Whether the invoice may be cancelled: no money and no credit note reached it, and it is a draft, unpaid or overdue — or settled by the partner’s paid ahead alone, which cancelling gives back to them. A cancel of any other is refused with `INVOICE_MONEY_OR_CREDIT_NOTE` where money or a credit note reached it.",
+            "type": "boolean"
           },
           "checkoutUrl": {
             "type": "object"
@@ -2587,13 +2820,22 @@
             },
             "type": "array"
           },
+          "paidAheadAmount": {
+            "description": "The partner’s paid ahead this invoice took when it was sent — money they paid over earlier invoices in its currency, received there, so excluded from `paidAmount` and already deducted from `remainingAmount`; \"0\" when it took none.",
+            "type": "string"
+          },
           "paidAmount": {
-            "description": "Cash actually received against this invoice, net of applied credit notes (§6.2). Note that `paidAmount + remainingAmount` is short of `amount` by `creditedAmount`.",
+            "description": "Cash actually received against this invoice, net of applied credit notes (§6.2). Note that `paidAmount + remainingAmount` is short of `amount` by `creditedAmount` and `paidAheadAmount`.",
             "type": "string"
           },
           "paidAt": {
             "format": "date-time",
             "nullable": true,
+            "type": "string"
+          },
+          "paidOn": {
+            "description": "The day the money that paid the invoice came, as a seller’s record named it (YYYY-MM-DD); `paidAt` holds the same day as its midnight UTC, which reads as the day before west of UTC. Absent where `paidAt` is the instant the money came at, and while the invoice is not paid.",
+            "format": "date",
             "type": "string"
           },
           "partiesSource": {
@@ -2609,12 +2851,24 @@
             "nullable": true,
             "type": "string"
           },
+          "poNumber": {
+            "description": "The buyer’s order number, where the invoice carries the field (New invoice’s Fields on the invoice); an empty string — the field is on the invoice, left empty. Absent — not on the invoice.",
+            "type": "string"
+          },
           "remainingAmount": {
-            "description": "Still owed = amount − cash − applied credit",
+            "description": "Still owed = amount − cash − applied credit − paid ahead taken",
             "type": "string"
           },
           "seller": {
             "$ref": "#/components/schemas/PublicInvoiceSellerDto"
+          },
+          "servicePeriod": {
+            "description": "The period the work was done in, where the invoice carries the field; an empty string — the field is on the invoice, left empty. Absent — not on the invoice.",
+            "type": "string"
+          },
+          "showUnpaid": {
+            "description": "Whether the invoice, when it is sent, prints under its totals what the partner still owes on their other open invoices in its currency — a draft’s choice, read once, at send.",
+            "type": "boolean"
           },
           "status": {
             "enum": [
@@ -2630,7 +2884,7 @@
             "type": "string"
           },
           "stripeAllowedIntent": {
-            "description": "The write-once intent captured at creation. INHERIT follows the contract at send time; FORBID keeps the invoice manual regardless of the contract.",
+            "description": "The write-once intent captured at creation. INHERIT lets the levels above decide at send time — the contract, the counterparty, the business — each of which may only turn card payments off; FORBID keeps the invoice manual regardless of them.",
             "enum": [
               "INHERIT",
               "FORBID"
@@ -2638,9 +2892,13 @@
             "type": "string"
           },
           "stripePaymentAllowed": {
-            "description": "Whether this invoice may be paid by card via Stripe. Frozen when the invoice is sent, and never re-evaluated afterwards. Null on a DRAFT, which has not been resolved yet — read stripeAllowedIntent together with the contract setting to know what a DRAFT will resolve to.",
+            "description": "Whether this invoice may be paid by card via Stripe. Frozen when the invoice is sent, and never re-evaluated afterwards. Null on a DRAFT, which has not been resolved yet — read stripeAllowedIntent together with the contract setting and the counterparty’s card preference to know what a DRAFT will resolve to.",
             "nullable": true,
             "type": "object"
+          },
+          "takePaidAhead": {
+            "description": "Whether the invoice takes the partner’s paid ahead when it is sent — a draft’s choice, read once, at send.",
+            "type": "boolean"
           },
           "taxSummary": {
             "allOf": [
@@ -2676,7 +2934,11 @@
           "amount",
           "paidAmount",
           "creditedAmount",
+          "paidAheadAmount",
           "remainingAmount",
+          "takePaidAhead",
+          "showUnpaid",
+          "canCancel",
           "currencyCode",
           "issueDate",
           "dueDate",
@@ -2812,11 +3074,26 @@
             ],
             "type": "string"
           },
+          "method": {
+            "description": "How a seller’s record says the money came — Record a payment’s Method: bank-transfer, cash or other. Absent on a payment made through Chaindoc (see `paymentMethodType`) and on a record that named none.",
+            "enum": [
+              "bank-transfer",
+              "cash",
+              "other"
+            ],
+            "type": "string"
+          },
           "netAmount": {
             "type": "string"
           },
           "note": {
+            "description": "The seller's note on a payment it recorded — the seller's own: a key of the contract's counterparty side reads null, as for a payment without one.",
             "type": "object"
+          },
+          "paidOn": {
+            "description": "The day a seller’s record says its money came (YYYY-MM-DD) — Record a payment’s Paid on, or the day of the key’s mark-paid `paidAt`. Absent on a payment made through Chaindoc and on a record that named no day.",
+            "format": "date",
+            "type": "string"
           },
           "paymentMethodType": {
             "description": "Payment method type, e.g. card or bank_transfer",
@@ -2827,6 +3104,11 @@
           },
           "receiptUrl": {
             "type": "object"
+          },
+          "removedAt": {
+            "description": "When the seller removed this payment they had recorded: it reads CANCELLED — no money of it stands — and stays listed. Absent on every payment that was never removed (a CANCELLED one without it never moved money).",
+            "format": "date-time",
+            "type": "string"
           },
           "source": {
             "description": "Payment source, e.g. stripe or manual",
@@ -2858,6 +3140,15 @@
       },
       "PublicMarkInvoicePaidDto": {
         "properties": {
+          "method": {
+            "description": "How the money came, as the record names it — Record a payment’s Method: bank-transfer, cash or other. Omitted — the record names none.",
+            "enum": [
+              "bank-transfer",
+              "cash",
+              "other"
+            ],
+            "type": "string"
+          },
           "note": {
             "description": "Optional note for manual or offline payment",
             "type": "string"
@@ -3271,6 +3562,36 @@
         "required": [
           "key",
           "value"
+        ],
+        "type": "object"
+      },
+      "PublicSignatureRecipientDto": {
+        "properties": {
+          "account": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountChoiceDto"
+              }
+            ],
+            "description": "Optional. One of the options `POST /api/v1/accounts/lookup` returned for this address: `personal`, or a `workspace` with its `workspaceId`. A workspace option assigns the signer row to the person in that workspace, `personal` makes it their personal row; without it the recipient is addressed as before. An option the lookup does not show now is refused with `ACCOUNT_OPTION_UNAVAILABLE`. A `workspace` option on a `delegated` recipient is refused (`KEY_MAY_NOT_CLAIM_AN_ORGANIZATIONAL_ROW`): a key does not sign for a workspace."
+          },
+          "email": {
+            "description": "Email address of the signer",
+            "example": "user@example.com",
+            "type": "string"
+          },
+          "signingMethod": {
+            "description": "Use delegated only for the API key owner email; the backend signs that recipient with the latest saved signature.",
+            "enum": [
+              "embedded",
+              "delegated"
+            ],
+            "example": "embedded",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
         ],
         "type": "object"
       },
@@ -4035,6 +4356,14 @@
       },
       "PublicTemplateSlotAssignmentDto": {
         "properties": {
+          "account": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountChoiceDto"
+              }
+            ],
+            "description": "Optional. One of the options `POST /api/v1/accounts/lookup` returned for this slot’s address: `personal`, or a `workspace` with its `workspaceId`. It decides where the signer row goes, as on `POST /api/v1/signatures/requests`; one address in two slots carries one option. An option the lookup does not show now is refused with `ACCOUNT_OPTION_UNAVAILABLE`, and a `workspace` option on a `delegated` slot with `KEY_MAY_NOT_CLAIM_AN_ORGANIZATIONAL_ROW`."
+          },
           "email": {
             "example": "signer@example.com",
             "type": "string"
@@ -4343,7 +4672,21 @@
             ],
             "type": "string"
           },
+          "method": {
+            "description": "How a seller’s record says the money came — Record a payment’s Method: bank-transfer, cash or other. Absent on a payment made through Chaindoc (see `paymentMethodType`) and on a record that named none.",
+            "enum": [
+              "bank-transfer",
+              "cash",
+              "other"
+            ],
+            "type": "string"
+          },
           "netAmount": {
+            "type": "string"
+          },
+          "paidOn": {
+            "description": "The day a seller’s record says its money came (YYYY-MM-DD) — Record a payment’s Paid on, or the day of the key’s mark-paid `paidAt`. Absent on a payment made through Chaindoc and on a record that named no day.",
+            "format": "date",
             "type": "string"
           },
           "paymentMethodType": {
@@ -4355,6 +4698,11 @@
           },
           "receiptUrl": {
             "type": "object"
+          },
+          "removedAt": {
+            "description": "When the seller removed this payment they had recorded: it reads CANCELLED — no money of it stands — and stays listed. Absent on every payment that was never removed (a CANCELLED one without it never moved money).",
+            "format": "date-time",
+            "type": "string"
           },
           "retryCount": {
             "type": "number"
@@ -4398,7 +4746,7 @@
           },
           "data": {
             "additionalProperties": true,
-            "description": "Event-specific webhook payload. Only public UUID identifiers are allowed. Every event whose object belongs to a workspace carries `workspace.uuid` alongside the object’s own identifiers; `uuid` is null only when the workspace could not be resolved at delivery time.",
+            "description": "Event-specific webhook payload. Only public UUID identifiers are allowed. Every event whose object belongs to a workspace carries `workspace.uuid` alongside the object’s own identifiers; `uuid` is null only when the workspace could not be resolved at delivery time. A contract’s event (`contract.*`, `additional_agreement.signed`, `invoice.*`, `transaction.*`) is delivered to the active keys of each side of the contract that is a workspace, once per side: `workspace.uuid` is that side’s workspace, and `side` says which side of the contract it is — `business` or `contragent`.",
             "example": {
               "documentId": "7c2807a3-3ad4-4423-9ebc-0281bff2660b",
               "workspace": {
@@ -4433,16 +4781,8 @@
               "invoice.cancelled",
               "transaction.created",
               "transaction.updated",
-              "workflow.run.started",
-              "workflow.step.opened",
-              "workflow.assignment.approved",
-              "workflow.run.returned",
-              "workflow.run.rejected",
-              "workflow.assignment.consented",
-              "workflow.proofs.issued",
-              "workflow.run.completed",
-              "workflow.run.cancelled",
-              "workflow.run.expired"
+              "transaction.edited",
+              "transaction.removed"
             ],
             "example": "document.created",
             "type": "string"
@@ -4745,6 +5085,10 @@
           "filledVariableValues": {
             "type": "object"
           },
+          "orderTurn": {
+            "description": "Where this signer stands in the order of signing. Present only when the request is signed in order; `isMyTurn` is true once every signer placed before this one has signed.",
+            "type": "object"
+          },
           "placedFields": {
             "items": {
               "$ref": "#/components/schemas/SignerPlacedFieldDto"
@@ -4914,6 +5258,9 @@
       },
       "SignerDto": {
         "properties": {
+          "account": {
+            "$ref": "#/components/schemas/AccountChoiceDto"
+          },
           "email": {
             "example": "signer@example.com",
             "type": "string"
@@ -5080,40 +5427,6 @@
           "requestId",
           "signatureId",
           "meta"
-        ],
-        "type": "object"
-      },
-      "StartPublicWorkflowRunDto": {
-        "properties": {
-          "deadline": {
-            "description": "The whole run’s deadline, carried to the signature request. Absent means fourteen days from now; one to 180 days inclusive, judged against the server’s database clock.",
-            "format": "date-time",
-            "type": "string"
-          },
-          "definitionUuid": {
-            "description": "The route to run. Must be `active`.",
-            "example": "21096b94-498f-4a2d-9795-e810edc2c9a9",
-            "type": "string"
-          },
-          "revisionUuid": {
-            "description": "The route revision this run starts against. Read it from the route; a launch naming a revision that is no longer current is refused rather than silently running the new one.",
-            "example": "21096b94-498f-4a2d-9795-e810edc2c9a9",
-            "type": "string"
-          },
-          "supersedesRunUuid": {
-            "description": "The run returned for changes that this one continues (`AC-14.9`). That run moves to `superseded` in the same transaction, and a returned run can be continued exactly once.",
-            "type": "string"
-          },
-          "versionUuid": {
-            "description": "The document version the run holds for its whole life.",
-            "example": "21096b94-498f-4a2d-9795-e810edc2c9a9",
-            "type": "string"
-          }
-        },
-        "required": [
-          "definitionUuid",
-          "versionUuid",
-          "revisionUuid"
         ],
         "type": "object"
       },
@@ -5332,7 +5645,7 @@
               }
             ],
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/AccessGrantDto"
             },
             "type": "array"
           },
@@ -5349,7 +5662,8 @@
             "enum": [
               "public",
               "private",
-              "restricted"
+              "restricted",
+              "team"
             ],
             "example": "restricted",
             "type": "string"
@@ -5423,6 +5737,14 @@
           },
           "contragent": {
             "$ref": "#/components/schemas/PublicContragentInfoDto"
+          },
+          "contragentAccount": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountChoiceDto"
+              }
+            ],
+            "description": "Optional. One of the options `POST /api/v1/accounts/lookup` returned for the counterparty's address, proposed to them. `workspace` — until the counterparty accepts, the contract waits for them in that workspace (while they are an active member of it, it is active and their role there may view contracts), and their acceptance preselects it where they may accept for it; the counterparty still chooses. A contract in force from its creation (imported, invoice-only) waits there only while they may also manage contracts in it (they own it, or its owner assigned them to contract management), and otherwise where it would wait without a proposal: their main workspace. `personal` — no proposal. Refused with `ACCOUNT_OPTION_UNAVAILABLE` when the lookup would not show it now, and with `CONTRACT_PROPOSAL_IS_ITS_BUSINESS_SIDE` for the workspace the contract is created for."
           },
           "description": {
             "example": "Annual consulting agreement",
@@ -5588,6 +5910,14 @@
             "description": "Uuid of an active payment instruction of this business to print on this invoice. Omit and the cascade resolves one at issue: the contract override, then the counterparty override, then the business default. Create one, and learn its id, through /api/v1/payment-instructions. Send null to clear the invoice-level selection, after which the cascade resolves it at issue.",
             "nullable": true,
             "type": "object"
+          },
+          "showUnpaid": {
+            "description": "Whether the invoice, when it is sent, also prints under its totals what the partner still owes on their other open invoices in its currency — «Not part of this invoice» and «Total outstanding, with this invoice». Omitted → true; false prints none. Read once, when the invoice is sent.",
+            "type": "boolean"
+          },
+          "takePaidAhead": {
+            "description": "Whether the invoice takes the partner’s paid ahead when it is sent — their money that came over earlier invoices in its currency, taken off what is left to pay. Omitted → true; false keeps it for a later invoice. Read once, when the invoice is sent.",
+            "type": "boolean"
           },
           "title": {
             "description": "Invoice title",
@@ -5779,6 +6109,63 @@
   },
   "openapi": "3.0.0",
   "paths": {
+    "/api/v1/accounts/lookup": {
+      "post": {
+        "description": "Requires secret key (sk_); a public key is refused. For each address: `not_registered`, `hidden` (the person chose not to reveal where they can be sent), or `options` — the person themselves (`personal`, with their name) and each workspace they can be sent to (active, with team capabilities, the person an active member), with its identifier, name and number of members. The operation has its own rate limit per key, on top of the general one.",
+        "operationId": "PublicApiController_lookupAccounts",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountLookupDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountLookupResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "description": "Secret key required for this operation"
+          },
+          "429": {
+            "description": "Too many lookups with this key; retry later"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Look up where the people at these addresses can be sent (sk_)",
+        "tags": [
+          "PublicApi",
+          "Accounts"
+        ]
+      }
+    },
     "/api/v1/contracts": {
       "get": {
         "description": "Requires secret key (sk_). Returns paginated list of contracts with optional status and search filters.",
@@ -6035,7 +6422,7 @@
     },
     "/api/v1/contracts/{contractId}/activities": {
       "get": {
-        "description": "Requires secret key (sk_). Returns paginated activity log for the contract.",
+        "description": "Requires secret key (sk_). Returns paginated activity log for the contract. A seller’s note on a payment it recorded is its own: a key of the counterparty side is given that entry without it.",
         "operationId": "PublicContractsController_getContractActivities",
         "parameters": [
           {
@@ -6759,7 +7146,7 @@
     },
     "/api/v1/contracts/{contractId}/invoices/{invoiceUuid}/cancel": {
       "post": {
-        "description": "Requires secret key (sk_). Cancels a draft, unpaid, or overdue invoice and voids any open checkout sessions.",
+        "description": "Requires secret key (sk_). Cancels a draft, unpaid, or overdue invoice — or one settled by the partner’s paid ahead alone, which goes back to them for their next invoice — and voids any open checkout sessions. An invoice that money or a credit note reached is not cancelled (400, `code: INVOICE_MONEY_OR_CREDIT_NOTE`); a credit note corrects it.",
         "operationId": "PublicContractsController_cancelInvoice",
         "parameters": [
           {
@@ -8914,7 +9301,7 @@
     },
     "/api/v1/documents/{documentId}/activity": {
       "get": {
-        "description": "Returns the activity history (views, downloads, verification checks) for the document current version. Both pk_ and sk_ keys are accepted; the API key owner must have access to the document.",
+        "description": "Returns the activity history (views, downloads, signature and sharing events) for the document current version. Both pk_ and sk_ keys are accepted; the API key owner must have access to the document. Note: proof checks are NOT recorded — POST /documents/verify is a read and writes nothing to the document it is asked about.",
         "operationId": "PublicApiController_getDocumentActivity",
         "parameters": [
           {
@@ -9410,7 +9797,7 @@
     },
     "/api/v1/documents/shared": {
       "get": {
-        "description": "Returns a paginated list of documents explicitly shared with the API key owner (via direct or role-based access). Both pk_ and sk_ keys are accepted.",
+        "description": "Returns a paginated list of documents explicitly shared with the API key owner (via direct or role-based access). Both pk_ and sk_ keys are accepted. Each document carries `places`: where the owner holds it — `{ \"kind\": \"personal\" }` for access given personally, and `{ \"kind\": \"workspace\", \"workspaceId\": \"<uuid>\" }` for access given on one of their workspaces, which holds while they are an active member of that workspace and it is active.",
         "operationId": "PublicApiController_listSharedDocuments",
         "parameters": [
           {
@@ -9489,7 +9876,7 @@
     },
     "/api/v1/documents/verify": {
       "post": {
-        "description": "Requires public key (pk_) or secret key (sk_). Verifies document authenticity using blockchain. This is a read-only verification lookup.",
+        "description": "Requires public key (pk_) or secret key (sk_). Answers whether the artifact whose hash you present is notarized, and — if you present a certificate hash — whether that certificate was issued over it. Read-only: it does not identify the document behind the hash and does not record the check. To read a document you hold a uuid for, use the document routes; for the same notarization facts by version uuid, use GET /documents/versions/{versionId}/verification.",
         "operationId": "PublicApiController_verifyDocument",
         "parameters": [
           {
@@ -9513,7 +9900,7 @@
         },
         "responses": {
           "200": {
-            "description": "Document verification result"
+            "description": "Verification result: { success, verified, versionHash, verification, certificate }. An unknown hash and a hash with no notarization answer alike — verified: false."
           }
         },
         "security": [
@@ -9524,7 +9911,7 @@
             "ApiKey": []
           }
         ],
-        "summary": "Verify document in blockchain",
+        "summary": "Verify an artifact against its notarization",
         "tags": [
           "PublicApi",
           "Verification"
@@ -10906,7 +11293,7 @@
     },
     "/api/v1/invoices": {
       "get": {
-        "description": "Requires secret key (sk_). Returns a paginated list of every invoice across all contracts owned by the API key owner, with status filters and aggregate counts.",
+        "description": "Requires secret key (sk_). Returns a paginated list of every invoice across all contracts of the workspace the API key belongs to, with status filters and aggregate counts.",
         "operationId": "PublicInvoicesController_listAllInvoices",
         "parameters": [
           {
@@ -11337,7 +11724,7 @@
         ]
       },
       "post": {
-        "description": "Requires secret key (sk_). The first active instruction of a business always becomes its default; afterwards `isDefault` decides. A crypto instruction requires network, asset and a non-blank address — an instruction nobody can pay into is refused at creation.",
+        "description": "Requires secret key (sk_). Without a `currencyCode` the instruction is for any currency, with one for that currency, and each keeps its own default: the first active instruction of a currency — or of any currency — always becomes its default; afterwards `isDefault` decides within it. A crypto instruction is always in any currency and requires network, asset and a non-blank address — an instruction nobody can pay into is refused at creation. Its network and asset are a pair of TRC20 USDT; ERC20 USDT, USDC, ETH; BEP20 USDT, USDC; Bitcoin BTC; Solana USDT, USDC, SOL, and its address one of that network whose checksum adds up — otherwise 400 with `field` and `errorKey`.",
         "operationId": "PublicPaymentInstructionsController_create",
         "parameters": [
           {
@@ -11466,6 +11853,16 @@
             "name": "state",
             "required": false,
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The workspace the connection belongs to; the installer must be its active member. Omitted: the installer's main workspace.",
+            "in": "query",
+            "name": "workspaceUuid",
+            "required": false,
+            "schema": {
+              "format": "uuid",
               "type": "string"
             }
           }
@@ -11603,18 +12000,21 @@
             "schema": {
               "default": 1,
               "example": 1,
-              "type": "number"
+              "maximum": 180143985094819,
+              "minimum": 1,
+              "type": "integer"
             }
           },
           {
-            "description": "min: 1, max: 50",
             "in": "query",
             "name": "pageSize",
             "required": false,
             "schema": {
               "default": 10,
               "example": 10,
-              "type": "number"
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
             }
           },
           {
@@ -11667,18 +12067,21 @@
             "schema": {
               "default": 1,
               "example": 1,
-              "type": "number"
+              "maximum": 180143985094819,
+              "minimum": 1,
+              "type": "integer"
             }
           },
           {
-            "description": "min: 1, max: 50",
             "in": "query",
             "name": "pageSize",
             "required": false,
             "schema": {
               "default": 10,
               "example": 10,
-              "type": "number"
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
             }
           },
           {
@@ -12755,7 +13158,7 @@
         ]
       },
       "post": {
-        "description": "Requires secret key (sk_). Creates a signature request for specified recipients.",
+        "description": "Requires secret key (sk_). Creates a signature request for specified recipients. A version whose request was cancelled or expired before anybody engaged with it, and which is still the document's current version, is sent over a fresh copy of it — the same file and hash — which becomes the current version; the answer names it.",
         "operationId": "PublicApiController_createSignatureRequest",
         "parameters": [
           {
@@ -12951,7 +13354,7 @@
     },
     "/api/v1/signatures/requests/{requestId}/resend": {
       "post": {
-        "description": "Requires secret key (sk_). Opens a NEW signature request over a fresh version cloned from the original request, carrying its signers and field placements, and leaves the cancelled or expired request standing as the record of the first attempt. This is the replacement workflow for a preserved terminal: it still holds its own version, so creating a new request over that same version is refused.",
+        "description": "Requires secret key (sk_). Opens a NEW signature request over a fresh version cloned from the original request, carrying its signers and field placements, and leaves the cancelled or expired request standing as the record of the first attempt. This is the replacement workflow for a preserved terminal: it still holds its own version, so creating a new request over that same version is refused — unless nobody engaged with the request and the version is still the document's current one, when the create goes out over a fresh copy of it.",
         "operationId": "PublicApiController_resendSignatureRequest",
         "parameters": [
           {
@@ -14134,7 +14537,7 @@
     },
     "/api/v1/transactions/fee-estimate": {
       "get": {
-        "description": "Requires secret key (sk_). Returns an estimated fee breakdown (Stripe + platform) per payment-method type for a given amount and currency. Pure calculation - no contract data.",
+        "description": "Requires secret key (sk_). Returns an estimated fee breakdown (Stripe + platform) per payment-method type for a given amount and currency. Calculation only - no contract data. Without platformFeePercent, the platform fee is the rate of the workspace the API key belongs to.",
         "operationId": "PublicTransactionsController_getFeeEstimate",
         "parameters": [
           {
@@ -14166,7 +14569,7 @@
             }
           },
           {
-            "description": "Custom platform fee percent override (default: 2.5)",
+            "description": "Custom platform fee percent override (default: the platform rate of the workspace the request is made for)",
             "in": "query",
             "name": "platformFeePercent",
             "required": false,
@@ -14204,7 +14607,7 @@
     },
     "/api/v1/transactions/payment-mix": {
       "get": {
-        "description": "Requires secret key (sk_). Returns transaction totals grouped by payment-method type for contracts owned by the API key owner, within the given date range.",
+        "description": "Requires secret key (sk_). Returns transaction totals grouped by payment-method type for the contracts of the workspace the API key belongs to, within the given date range.",
         "operationId": "PublicTransactionsController_getPaymentMix",
         "parameters": [
           {
@@ -14295,126 +14698,6 @@
         "summary": "Get payment-mix analytics",
         "tags": [
           "Transactions"
-        ]
-      }
-    },
-    "/api/v1/workflows/definitions": {
-      "get": {
-        "description": "Every saved route of the workspace behind this key, with its status. Only an `active` route can start a run.",
-        "operationId": "PublicWorkflowsController_listDefinitions",
-        "parameters": [
-          {
-            "description": "Language",
-            "in": "header",
-            "name": "x-lang",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The workspace’s saved routes."
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          },
-          {
-            "ApiKey": []
-          }
-        ],
-        "summary": "List approval routes",
-        "tags": [
-          "PublicWorkflows",
-          "Workflows"
-        ]
-      }
-    },
-    "/api/v1/workflows/runs": {
-      "post": {
-        "description": "Refused when the route is not `active`, when the version already carries a signature request, or when another run already holds the version.",
-        "operationId": "PublicWorkflowsController_startRun",
-        "parameters": [
-          {
-            "description": "Language",
-            "in": "header",
-            "name": "x-lang",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/StartPublicWorkflowRunDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "The run that was started."
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          },
-          {
-            "ApiKey": []
-          }
-        ],
-        "summary": "Start an approval route over a document version",
-        "tags": [
-          "PublicWorkflows",
-          "Workflows"
-        ]
-      }
-    },
-    "/api/v1/workflows/runs/{uuid}": {
-      "get": {
-        "description": "Where the run stands, which step is open, which assignments are still awaited, and the journal of what has happened.",
-        "operationId": "PublicWorkflowsController_readRun",
-        "parameters": [
-          {
-            "description": "Language",
-            "in": "header",
-            "name": "x-lang",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "uuid",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The run’s state."
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          },
-          {
-            "ApiKey": []
-          }
-        ],
-        "summary": "Read a run’s state and outcome",
-        "tags": [
-          "PublicWorkflows",
-          "Workflows"
         ]
       }
     }
