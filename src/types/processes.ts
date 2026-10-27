@@ -153,14 +153,25 @@ export interface ProcessCaseMetadata extends ProcessCaseReceipt {
 
 export type ProcessCase = ProcessCaseReceipt | ProcessCaseMetadata;
 
-/** At most 100 public event identities; no payload, cursor, total or completeness claim. */
+/** Server validates the exact event cursor in this case and the current permitted event catalogue. */
+export interface ProcessEventQuery {
+  readonly afterEventUuid?: string;
+  /** Integer 1–100; server default is 100. */
+  readonly limit?: number;
+}
+
+/** One ordered historical page; no actors, raw payload, internal sequence, hash or hidden count. */
 export interface ProcessEventMetadata {
   readonly caseUuid: string;
-  readonly observation: 'bounded_public_event_metadata';
+  readonly observation: 'public_event_history';
+  readonly hasMore: boolean;
+  readonly nextAfter: string | null;
   readonly events: readonly {
     readonly eventUuid: string;
     readonly eventType: string;
     readonly occurredAt: string;
+    /** Kind-specific native nonpersonal fields; individual catalogue fields are not guaranteed. */
+    readonly data: Readonly<Record<string, ProcessJsonValue>>;
   }[];
 }
 

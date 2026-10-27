@@ -6,6 +6,7 @@ import type {
   ProcessMaterialView,
   ProcessMaterialPurpose,
   ProcessEventMetadata,
+  ProcessEventQuery,
   ProcessIntake,
   ProcessIntakeParams,
   ProcessResubmitParams,
@@ -43,9 +44,14 @@ export class Processes {
     return this.client.get<ProcessCase>(this.casePath(caseUuid));
   }
 
-  /** Requires independent read_events grant and explicit current full read policy. */
-  async getEvents(caseUuid: string): Promise<ProcessEventMetadata> {
-    return this.client.get<ProcessEventMetadata>(`${this.casePath(caseUuid)}/events`);
+  /** One historical page under current read_events authority; no automatic page traversal. */
+  async getEvents(caseUuid: string, options?: ProcessEventQuery): Promise<ProcessEventMetadata> {
+    const query = new URLSearchParams();
+    if (options?.afterEventUuid !== undefined) query.set('afterEventUuid', options.afterEventUuid);
+    if (options?.limit !== undefined) query.set('limit', String(options.limit));
+    const encodedQuery = query.toString();
+    const suffix = encodedQuery.length === 0 ? '' : `?${encodedQuery}`;
+    return this.client.get<ProcessEventMetadata>(`${this.casePath(caseUuid)}/events${suffix}`);
   }
 
   /** Current full read_case policy and native per-value disclosure are required. */

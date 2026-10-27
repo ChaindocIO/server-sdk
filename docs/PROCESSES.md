@@ -2,23 +2,28 @@
 
 This SDK source implements the public routes below from backend source: discovery/Start
 `793ce4c8a`, case/event metadata `fa49a805e`, own-key resubmit `65ec75a0a`
-(integrated in `6b0a00863`), and entry intakes `e901ab453`. These are source contracts,
+(integrated in `6b0a00863`), entry intakes `e901ab453`, content reads `aa4bf46fb`, and paginated historical events
+`ed93cc102`. These are source contracts,
 not a published SDK release, generated-current OpenAPI or deployment claim.
 
-| SDK method | Public route | Result |
-| --- | --- | --- |
-| `processes.list()` | `GET /api/v1/processes` | `{processes:[{processKey,name}]}`; no hidden total |
-| `processes.getEntry(processKey, entryKey)` | `GET /api/v1/processes/{processKey}/entries/{entryKey}` | Current pinned input schema, material constraints and version UUID |
-| `processes.start(processKey, entryKey, params)` | `POST /api/v1/processes/{processKey}/entries/{entryKey}/cases` | HTTP 200 `{caseUuid,lifecycle,replayed}` |
-
-| `processes.getCase(caseUuid)` | `GET /api/v1/processes/cases/{caseUuid}` | Narrow receipt or current-policy full scalar header |
-| `processes.getEvents(caseUuid)` | `GET /api/v1/processes/cases/{caseUuid}/events` | At most 100 public event identities and timestamps |
-| `processes.resubmit(caseUuid, params)` | `POST /api/v1/processes/cases/{caseUuid}/resubmit` | HTTP 200 `{caseUuid,lifecycle,replayed}` |
-| `processes.beginIntake(processKey, entryKey, params)` | `POST /api/v1/processes/{processKey}/entries/{entryKey}/intakes` | HTTP 201 intake metadata |
-| `processes.getIntake(processKey, entryKey, intakeUuid)` | `GET .../intakes/{intakeUuid}` | Intake metadata |
-| `processes.abandonIntake(processKey, entryKey, intakeUuid)` | `DELETE .../intakes/{intakeUuid}` | Intake metadata |
-| `processes.uploadIntake(processKey, entryKey, intakeUuid, bytes)` | `PUT .../intakes/{intakeUuid}/content` | Intake metadata |
-| `processes.uploadIntakeChunk(processKey, entryKey, intakeUuid, bytes, offset)` | `PATCH .../intakes/{intakeUuid}/chunks` | Intake metadata |
+| SDK method                                                                     | Public route                                                     | Result                                                                         |
+| ------------------------------------------------------------------------------ | ---------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `processes.list()`                                                             | `GET /api/v1/processes`                                          | `{processes:[{processKey,name}]}`; no hidden total                             |
+| `processes.getEntry(processKey, entryKey)`                                     | `GET /api/v1/processes/{processKey}/entries/{entryKey}`          | Current pinned input schema, material constraints and version UUID             |
+| `processes.start(processKey, entryKey, params)`                                | `POST /api/v1/processes/{processKey}/entries/{entryKey}/cases`   | HTTP 200 `{caseUuid,lifecycle,replayed}`                                       |
+| `processes.getCase(caseUuid)`                                                  | `GET /api/v1/processes/cases/{caseUuid}`                         | Narrow receipt or current-policy full scalar header                            |
+| `processes.getEvents(caseUuid, options?)`                                      | `GET /api/v1/processes/cases/{caseUuid}/events`                  | Historical safe event structure, public UUID cursor, `hasMore` and `nextAfter` |
+| `processes.getData(caseUuid)`                                                  | `GET /api/v1/processes/cases/{caseUuid}/data`                    | Disclosed key/value projection                                                 |
+| `processes.getMaterials(caseUuid, view?)`                                      | `GET /api/v1/processes/cases/{caseUuid}/materials`               | Visible material metadata for current/history view                             |
+| `processes.openMaterial(caseUuid, materialUuid, purpose?)`                     | `GET .../materials/{materialUuid}/content`                       | Binary `DownloadResult`, purpose view/download                                 |
+| `processes.getThumbnail(caseUuid, materialUuid)`                               | `GET .../materials/{materialUuid}/thumbnail`                     | Binary `DownloadResult`                                                        |
+| `processes.exportData(caseUuid)`                                               | `POST /api/v1/processes/cases/{caseUuid}/exports/data`           | Binary native PDF `DownloadResult`                                             |
+| `processes.resubmit(caseUuid, params)`                                         | `POST /api/v1/processes/cases/{caseUuid}/resubmit`               | HTTP 200 `{caseUuid,lifecycle,replayed}`                                       |
+| `processes.beginIntake(processKey, entryKey, params)`                          | `POST /api/v1/processes/{processKey}/entries/{entryKey}/intakes` | HTTP 201 intake metadata                                                       |
+| `processes.getIntake(processKey, entryKey, intakeUuid)`                        | `GET .../intakes/{intakeUuid}`                                   | Intake metadata                                                                |
+| `processes.abandonIntake(processKey, entryKey, intakeUuid)`                    | `DELETE .../intakes/{intakeUuid}`                                | Intake metadata                                                                |
+| `processes.uploadIntake(processKey, entryKey, intakeUuid, bytes)`              | `PUT .../intakes/{intakeUuid}/content`                           | Intake metadata                                                                |
+| `processes.uploadIntakeChunk(processKey, entryKey, intakeUuid, bytes, offset)` | `PATCH .../intakes/{intakeUuid}/chunks`                          | Intake metadata                                                                |
 
 Entry addresses use stable public process/entry keys; case and intake addresses use
 opaque UUIDs. No numeric IDs or definition UUIDs are path inputs. Each path segment is URL-encoded. The key's workspace supplies scope; there is
@@ -60,7 +65,7 @@ the same request; callers must not mutate a pending request body.
 The supported discovery subset is document-free `api`/`form` entrances;
 `requiredSubjects` is empty. Unsupported native requirements fail closed with
 `PROCESS_CAPABILITY_NOT_READY`. Request types describe the Start envelope and do
-not promise admission of every subject/material combination. No material read/export, callback response or required-delivery method is added here.
+not promise admission of every subject/material combination. No callback response or required-delivery method is added here.
 
 Typed process errors remain in `ChaindocError.response` (`ProcessErrorResponse`):
 404 `PROCESS_NOT_FOUND`; 403 forbidden/launch forbidden; 400 input/deadline invalid;
@@ -74,9 +79,34 @@ coerced into a process refusal. Start returns a receipt, not case contents.
 full scalar metadata requires the current explicit full read policy. Narrow `status`
 folds closing into running. `getEvents` independently requires `read_events` and its
 current full read policy: neither case-read permission nor receipt ownership implies
-this permission. Its `bounded_public_event_metadata` observation contains only
-`eventUuid`, `eventType`, `occurredAt`. It has no payloads, actors, total, cursor,
-sequence numbers or complete-history guarantee.
+this permission. Its `public_event_history` observation contains `events`, `hasMore`
+and `nextAfter`. Each event has `eventUuid`, `eventType`, `occurredAt` and kind-specific
+safe native `data`. These are historical fields, not raw journal payloads or personal
+event content. Actors, internal sequences, hashes and hidden counts are absent.
+Ambiguous fact-received records are omitted. The SDK keeps `data` recursively JSON
+typed rather than promising every field for every event kind.
+
+`getEvents(caseUuid)` still requests the first page. Optional `{limit, afterEventUuid}`
+selects the next page: limit is 1–100 (default 100), and the cursor must identify an
+available event of this exact case under current permission. Use the returned
+`nextAfter` only while `hasMore` is true; the final page has `nextAfter:null`. The SDK
+does not traverse pages or replace an unavailable cursor automatically.
+
+```typescript
+let history = await chaindoc.processes.getEvents(caseUuid, { limit: 50 });
+while (history.hasMore && history.nextAfter !== null) {
+  history = await chaindoc.processes.getEvents(caseUuid, {
+    limit: 50,
+    afterEventUuid: history.nextAfter,
+  });
+}
+```
+
+`getData` requires current full `read_case` disclosure; material listing/content/
+thumbnail need `read_material`. `exportData` needs the independent `export` action.
+The server repeats native source, erasure and sensitive-content checks. Binary
+methods return the existing `DownloadResult` (`data:ArrayBuffer`, `contentType`,
+optional `fileName`), never invented JSON. Export posts `{}` without automatic retry.
 
 `resubmit` requires the `resubmit` action and the same initiating key's ended case.
 Its closed envelope replaces Start's `externalId` with `commandKey` (1–255 characters).
