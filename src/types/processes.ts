@@ -52,6 +52,16 @@ export interface ProcessSubjectRequirement extends ProcessSubjectPin {
   readonly requireVersion: boolean;
 }
 
+/** Dedicated entry's native subject family and cardinality; current fit remains server-owned. */
+export interface ProcessEntrySubjectRequirement {
+  readonly role: 'subject';
+  readonly min: 1;
+  readonly max: 1;
+  readonly objectKinds: readonly ProcessSubjectKind[];
+  /** Metadata only; never an additional request-body property. */
+  readonly side: 'seller' | 'buyer' | null;
+}
+
 /** Native reference declaration; a case-subject UUID is never a substitute for uuid. */
 export interface ProcessSubject {
   /** Explicit entry field pin; omit for the existing native document-entry subject envelope. */
@@ -79,12 +89,13 @@ export interface ProcessEntrySchema {
   readonly processKey: string;
   readonly entryKey: string;
   readonly name: string | null;
-  readonly kind: 'api' | 'form';
+  readonly kind: 'api' | 'form' | 'document' | 'invoice' | 'bill';
   readonly versionUuid: string;
   readonly contentHash: string;
   readonly schemaRef: { readonly kind: 'process_entry'; readonly versionUuid: string; readonly entryKey: string };
   readonly inputSchema: { readonly fields: readonly ProcessInputField[] };
   readonly requiredSubjects: readonly ProcessSubjectRequirement[];
+  readonly entrySubject: ProcessEntrySubjectRequirement | null;
   readonly materials: readonly {
     readonly fieldId: string;
     readonly required: boolean;

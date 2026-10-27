@@ -43,7 +43,7 @@ if (processKey) {
   // entryKey comes from your integration's configured stable entry address.
   const schema = await chaindoc.processes.getEntry(processKey, entryKey);
   const originalCall = {
-    externalId: 'order-2026-000184',
+    externalId: "order-2026-000184",
     expectedVersionUuid: schema.versionUuid,
     input: {}, // Supply the values required by this exact schema.
   };
@@ -69,15 +69,41 @@ incoming_bill. Only an exact pinned key with `spec.type: document` supports this
 metadata. `requiredSubjects` lists required pins with field ID, key reference,
 role, kind and `requireVersion`; optional pins remain in the input schema.
 
+Dedicated `document`, `invoice` and `bill` entry schemas instead describe their
+single native subject in `entrySubject`: `{role:'subject',min:1,max:1,objectKinds,side}`.
+This metadata is separate from `requiredSubjects`, which continues to describe
+explicit input-field pins. `api`/`form` entries return `entrySubject:null`.
+
+| Dedicated entry                           | Native subject kinds          | Metadata side |
+| ----------------------------------------- | ----------------------------- | ------------- |
+| document: plain                           | document                      | null          |
+| document: contract                        | contract, amendment           | null          |
+| document: any, null or template condition | document, contract, amendment | null          |
+| invoice                                   | invoice                       | seller        |
+| bill                                      | invoice, incoming_bill        | buyer         |
+
+For these dedicated entries, `entrySubject` constrains the whole `subjects[]`
+array to exactly one native reference. It does not request a second reference or
+replace explicit input-field requirements in `requiredSubjects`. An unpinned
+native subject uses the existing envelope without `fieldId`. If the same single
+reference also supplies an explicit `field.subject` pin, the existing matching
+`fieldId` requirement still applies.
+
+`objectKinds` identifies the canonical native family, not a promise that a given
+object fits. State, template, amount, side ownership and prerequisites remain
+native server checks. `side` is schema metadata: do not add `side` to the request
+body. No method, body shape or native identity conversion is introduced by this
+metadata.
+
 For a declared reference, omit that field from `input` and send its native object
 identity in `subjects[]` with the matching `fieldId` and exact `objectKind`:
 
 ```typescript
 const originalCall = {
-  externalId: 'order-2026-000185',
+  externalId: "order-2026-000185",
   expectedVersionUuid: schema.versionUuid,
   input: {}, // Omit the declared reference field here.
-  subjects: [{ fieldId: 'agreement', objectKind: 'contract' as const, uuid: nativeContractUuid }],
+  subjects: [{ fieldId: "agreement", objectKind: "contract" as const, uuid: nativeContractUuid }],
 };
 ```
 
