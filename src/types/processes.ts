@@ -21,10 +21,19 @@ export type ProcessValueSpec =
   | { readonly type: 'number'; readonly config: ProcessDecimalConstraints }
   | { readonly type: 'money'; readonly config: ProcessDecimalConstraints & { readonly currencies?: readonly string[] } }
   | { readonly type: 'date'; readonly config: { readonly min?: string; readonly max?: string } }
-  | { readonly type: 'choice'; readonly config: { readonly options: readonly { readonly id: string; readonly label?: string }[] } }
+  | {
+      readonly type: 'choice';
+      readonly config: { readonly options: readonly { readonly id: string; readonly label?: string }[] };
+    }
   | { readonly type: 'file'; readonly config: ProcessFileConstraints }
-  | { readonly type: 'files'; readonly config: ProcessFileConstraints & { readonly minItems?: number; readonly maxItems?: number } }
-  | { readonly type: 'partner'; readonly config: { readonly bases?: readonly ('contragent' | 'business' | 'workspace' | 'contract')[] } }
+  | {
+      readonly type: 'files';
+      readonly config: ProcessFileConstraints & { readonly minItems?: number; readonly maxItems?: number };
+    }
+  | {
+      readonly type: 'partner';
+      readonly config: { readonly bases?: readonly ('contragent' | 'business' | 'workspace' | 'contract')[] };
+    }
   | { readonly type: 'document'; readonly config: { readonly requireVersion?: boolean } }
   | { readonly type: 'status'; readonly config: { readonly domain: string; readonly codes: readonly string[] } }
   | { readonly type: 'case'; readonly config: Readonly<Record<string, never>> };
@@ -91,17 +100,35 @@ export interface ProcessStartReceipt {
 }
 
 export type ProcessStartRefusalKey =
-  | 'PROCESS_NOT_FOUND' | 'PROCESS_FORBIDDEN' | 'PROCESS_LAUNCH_FORBIDDEN'
-  | 'PROCESS_INPUT_INVALID' | 'PROCESS_DEADLINE_INVALID' | 'PROCESS_CAPABILITY_NOT_READY'
-  | 'PROCESS_ENTRANCE_CLOSED' | 'PROCESS_DEFINITION_NOT_ACTIVE' | 'PROCESS_ENTRY_NOT_AVAILABLE'
-  | 'PROCESS_SUBJECT_UNAVAILABLE' | 'PROCESS_SUBJECT_DOES_NOT_FIT' | 'PROCESS_PREREQUISITE_UNMET'
-  | 'PROCESS_RESPONSIBLE_UNRESOLVED' | 'PROCESS_TIME_ZONE_UNRESOLVED'
-  | 'PROCESS_IDEMPOTENCY_MEANING_CHANGED' | 'PROCESS_VERSION_MOVED'
-  | 'PROCESS_NOT_IN_PLAN' | 'PROCESS_PLAN_PENDING';
+  | 'PROCESS_NOT_FOUND'
+  | 'PROCESS_FORBIDDEN'
+  | 'PROCESS_LAUNCH_FORBIDDEN'
+  | 'PROCESS_INPUT_INVALID'
+  | 'PROCESS_DEADLINE_INVALID'
+  | 'PROCESS_CAPABILITY_NOT_READY'
+  | 'PROCESS_ENTRANCE_CLOSED'
+  | 'PROCESS_DEFINITION_NOT_ACTIVE'
+  | 'PROCESS_ENTRY_NOT_AVAILABLE'
+  | 'PROCESS_SUBJECT_UNAVAILABLE'
+  | 'PROCESS_SUBJECT_DOES_NOT_FIT'
+  | 'PROCESS_PREREQUISITE_UNMET'
+  | 'PROCESS_RESPONSIBLE_UNRESOLVED'
+  | 'PROCESS_TIME_ZONE_UNRESOLVED'
+  | 'PROCESS_IDEMPOTENCY_MEANING_CHANGED'
+  | 'PROCESS_VERSION_MOVED'
+  | 'PROCESS_NOT_IN_PLAN'
+  | 'PROCESS_PLAN_PENDING';
 
 /** Process errors in ChaindocError.response; authentication/global guard errors retain their native shape. */
 export type ProcessErrorResponse =
-  | { readonly errorKey: 'PROCESS_INPUT_INVALID'; readonly fields: readonly { readonly fieldId?: string | null; readonly code: string; readonly path: string | null }[] }
+  | {
+      readonly errorKey: 'PROCESS_INPUT_INVALID';
+      readonly fields: readonly {
+        readonly fieldId?: string | null;
+        readonly code: string;
+        readonly path: string | null;
+      }[];
+    }
   | { readonly errorKey: Exclude<ProcessStartRefusalKey, 'PROCESS_INPUT_INVALID'> };
 
 /** The initiating key may receive only this receipt under current read_case authority. */
@@ -157,4 +184,54 @@ export interface ProcessIntake {
   readonly createdAt: string;
   readonly acceptedAt: string | null;
   readonly settledAt: string | null;
+}
+
+/** JSON content as disclosed by the native data owner; no source/provenance evidence. */
+export type ProcessJsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | readonly ProcessJsonValue[]
+  | { readonly [key: string]: ProcessJsonValue };
+
+export interface ProcessDataValue {
+  readonly valueUuid: string;
+  readonly content: ProcessJsonValue;
+  readonly erased: boolean;
+}
+
+export interface ProcessCaseData {
+  readonly caseUuid: string;
+  readonly lifecycle: string;
+  readonly result: string | null;
+  readonly keys: readonly {
+    readonly keyUuid: string;
+    readonly state: 'resolved' | 'conflict' | 'erased';
+    readonly value: ProcessDataValue | null;
+    readonly candidates: readonly {
+      readonly valueUuid: string;
+      readonly erased: boolean;
+      readonly value: ProcessDataValue | null;
+    }[];
+  }[];
+}
+
+export type ProcessMaterialView = 'current' | 'history';
+export type ProcessMaterialPurpose = 'view' | 'download';
+
+export interface ProcessMaterial {
+  readonly materialUuid: string;
+  readonly name: string;
+  readonly mimeType: string;
+  readonly size: number;
+  readonly scan: 'clean' | 'skipped';
+  readonly downloadable: boolean;
+  readonly status: 'current' | 'replaced' | 'withdrawn';
+}
+
+export interface ProcessMaterials {
+  readonly caseUuid: string;
+  readonly view: ProcessMaterialView;
+  readonly items: readonly ProcessMaterial[];
 }
