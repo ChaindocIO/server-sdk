@@ -43,7 +43,7 @@ if (processKey) {
   // entryKey comes from your integration's configured stable entry address.
   const schema = await chaindoc.processes.getEntry(processKey, entryKey);
   const originalCall = {
-    externalId: "order-2026-000184",
+    externalId: 'order-2026-000184',
     expectedVersionUuid: schema.versionUuid,
     input: {}, // Supply the values required by this exact schema.
   };
@@ -62,10 +62,39 @@ it does not generate external IDs, fetch a newer schema or validate semantic
 fields before the server decides disclosure. Existing client retry behavior uses
 the same request; callers must not mutate a pending request body.
 
-The supported discovery subset is document-free `api`/`form` entrances;
-`requiredSubjects` is empty. Unsupported native requirements fail closed with
-`PROCESS_CAPABILITY_NOT_READY`. Request types describe the Start envelope and do
-not promise admission of every subject/material combination. No callback response or required-delivery method is added here.
+Entry `api`/`form` metadata may explicitly pin a native subject reference to a field.
+`inputSchema.fields[].subject` is either null or `{role, objectKind}`: role is
+`subject` or `basis`, and kind is document, contract, amendment, invoice or
+incoming_bill. Only an exact pinned key with `spec.type: document` supports this
+metadata. `requiredSubjects` lists required pins with field ID, key reference,
+role, kind and `requireVersion`; optional pins remain in the input schema.
+
+For a declared reference, omit that field from `input` and send its native object
+identity in `subjects[]` with the matching `fieldId` and exact `objectKind`:
+
+```typescript
+const originalCall = {
+  externalId: 'order-2026-000185',
+  expectedVersionUuid: schema.versionUuid,
+  input: {}, // Omit the declared reference field here.
+  subjects: [{ fieldId: 'agreement', objectKind: 'contract' as const, uuid: nativeContractUuid }],
+};
+```
+
+Use only fields and kinds declared by this exact schema; supply an explicit native
+version when required. A declaration and ordinary input for the same field are
+mutually exclusive. Without a declaration, an optional field may be omitted or
+explicitly null; a required field needs its matching declaration. Existing native
+document-entry subject declarations without `fieldId` retain their envelope.
+
+On a fresh Start, the backend must admit the native object, persist the genuine
+case subject and bind the field to that subject and resolved version. The SDK
+neither invents a case-subject UUID nor renames/canonicalizes native identities.
+Keep the original field declarations and version unchanged on replay. Types and
+metadata do not grant domain authority or claim that every deployment has the
+fresh binding wiring enabled. Unsupported native requirements fail closed with
+`PROCESS_CAPABILITY_NOT_READY`. No callback response or required-delivery method
+is added here.
 
 Typed process errors remain in `ChaindocError.response` (`ProcessErrorResponse`):
 404 `PROCESS_NOT_FOUND`; 403 forbidden/launch forbidden; 400 input/deadline invalid;

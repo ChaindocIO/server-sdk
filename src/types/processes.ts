@@ -38,19 +38,43 @@ export type ProcessValueSpec =
   | { readonly type: 'status'; readonly config: { readonly domain: string; readonly codes: readonly string[] } }
   | { readonly type: 'case'; readonly config: Readonly<Record<string, never>> };
 
+export type ProcessSubjectKind = 'document' | 'contract' | 'amendment' | 'invoice' | 'incoming_bill';
+
+/** Explicit entry-only pin, permitted by the server only on an exact document key revision. */
+export interface ProcessSubjectPin {
+  readonly role: 'subject' | 'basis';
+  readonly objectKind: ProcessSubjectKind;
+}
+
+export interface ProcessSubjectRequirement extends ProcessSubjectPin {
+  readonly fieldId: string;
+  readonly key: ProcessKeyReference;
+  readonly requireVersion: boolean;
+}
+
+/** Native reference declaration; a case-subject UUID is never a substitute for uuid. */
+export interface ProcessSubject {
+  /** Explicit entry field pin; omit for the existing native document-entry subject envelope. */
+  readonly fieldId?: string;
+  readonly objectKind: ProcessSubjectKind;
+  readonly uuid: string;
+  readonly versionUuid?: string | null;
+}
+
 export interface ProcessInputField {
   readonly fieldId: string;
   readonly key: ProcessKeyReference;
   readonly required: boolean;
   readonly label: string;
   readonly spec: ProcessValueSpec;
+  readonly subject: ProcessSubjectPin | null;
 }
 
 export interface ProcessListResponse {
   readonly processes: readonly { readonly processKey: string; readonly name: string }[];
 }
 
-/** Current supported document-free schema; unsupported native requirements fail closed. */
+/** Pinned entry schema; native object admission remains with the server on a fresh call. */
 export interface ProcessEntrySchema {
   readonly processKey: string;
   readonly entryKey: string;
@@ -60,7 +84,7 @@ export interface ProcessEntrySchema {
   readonly contentHash: string;
   readonly schemaRef: { readonly kind: 'process_entry'; readonly versionUuid: string; readonly entryKey: string };
   readonly inputSchema: { readonly fields: readonly ProcessInputField[] };
-  readonly requiredSubjects: readonly never[];
+  readonly requiredSubjects: readonly ProcessSubjectRequirement[];
   readonly materials: readonly {
     readonly fieldId: string;
     readonly required: boolean;
@@ -81,11 +105,7 @@ export interface ProcessStartParams {
   /** Entry schema version used to author the original call; do not refresh it on replay. */
   readonly expectedVersionUuid: string;
   readonly input?: Readonly<Record<string, unknown>>;
-  readonly subjects?: readonly {
-    readonly objectKind: 'document' | 'contract' | 'amendment' | 'invoice' | 'incoming_bill';
-    readonly uuid: string;
-    readonly versionUuid?: string | null;
-  }[];
+  readonly subjects?: readonly ProcessSubject[];
   readonly materialIntakeRefs?: readonly { readonly intakeUuid: string; readonly field?: string | null }[];
   readonly deadline?: ProcessDeadline | null;
   readonly note?: string | null;

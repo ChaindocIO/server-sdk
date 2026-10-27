@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Source-only explicit entry subject pin metadata and typed required-subject fields.
+  Native subject requests accept optional `fieldId`; existing declarations without
+  it remain valid envelopes. No client case-subject identity conversion, route,
+  snapshot regeneration or publication is included.
+
 - Source-only public case data/material reads, binary material/thumbnail/PDF download,
   and paginated historical event structure. `getEvents` accepts optional
   `afterEventUuid`/`limit`; its observation is now `public_event_history` with safe
