@@ -43,7 +43,7 @@ if (processKey) {
   // entryKey comes from your integration's configured stable entry address.
   const schema = await chaindoc.processes.getEntry(processKey, entryKey);
   const originalCall = {
-    externalId: 'order-2026-000184',
+    externalId: "order-2026-000184",
     expectedVersionUuid: schema.versionUuid,
     input: {}, // Supply the values required by this exact schema.
   };
@@ -83,7 +83,9 @@ this permission. Its `public_event_history` observation contains `events`, `hasM
 and `nextAfter`. Each event has `eventUuid`, `eventType`, `occurredAt` and kind-specific
 safe native `data`. These are historical fields, not raw journal payloads or personal
 event content. Actors, internal sequences, hashes and hidden counts are absent.
-Ambiguous fact-received records are omitted. The SDK keeps `data` recursively JSON
+Fact-applied events are included only when the immutable journal records
+`matchState: applied`; noted and legacy unmarked fact-received records are omitted.
+The marker itself and native fact identifiers are not returned. The SDK keeps `data` recursively JSON
 typed rather than promising every field for every event kind.
 
 `getEvents(caseUuid)` still requests the first page. Optional `{limit, afterEventUuid}`
