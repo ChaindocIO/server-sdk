@@ -20,6 +20,8 @@ export class ChaindocError extends Error {
 export interface RequestOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
+  /** Raw upload bytes, mutually exclusive with body; never JSON serialized. */
+  rawBody?: Blob | Uint8Array;
   headers?: Record<string, string>;
   timeout?: number;
   /** Disable retry for this specific request */
@@ -163,6 +165,9 @@ export class HttpClient {
   }
 
   async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+    if (options.rawBody !== undefined && options.body !== undefined) {
+      throw new ChaindocError("body and rawBody are mutually exclusive");
+    }
     const url = `${this.baseUrl}${endpoint}`;
     const maxAttempts = options.noRetry ? 1 : this.retryConfig.maxRetries + 1;
     let lastError: ChaindocError | undefined;
@@ -181,7 +186,9 @@ export class HttpClient {
             ...this.defaultHeaders,
             ...options.headers,
           },
-          body: options.body ? JSON.stringify(options.body) : undefined,
+          body: options.rawBody !== undefined
+            ? options.rawBody
+            : options.body ? JSON.stringify(options.body) : undefined,
           signal: controller.signal,
         });
 
@@ -285,6 +292,17 @@ export class HttpClient {
     options?: Omit<RequestOptions, "method" | "body">
   ): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: "PUT", body });
+  }
+
+  /** Raw full upload; inspect server status before retrying an uncertain result. */
+  async putBinary<T>(endpoint: string, body: Blob | Uint8Array, options?: { timeout?: number }): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: "PUT",
+      rawBody: body,
+      headers: { "Content-Type": "application/offset+octet-stream" },
+      noRetry: true,
+    });
   }
 
   async patch<T>(

@@ -103,3 +103,58 @@ export type ProcessStartRefusalKey =
 export type ProcessErrorResponse =
   | { readonly errorKey: 'PROCESS_INPUT_INVALID'; readonly fields: readonly { readonly fieldId?: string | null; readonly code: string; readonly path: string | null }[] }
   | { readonly errorKey: Exclude<ProcessStartRefusalKey, 'PROCESS_INPUT_INVALID'> };
+
+/** The initiating key may receive only this receipt under current read_case authority. */
+export interface ProcessCaseReceipt {
+  readonly caseUuid: string;
+  readonly status: 'running' | 'completed' | 'rejected' | 'cancelled' | 'expired';
+}
+
+/** Explicit current full read policy only; no task, value or material contents. */
+export interface ProcessCaseMetadata extends ProcessCaseReceipt {
+  readonly process: { readonly key: string; readonly name: string };
+  readonly startedAt: string;
+  readonly closedAt: string | null;
+  readonly deadlineAt: string;
+  readonly result: string | null;
+  readonly lifecycle: string;
+  readonly closeReason: string | null;
+  readonly startChannel: string;
+  readonly startedBy: string;
+  readonly hasApplicant: boolean;
+}
+
+export type ProcessCase = ProcessCaseReceipt | ProcessCaseMetadata;
+
+/** At most 100 public event identities; no payload, cursor, total or completeness claim. */
+export interface ProcessEventMetadata {
+  readonly caseUuid: string;
+  readonly observation: 'bounded_public_event_metadata';
+  readonly events: readonly {
+    readonly eventUuid: string;
+    readonly eventType: string;
+    readonly occurredAt: string;
+  }[];
+}
+
+/** Persist the original command key, pinned version and body unchanged for replay. */
+export type ProcessResubmitParams = Omit<ProcessStartParams, 'externalId'> & {
+  readonly commandKey: string;
+};
+
+export interface ProcessIntakeParams {
+  readonly expectedVersionUuid: string;
+  readonly fieldId: string;
+  readonly file: { readonly name: string; readonly mimeType: string; readonly size: number };
+}
+
+export interface ProcessIntake {
+  readonly intakeUuid: string;
+  readonly state: 'pending' | 'accepted' | 'rejected' | 'bound' | 'abandoned';
+  readonly fieldId: string;
+  readonly declaredSize: number;
+  readonly receivedBytes: number;
+  readonly createdAt: string;
+  readonly acceptedAt: string | null;
+  readonly settledAt: string | null;
+}
