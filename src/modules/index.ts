@@ -7,3 +7,4 @@ export { Transactions } from './transactions';
 export { Embedded } from './embedded';
 export { Media } from './media';
 export { Webhooks } from './webhooks';
+export { Processes } from './processes';

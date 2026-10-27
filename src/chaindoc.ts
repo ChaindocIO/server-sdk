@@ -49,6 +49,7 @@ import { Transactions } from "./modules/transactions";
 import { Embedded } from "./modules/embedded";
 import { Media } from "./modules/media";
 import { Webhooks } from "./modules/webhooks";
+import { Processes } from "./modules/processes";
 import type { ChaindocConfig, ApiKeyInfo, HealthCheckResponse } from "./types";
 
 export class Chaindoc {
@@ -112,6 +113,9 @@ export class Chaindoc {
    */
   public readonly media: Media;
 
+  /** Explicitly granted Process discovery and repeatable Start. */
+  public readonly processes: Processes;
+
   constructor(config: ChaindocConfig) {
     this.client = new HttpClient(config);
 
@@ -123,6 +127,7 @@ export class Chaindoc {
     this.transactions = new Transactions(this.client);
     this.embedded = new Embedded(this.client);
     this.media = new Media(this.client);
+    this.processes = new Processes(this.client);
   }
 
   /**

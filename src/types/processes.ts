@@ -1,0 +1,105 @@
+/** Native opaque key identity and pinned revision; labels/codes are never identities. */
+export interface ProcessKeyReference {
+  readonly scope: 'platform' | 'workspace' | 'process';
+  readonly keyUuid: string;
+  readonly revision: number;
+}
+
+export interface ProcessDecimalConstraints {
+  readonly min?: string;
+  readonly max?: string;
+  readonly maxFractionDigits?: number;
+}
+
+export interface ProcessFileConstraints {
+  readonly refKinds?: readonly ('material' | 'intake')[];
+}
+
+/** Exact schema constraints only. No field defaults or values are returned. */
+export type ProcessValueSpec =
+  | { readonly type: 'text'; readonly config: { readonly minLength?: number; readonly maxLength?: number } }
+  | { readonly type: 'number'; readonly config: ProcessDecimalConstraints }
+  | { readonly type: 'money'; readonly config: ProcessDecimalConstraints & { readonly currencies?: readonly string[] } }
+  | { readonly type: 'date'; readonly config: { readonly min?: string; readonly max?: string } }
+  | { readonly type: 'choice'; readonly config: { readonly options: readonly { readonly id: string; readonly label?: string }[] } }
+  | { readonly type: 'file'; readonly config: ProcessFileConstraints }
+  | { readonly type: 'files'; readonly config: ProcessFileConstraints & { readonly minItems?: number; readonly maxItems?: number } }
+  | { readonly type: 'partner'; readonly config: { readonly bases?: readonly ('contragent' | 'business' | 'workspace' | 'contract')[] } }
+  | { readonly type: 'document'; readonly config: { readonly requireVersion?: boolean } }
+  | { readonly type: 'status'; readonly config: { readonly domain: string; readonly codes: readonly string[] } }
+  | { readonly type: 'case'; readonly config: Readonly<Record<string, never>> };
+
+export interface ProcessInputField {
+  readonly fieldId: string;
+  readonly key: ProcessKeyReference;
+  readonly required: boolean;
+  readonly label: string;
+  readonly spec: ProcessValueSpec;
+}
+
+export interface ProcessListResponse {
+  readonly processes: readonly { readonly processKey: string; readonly name: string }[];
+}
+
+/** Current supported document-free schema; unsupported native requirements fail closed. */
+export interface ProcessEntrySchema {
+  readonly processKey: string;
+  readonly entryKey: string;
+  readonly name: string | null;
+  readonly kind: 'api' | 'form';
+  readonly versionUuid: string;
+  readonly contentHash: string;
+  readonly schemaRef: { readonly kind: 'process_entry'; readonly versionUuid: string; readonly entryKey: string };
+  readonly inputSchema: { readonly fields: readonly ProcessInputField[] };
+  readonly requiredSubjects: readonly never[];
+  readonly materials: readonly {
+    readonly fieldId: string;
+    readonly required: boolean;
+    readonly spec: Extract<ProcessValueSpec, { type: 'file' | 'files' }>;
+  }[];
+  readonly apiAvailable: true;
+}
+
+export type ProcessDeadline =
+  | { readonly form: 'date'; readonly date: string }
+  | { readonly form: 'datetime'; readonly at: string; readonly zone?: string | null }
+  | { readonly form: 'duration'; readonly days: number };
+
+/** Server owns full validation and supported subject/material admission after disclosure. */
+export interface ProcessStartParams {
+  /** 1–255 characters, scoped to API key + process + entry. Reuse unchanged for retries. */
+  readonly externalId: string;
+  /** Entry schema version used to author the original call; do not refresh it on replay. */
+  readonly expectedVersionUuid: string;
+  readonly input?: Readonly<Record<string, unknown>>;
+  readonly subjects?: readonly {
+    readonly objectKind: 'document' | 'contract' | 'amendment' | 'invoice' | 'incoming_bill';
+    readonly uuid: string;
+    readonly versionUuid?: string | null;
+  }[];
+  readonly materialIntakeRefs?: readonly { readonly intakeUuid: string; readonly field?: string | null }[];
+  readonly deadline?: ProcessDeadline | null;
+  readonly note?: string | null;
+  readonly signerMessages?: readonly { readonly nodeKey?: string | null; readonly text: string }[];
+}
+
+/** Initiating key receipt only; no case contents or expanded read permission. */
+export interface ProcessStartReceipt {
+  readonly caseUuid: string;
+  readonly lifecycle: 'running' | 'closing' | 'completed' | 'rejected' | 'cancelled' | 'expired';
+  readonly replayed: boolean;
+}
+
+export type ProcessStartRefusalKey =
+  | 'PROCESS_NOT_FOUND' | 'PROCESS_FORBIDDEN' | 'PROCESS_LAUNCH_FORBIDDEN'
+  | 'PROCESS_INPUT_INVALID' | 'PROCESS_DEADLINE_INVALID' | 'PROCESS_CAPABILITY_NOT_READY'
+  | 'PROCESS_ENTRANCE_CLOSED' | 'PROCESS_DEFINITION_NOT_ACTIVE' | 'PROCESS_ENTRY_NOT_AVAILABLE'
+  | 'PROCESS_SUBJECT_UNAVAILABLE' | 'PROCESS_SUBJECT_DOES_NOT_FIT' | 'PROCESS_PREREQUISITE_UNMET'
+  | 'PROCESS_RESPONSIBLE_UNRESOLVED' | 'PROCESS_TIME_ZONE_UNRESOLVED'
+  | 'PROCESS_IDEMPOTENCY_MEANING_CHANGED' | 'PROCESS_VERSION_MOVED'
+  | 'PROCESS_NOT_IN_PLAN' | 'PROCESS_PLAN_PENDING';
+
+/** Process errors in ChaindocError.response; authentication/global guard errors retain their native shape. */
+export type ProcessErrorResponse =
+  | { readonly errorKey: 'PROCESS_INPUT_INVALID'; readonly fields: readonly { readonly fieldId?: string | null; readonly code: string; readonly path: string | null }[] }
+  | { readonly errorKey: Exclude<ProcessStartRefusalKey, 'PROCESS_INPUT_INVALID'> };

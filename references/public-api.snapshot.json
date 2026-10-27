@@ -6091,6 +6091,219 @@
           "versionHash"
         ],
         "type": "object"
+      },
+      "PublicProcessInputFieldDto": {
+        "properties": {
+          "fieldId": {
+            "type": "string"
+          },
+          "key": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "label": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "spec": {
+            "additionalProperties": true,
+            "description": "Exact pinned value type and its validation constraints; no current or default value.",
+            "type": "object"
+          }
+        },
+        "required": [
+          "fieldId",
+          "key",
+          "required",
+          "label",
+          "spec"
+        ],
+        "type": "object"
+      },
+      "PublicProcessStartReceiptDto": {
+        "properties": {
+          "caseUuid": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "lifecycle": {
+            "enum": [
+              "running",
+              "closing",
+              "completed",
+              "rejected",
+              "cancelled",
+              "expired"
+            ],
+            "type": "string"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "caseUuid",
+          "lifecycle",
+          "replayed"
+        ],
+        "type": "object"
+      },
+      "PublicProcessEntryDto": {
+        "properties": {
+          "apiAvailable": {
+            "description": "Current discovery readiness only; does not grant Start authority.",
+            "enum": [
+              true
+            ],
+            "type": "number"
+          },
+          "contentHash": {
+            "type": "string"
+          },
+          "entryKey": {
+            "type": "string"
+          },
+          "inputSchema": {
+            "$ref": "#/components/schemas/PublicProcessInputSchemaDto"
+          },
+          "kind": {
+            "enum": [
+              "api",
+              "form"
+            ],
+            "type": "string"
+          },
+          "materials": {
+            "items": {
+              "$ref": "#/components/schemas/PublicProcessMaterialRequirementDto"
+            },
+            "type": "array"
+          },
+          "name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "processKey": {
+            "type": "string"
+          },
+          "requiredSubjects": {
+            "description": "No required subjects for this supported entrance. Subject-bearing schemas are unavailable until their public requirements presenter is implemented.",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "schemaRef": {
+            "$ref": "#/components/schemas/PublicProcessSchemaRefDto"
+          },
+          "versionUuid": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "processKey",
+          "entryKey",
+          "name",
+          "kind",
+          "versionUuid",
+          "contentHash",
+          "schemaRef",
+          "inputSchema",
+          "requiredSubjects",
+          "materials",
+          "apiAvailable"
+        ],
+        "type": "object"
+      },
+      "PublicProcessMaterialRequirementDto": {
+        "properties": {
+          "fieldId": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "spec": {
+            "additionalProperties": true,
+            "description": "Pinned file/files reference constraints, consumed through the corresponding input field.",
+            "type": "object"
+          }
+        },
+        "required": [
+          "fieldId",
+          "required",
+          "spec"
+        ],
+        "type": "object"
+      },
+      "PublicProcessInputSchemaDto": {
+        "properties": {
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/PublicProcessInputFieldDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "fields"
+        ],
+        "type": "object"
+      },
+      "PublicProcessSchemaRefDto": {
+        "properties": {
+          "entryKey": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "process_entry"
+            ],
+            "type": "string"
+          },
+          "versionUuid": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "versionUuid",
+          "entryKey"
+        ],
+        "type": "object"
+      },
+      "PublicProcessSummaryDto": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "processKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "processKey",
+          "name"
+        ],
+        "type": "object"
+      },
+      "PublicProcessListDto": {
+        "properties": {
+          "processes": {
+            "items": {
+              "$ref": "#/components/schemas/PublicProcessSummaryDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "processes"
+        ],
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -14698,6 +14911,223 @@
         "summary": "Get payment-mix analytics",
         "tags": [
           "Transactions"
+        ]
+      }
+    },
+    "/api/v1/processes": {
+      "get": {
+        "description": "Returns only definitions granted to this key; no hidden count or draft graph.",
+        "operationId": "PublicProcessesController_list",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProcessListDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "List explicitly granted active Processes",
+        "tags": [
+          "Processes"
+        ]
+      }
+    },
+    "/api/v1/processes/{processKey}/entries/{entryKey}": {
+      "get": {
+        "description": "Stable processKey/entryKey address. Returns exact current version and field constraints without defaults. Unsupported subject or entry requirement schemas return PROCESS_CAPABILITY_NOT_READY.",
+        "operationId": "PublicProcessesController_entry",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "processKey",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entryKey",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProcessEntryDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "description": "The entry does not exist or is not disclosed to this key."
+          },
+          "409": {
+            "description": "Schema, current plan, cutover or handler readiness is unavailable."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Read the current pinned API entry schema",
+        "tags": [
+          "Processes"
+        ]
+      }
+    },
+    "/api/v1/processes/{processKey}/entries/{entryKey}/cases": {
+      "post": {
+        "description": "Requires a secret WRITE credential and an explicit start entry grant. Only externalId is checked before the engine selects the replay or fresh branch. Fresh calls require expectedVersionUuid; replay compares the body against its original pinned entry after current disclosure.",
+        "operationId": "PublicProcessesController_start",
+        "parameters": [
+          {
+            "description": "Language",
+            "in": "header",
+            "name": "x-lang",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "processKey",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entryKey",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "deadline": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "expectedVersionUuid": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "externalId": {
+                    "maxLength": 255,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "input": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "materialIntakeRefs": {
+                    "items": {
+                      "additionalProperties": true,
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "note": {
+                    "maxLength": 10000,
+                    "type": "string"
+                  },
+                  "signerMessages": {
+                    "items": {
+                      "additionalProperties": true,
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "subjects": {
+                    "items": {
+                      "additionalProperties": true,
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "externalId",
+                  "expectedVersionUuid"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProcessStartReceiptDto"
+                }
+              }
+            },
+            "description": "Exact case receipt. No case contents or values."
+          },
+          "400": {
+            "description": "Invalid bounded envelope, or permitted fresh input/deadline errors."
+          },
+          "404": {
+            "description": "The addressed entrance or existing receipt is not disclosed."
+          },
+          "409": {
+            "description": "Changed replay meaning, moved version, unresolved admission or unsupported requirements."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "summary": "Start a Process or replay this key's existing receipt",
+        "tags": [
+          "Processes"
         ]
       }
     }

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Source-only `chaindoc.processes.list`, `getEntry`, and keyed `start`, with pinned
+  schema, request, receipt and refusal types. No future case/response methods or
+  SDK publication are included. Contract: [Processes](docs/PROCESSES.md).
+
 **BREAKING** — the team audience is withdrawn from the input types. Not published yet: the version
 is unchanged and nothing has been released from this section.
 
