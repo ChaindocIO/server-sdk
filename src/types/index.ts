@@ -3,6 +3,8 @@
  */
 
 export * from './processes';
+export * from './accounts';
+import type { AccountChoice } from './accounts';
 
 // ============================================================================
 // Configuration
@@ -218,65 +220,94 @@ export type DocumentStatusForCreate = "draft" | "published";
 export type AccessType = "private" | "public" | "restricted" | "team";
 
 /**
- * What a document may be ASKED to be.
- *
- * The team audience is not offered: the API refuses it, so it is not in the input union either —
- * an integrator who writes `accessType: "team"` on a create or an update fails to compile rather
- * than discovering it at runtime.
+ * What a document may be ASKED to be. `"team"` is the workspace's own audience (an active member of the
+ * key's workspace). A role audience can no longer be created.
  */
-export type AccessTypeInput = "private" | "public" | "restricted";
+export type AccessTypeInput = "private" | "public" | "restricted" | "team";
 
 export interface AccessEmail {
   email: string;
-  level: "read" | "write";
+  /** Defaults to `read` on the server. */
+  level?: "read" | "write";
+  /**
+   * Where this person is addressed: one of the options `accounts.lookup` returned. Without it the grant
+   * goes to the person's personal account.
+   */
+  account?: AccountChoice;
 }
 
-export interface CreateDocumentParams {
+/** A node of the engine's document tree. Its shape is the engine's; the SDK does not restrict it. */
+export interface DocumentNode {
+  type: string;
+  attrs?: Record<string, unknown>;
+  content?: DocumentNode[];
+  text?: string;
+  marks?: Array<{ type: string; attrs?: Record<string, unknown> }>;
+  [key: string]: unknown;
+}
+
+/**
+ * A text document: the engine's content, version 2. Signature places and fields are chips of the text;
+ * `mode: 'template'` holds the field definitions (`doc.attrs.fields`) and the signer roles
+ * (`doc.attrs.signers`) a signature request binds its recipients by.
+ */
+export interface DocumentContent {
+  version: 2;
+  mode: "document" | "template";
+  doc: DocumentNode;
+}
+
+interface DocumentWriteBase {
   name: string;
-  /** Optional — omit to leave the description unset (stored as null). */
+  /** Optional - omit to leave the description unset (stored as null). */
   description?: string;
-  media: Media;
-  /** Optional — omit for a document with no metadata. */
+  /** Optional - omit for a document with no metadata. */
   meta?: MetaTag[];
-  /** Optional — omit for a document with no hashtags. */
+  /** Optional - omit for a document with no hashtags. */
   hashtags?: string[];
+  /** A document made from a file always lands as a draft: `published` with a file is refused. */
   status: DocumentStatusForCreate;
+  /**
+   * The attempt's own key. The same key again answers the same document or conversion and starts nothing;
+   * left out, a retry makes a second one (and, for a file, pays for a second conversion).
+   */
+  idempotencyKey?: string;
+}
+
+/** Create a text document directly (201, the document is made). */
+export interface CreateDocumentFromContentParams extends DocumentWriteBase {
+  content: DocumentContent;
   accessType?: AccessTypeInput;
   accessEmails?: AccessEmail[];
 }
 
 /**
- * Create a document from a file already uploaded to the caller's Drive (via
- * `media.uploadChunked`). The document gets its own copy (model C), so deleting
- * the source Drive file afterwards is safe.
+ * Create a document from a file already in Storage (`media.uploadChunked`). A file becomes a text document
+ * by conversion: the answer is 202 with a conversion; the document is made as a DRAFT when it is ready.
+ * The original stays in Storage. Takes no `meta`.
  */
-export interface CreateDocumentFromStorageParams {
+export interface CreateDocumentFromStorageParams extends Omit<DocumentWriteBase, "meta" | "status"> {
   storageFileId: string;
-  name: string;
-  /** Optional — omit to leave the description unset (stored as null). */
-  description?: string;
-  /** Optional — omit for a document with no metadata. */
-  meta?: MetaTag[];
-  /** Optional — omit for a document with no hashtags. */
-  hashtags?: string[];
-  status: DocumentStatusForCreate;
+  /** Must be `draft` (the default) - a document made from a file lands as a draft. */
+  status?: "draft";
   accessType?: AccessTypeInput;
   accessEmails?: AccessEmail[];
-  /** Delete the source Drive file once the document is created. Default false. */
-  deleteSourceFile?: boolean;
 }
 
-export interface UpdateDocumentParams {
-  name: string;
-  /** Optional — omit to leave the description unset (stored as null). */
-  description?: string;
-  media: Media;
-  /** Optional — omit for a document with no metadata. */
-  meta?: MetaTag[];
-  /** Optional — omit for a document with no hashtags. */
-  hashtags?: string[];
-  status: DocumentStatusForCreate;
+export type CreateDocumentParams = CreateDocumentFromContentParams | CreateDocumentFromStorageParams;
+
+/** Next version from text: `baseVersionId` is the version the text was read from (else 409 `DOCUMENT_WRITING_BASE_MOVED`). */
+export interface UpdateDocumentWithContentParams extends DocumentWriteBase {
+  content: DocumentContent;
+  baseVersionId: string;
 }
+
+/** Next version from a READY Storage file, converted asynchronously (202). */
+export interface UpdateDocumentWithFileParams extends Omit<DocumentWriteBase, "meta"> {
+  storageFileId: string;
+}
+
+export type UpdateDocumentParams = UpdateDocumentWithContentParams | UpdateDocumentWithFileParams;
 
 export interface UpdateDocumentRightsParams {
   accessType: AccessTypeInput;
@@ -349,6 +380,13 @@ export interface PublicDocumentDetail {
   id: string;
   txtId: string;
   accessType: AccessType;
+  /**
+   * `text` - a text document (can be edited and sent for signature); `file` - made as a file before
+   * documents became text: readable and verifiable, but sent only after `documents.convert()`.
+   */
+  format: "text" | "file";
+  /** Whether a signature request can be made on it now (`false` for a `file`). */
+  sendable: boolean;
   currentVersion: PublicDocumentVersion | null;
   createdAt: string;
   updatedAt: string;
@@ -357,6 +395,113 @@ export interface PublicDocumentDetail {
 export interface GetDocumentResponse {
   success: boolean;
   document: PublicDocumentDetail;
+}
+
+// ─── Conversion, text content and signature block ──────────────────────────
+
+export type DocumentConversionStatus = "converting" | "ready" | "failed";
+
+export interface DocumentConversion {
+  id: string;
+  status: DocumentConversionStatus;
+  /** `new`: a new document is made when ready. `version`: the next version of `documentId`. */
+  kind: "new" | "version";
+  /** Present when `ready` (and always for `version`). */
+  documentId: string | null;
+  /** The made version, when `ready`. */
+  versionId: string | null;
+  /** `ready_for_review` or `needs_review`, when the converter reported one. */
+  review?: string;
+  progress?: number;
+  /** Why it failed, when `failed`: the converter's code or `AI_LIMIT_REACHED`, `STORAGE_LIMIT_REACHED`, ... */
+  failure?: { code: string } | null;
+}
+
+/** Answer of every file entrance (202) and of `conversions.get`. */
+export interface DocumentConversionResponse {
+  success: boolean;
+  conversion: DocumentConversion;
+}
+
+/** A `ready` conversion: `documentId` and `versionId` are set. */
+export interface ReadyDocumentConversion extends DocumentConversion {
+  status: "ready";
+  documentId: string;
+  versionId: string;
+}
+
+export interface WaitForConversionOptions {
+  /** Give up after this many milliseconds (default 10 minutes). */
+  timeoutMs?: number;
+  /** First poll delay in milliseconds (default 1000); it grows by `backoffFactor` up to `maxIntervalMs`. */
+  intervalMs?: number;
+  maxIntervalMs?: number;
+  backoffFactor?: number;
+  /** Called after every poll. */
+  onPoll?: (conversion: DocumentConversion) => void;
+}
+
+export interface ConvertDocumentParams {
+  idempotencyKey?: string;
+}
+
+export interface DocumentRole {
+  id: string;
+  /** What `recipients[].role` of a signature request names. */
+  key: string;
+  name: string;
+}
+
+export interface DocumentField {
+  id: string;
+  key: string;
+  name: string;
+  type: string;
+  filledBy: string;
+  required: boolean;
+}
+
+export interface GetDocumentContentParams {
+  /** A version of the document; the current one when omitted. */
+  versionId?: string;
+}
+
+export interface DocumentContentResponse {
+  success: boolean;
+  versionId: string;
+  contentVersion: number;
+  content: DocumentContent;
+  roles: DocumentRole[];
+  fields: DocumentField[];
+}
+
+export interface SignatureBlockRole {
+  /** The role key: what `recipients[].role` names. */
+  key: string;
+  /** The name printed before the signature. */
+  name: string;
+}
+
+export interface AddSignatureBlockParams {
+  roles: SignatureBlockRole[];
+  /** The version you read; another current version is 409 `DOCUMENT_WRITING_BASE_MOVED`. */
+  baseVersionId?: string;
+  idempotencyKey?: string;
+}
+
+export interface AddSignatureBlockResponse {
+  success: boolean;
+  documentId: string;
+  /** The new version that holds the roles and their Signature / Date signed chips. */
+  versionId: string;
+  roles: string[];
+}
+
+/** Answer of a text update (`content`). */
+export interface UpdateDocumentTextResponse {
+  success: boolean;
+  documentId: string;
+  message: string;
 }
 
 export interface ListDocumentVersionsParams {
@@ -547,32 +692,24 @@ export type VerificationTxStatus =
   | "failed";
 
 export type DocumentSigningMethod = "embedded" | "delegated";
-export type SignatureRequestFieldType =
-  | "signature"
-  | "initials"
-  | "date_signed"
-  | "text"
-  | "checkbox";
-
 export interface Recipient {
   email: string;
+  /**
+   * The key of the role of the document's text this recipient signs as (`roles[].key` of
+   * `documents.getContent`). Required when the text holds roles; every role stands for exactly one recipient.
+   */
+  role?: string;
+  /** Where this person is addressed: an option from `accounts.lookup`. */
+  account?: AccountChoice;
   signingMethod?: DocumentSigningMethod;
 }
 
-export interface SignatureRequestField {
-  signerEmail: string;
-  fieldType: SignatureRequestFieldType;
-  pageIndex: number;
-  xPct: number;
-  yPct: number;
-  wPct: number;
-  hPct: number;
-  required?: boolean;
-  systemKey?: string;
-  label?: string;
-}
-
+/**
+ * Signature places are chips in the document's text; there is no coordinate input any more. A request that
+ * carries `fields` is refused (422 `SETUP_FIELDS_STAND_IN_THE_TEXT`), so the SDK does not accept it.
+ */
 export interface CreateSignatureRequestParams {
+  /** A version of a text document. A file version is refused (`DOCUMENT_FILE_CONVERTS`): convert it first. */
   versionId: string;
   message?: string;
   recipients: Recipient[];
@@ -580,7 +717,11 @@ export interface CreateSignatureRequestParams {
   isKycRequired?: boolean;
   deadline: Date;
   meta?: MetaTag[];
-  fields?: SignatureRequestField[];
+}
+
+export interface ResendSignatureRequestParams {
+  /** When omitted, the original signing window is re-applied from now. */
+  deadline?: Date;
 }
 
 export interface CancelSignatureRequestResponse {
@@ -652,6 +793,19 @@ export interface SignatureRequestStatus {
   signers: Signer[];
 }
 
+/** Answer of `signatures.resend`: a NEW request over a fresh version; the cancelled one stays as the record. */
+export interface ResendSignatureRequestResponse {
+  success: boolean;
+  requestId: string;
+  /** The request that was resent. */
+  resentFrom: string;
+  status: SignRequestStatus;
+  versionId?: string;
+  dueDate: string | null;
+  signers: Signer[];
+  message: string;
+}
+
 export interface SignatureRequestResponse {
   success: boolean;
   requestId: string;
@@ -686,6 +840,8 @@ export interface EditSignatureRequestParams {
   signerId: string;
   /** New recipient email for that signer slot. */
   recipient: string;
+  /** Where the new recipient is addressed: an option from `accounts.lookup`. */
+  account?: AccountChoice;
 }
 
 /** Response from POST /api/v1/signatures/requests/:requestId/edit */

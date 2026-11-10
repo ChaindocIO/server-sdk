@@ -3,42 +3,41 @@
 // so tsup never bundles it, and `package.json#files` ships only `dist/`, so it is
 // never published. Its sole job is to make `npm run typecheck` FAIL if
 // `description` / `meta` / `hashtags` ever regress back to REQUIRED on these
-// params — keeping the SDK types in lockstep with the relaxed backend DTOs.
+// params - keeping the SDK types in lockstep with the relaxed backend DTOs.
 //
-// `satisfies` checks assignability without widening, so a missing REQUIRED field
-// is a compile error here, while the omitted OPTIONAL fields are accepted.
+// 3.0: a document is made from `content` (a text) or converted from a Storage file; there is no `media`.
 
 import type {
-  CreateDocumentParams,
+  CreateDocumentFromContentParams,
   CreateDocumentFromStorageParams,
-  UpdateDocumentParams,
-  Media,
+  UpdateDocumentWithContentParams,
+  UpdateDocumentWithFileParams,
 } from "../types";
 
-const media: Media = {
-  type: "document",
-  name: "contract.pdf",
-  key: "drive/abc/contract.pdf",
-  url: "https://example.test/contract.pdf",
-};
-
-// Title-only create — no description / meta / hashtags / access.
+// Title-only create from a text - no description / meta / hashtags / access.
 export const titleOnlyCreate = {
   name: "Untitled document",
-  media,
+  content: { version: 2, mode: "document", doc: { type: "doc" } },
   status: "draft",
-} satisfies CreateDocumentParams;
+} satisfies CreateDocumentFromContentParams;
 
-// Title-only create-from-storage.
+// Title-only create-from-storage (status defaults to draft).
 export const titleOnlyFromStorage = {
   storageFileId: "00000000-0000-0000-0000-000000000000",
   name: "Untitled document",
-  status: "draft",
 } satisfies CreateDocumentFromStorageParams;
 
-// Title-only update (creates a new version) — description / meta / hashtags omitted.
+// Title-only update from a text.
 export const titleOnlyUpdate = {
   name: "Untitled document",
-  media,
+  content: { version: 2, mode: "document", doc: { type: "doc" } },
+  baseVersionId: "00000000-0000-0000-0000-000000000000",
   status: "draft",
-} satisfies UpdateDocumentParams;
+} satisfies UpdateDocumentWithContentParams;
+
+// Title-only update from a Storage file.
+export const titleOnlyUpdateFromFile = {
+  name: "Untitled document",
+  storageFileId: "00000000-0000-0000-0000-000000000000",
+  status: "draft",
+} satisfies UpdateDocumentWithFileParams;

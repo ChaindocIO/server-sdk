@@ -1,59 +1,70 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ChaindocError } from '../client';
 import { Signatures } from '../modules/signatures';
+import { fakeClient } from './helpers';
 
 describe('Signatures module', () => {
-  it('forwards document signing modes and signature fields when creating a request', async () => {
-    const client = {
-      post: vi.fn().mockResolvedValue({}),
-    };
-    const signatures = new Signatures(client as any);
+  it('binds recipients to the text by role and forwards the account option', async () => {
+    const f = fakeClient({});
+    const signatures = new Signatures(f.client);
     const deadline = new Date('2026-04-30T00:00:00.000Z');
 
     await signatures.createRequest({
       versionId: 'version-uuid',
       recipients: [
-        { email: 'owner@example.com', signingMethod: 'delegated' },
-        { email: 'counterparty@example.com', signingMethod: 'embedded' },
+        { email: 'Owner@Example.com', role: 'seller', signingMethod: 'delegated' },
+        {
+          email: 'counterparty@example.com',
+          role: 'buyer',
+          account: { kind: 'workspace', workspaceId: 'ws-1' },
+          signingMethod: 'embedded',
+        },
       ],
       deadline,
       embeddedFlow: true,
       isKycRequired: false,
-      fields: [
-        {
-          signerEmail: 'owner@example.com',
-          fieldType: 'signature',
-          pageIndex: 0,
-          xPct: 0.1,
-          yPct: 0.2,
-          wPct: 0.25,
-          hPct: 0.05,
-          required: true,
-        },
-      ],
     });
 
-    expect(client.post).toHaveBeenCalledWith('/api/v1/signatures/requests', {
+    expect(f.post).toHaveBeenCalledWith('/api/v1/signatures/requests', {
       versionId: 'version-uuid',
       recipients: [
-        { email: 'owner@example.com', signingMethod: 'delegated' },
-        { email: 'counterparty@example.com', signingMethod: 'embedded' },
+        { email: 'owner@example.com', role: 'seller', signingMethod: 'delegated' },
+        {
+          email: 'counterparty@example.com',
+          role: 'buyer',
+          account: { kind: 'workspace', workspaceId: 'ws-1' },
+          signingMethod: 'embedded',
+        },
       ],
       deadline: '2026-04-30T00:00:00.000Z',
       embeddedFlow: true,
       isKycRequired: false,
-      fields: [
-        {
-          signerEmail: 'owner@example.com',
-          fieldType: 'signature',
-          pageIndex: 0,
-          xPct: 0.1,
-          yPct: 0.2,
-          wPct: 0.25,
-          hPct: 0.05,
-          required: true,
-        },
-      ],
+    });
+  });
+
+  it('refuses coordinate fields before any call (SETUP_FIELDS_STAND_IN_THE_TEXT)', async () => {
+    const f = fakeClient({});
+    const signatures = new Signatures(f.client);
+    const withFields = {
+      versionId: 'version-uuid',
+      recipients: [{ email: 'owner@example.com', role: 'seller' }],
+      deadline: new Date('2026-04-30T00:00:00.000Z'),
+      fields: [{ signerEmail: 'owner@example.com', fieldType: 'signature', pageIndex: 0, xPct: 0.1, yPct: 0.2, wPct: 0.2, hPct: 0.05, required: true }],
+    };
+
+    await expect(signatures.createRequest(withFields)).rejects.toMatchObject({
+      errorKey: 'SETUP_FIELDS_STAND_IN_THE_TEXT',
+      statusCode: 422,
+    });
+    expect(f.post).not.toHaveBeenCalled();
+  });
+
+  it('resend opens a new request with an ISO deadline', async () => {
+    const f = fakeClient({});
+    const signatures = new Signatures(f.client);
+    await signatures.resend('req-uuid', { deadline: new Date('2026-05-01T00:00:00.000Z') });
+    expect(f.post).toHaveBeenCalledWith('/api/v1/signatures/requests/req-uuid/resend', {
+      deadline: '2026-05-01T00:00:00.000Z',
     });
   });
 

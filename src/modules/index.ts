@@ -8,3 +8,4 @@ export { Embedded } from './embedded';
 export { Media } from './media';
 export { Webhooks } from './webhooks';
 export { Processes } from './processes';
+export { Conversions } from './conversions';

@@ -41,6 +41,7 @@
 
 import { HttpClient } from "./client";
 import { Documents } from "./modules/documents";
+import { Conversions } from "./modules/conversions";
 import { Signatures } from "./modules/signatures";
 import { Contracts } from "./modules/contracts";
 import { Templates } from "./modules/templates";
@@ -70,6 +71,12 @@ export class Chaindoc {
    * Create, update, and verify documents
    */
   public readonly documents: Documents;
+
+  /**
+   * Conversions API
+   * Follow a file's conversion into a text document
+   */
+  public readonly conversions: Conversions;
 
   /**
    * Signatures API
@@ -120,6 +127,7 @@ export class Chaindoc {
     this.client = new HttpClient(config);
 
     this.documents = new Documents(this.client);
+    this.conversions = new Conversions(this.client);
     this.signatures = new Signatures(this.client);
     this.contracts = new Contracts(this.client);
     this.templates = new Templates(this.client);
