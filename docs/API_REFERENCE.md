@@ -1,5 +1,11 @@
 # Chaindoc Server SDK - API Reference
 
+> **3.0 notice.** Examples in this guide that create a document from `media`, or place signature `fields` by
+> page coordinates, are 2.x. In 3.0 a file is converted (`documents.createFromFile` +
+> `conversions.wait`) and recipients are bound by `role`; see the README and [MIGRATION.md](../MIGRATION.md).
+> This guide is rewritten in the next pass.
+
+
 > **Version:** 1.0.0
 > **Package:** `@chaindoc_io/server-sdk`
 > **License:** MIT

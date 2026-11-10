@@ -5,7 +5,59 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.0.0] - 2026-11-10
+
+**BREAKING.** Aligns the SDK with the platform contract of November 2026 (194 public operations). Files are
+converted into text documents, signature places are chips in the text, templates use the new content format,
+and every call needs a Business plan. See [MIGRATION.md](MIGRATION.md) for every change with before/after.
+Not published: version bump only.
+
+### Added
+
+- **Documents as text.** `documents.create({ content })`; a file goes Storage -> conversion:
+  `documents.createFromStorage` / `createFromFile` answer 202 with a conversion. `conversions.get` and
+  `conversions.wait` (poll with backoff and a timeout; typed errors). `documents.getContent` (text, `roles[]`,
+  `fields[]`), `documents.convert`, `documents.addSignatureBlock`; `format` and `sendable` on `documents.get`.
+- **Accounts.** `accounts.lookup`; the `account` option on recipients, access grants and template slots;
+  `contragentAccount` on contracts; `accessType: 'team'` (the workspace's audience) is an input again.
+- **Templates in the new format.** `content` + `revision`, `workingCopy`, publish / archive / restore,
+  permanent `delete`; contracts and signature requests from a template with slots by `email` / `account`.
+- **Money.** `contragents`, `paymentInstructions` (bank, crypto with network/asset/address, `currencyCode`,
+  `qr`, `localCode`, contragent assignment), `taxTreatments`, `contracts.setPaymentInstruction` /
+  `setStripePayment`, `invoices.listCreditNotes` / `createCreditNote`, the new invoice and transaction fields
+  (`creditedAmount`, `canCancel`, `paidOn`, `method`, `removedAt`, tax summary, buyer/seller, ...).
+- **QES.** `signatures.qes.promise` / `prepare` / `finalize` (private key material is refused locally),
+  `signatures.resend`.
+- **Processes** (merged from `processes/integration`): `processes.*` with entry `kind`, `requiredSubjects`,
+  `creates`, `entrySubject`, and `processes.respond` (HMAC-signed answer of a connected system).
+- **Typed errors.** `ChaindocError.errorKey`; `ChaindocPlanError`, `ChaindocReadOnlyError`,
+  `ChaindocLimitError`, `ChaindocDocumentFileError`, `ChaindocSigningSetupError`, `ChaindocNotYourTurnError`,
+  `ChaindocTemplateError`, `ChaindocPaymentError`, `ChaindocConversionFailedError`,
+  `ChaindocConversionTimeoutError`; `hasErrorKey` and `ERROR_KEYS`.
+- **Webhooks.** `document.conversion.completed` / `.failed` (22 events in all).
+
+### Changed
+
+- `documents.createFromFile` / `createFromStorage` return the 202 conversion, not a document.
+- `documents.create` / `update` no longer take `media`; `update` from text names `baseVersionId`.
+- `recipients[].role` binds a signer to the text; every role of the text needs one recipient.
+- Money calls (`charge`, `markPaid`, credit notes, payment-instruction writes, Stripe setting, QES) are never
+  retried automatically.
+- Every path id is validated and percent-encoded (`seg()`): empty, `.` and `..` are refused before any request.
+- `scripts/sync-openapi-snapshot.mjs` takes its source from an argument or `CHAINDOC_PUBLIC_OPENAPI_PATH`
+  (default `../backend`).
+
+### Removed
+
+- The coordinate `fields` input of `signatures.createRequest` and the `SignatureRequestField` type (the API
+  refuses them: `SETUP_FIELDS_STAND_IN_THE_TEXT`).
+- `templates.previewPdf`, `previewHtml`, `previewUnsavedPdf` (routes removed), and `contentJson` on templates.
+- `media` on `documents.create` / `update`; `meta` and `status: 'published'` on `createFromStorage`;
+  `deleteSourceFile` (the original stays in Storage).
+- Delegated signing and `signerVariables` on template slots (refused: `TEMPLATE_SLOT_NOT_SUPPORTED`).
+- `AccessRole` and `accessRoles` (role audiences); `isForSigning`. No `workflow.*` and no escrow surface.
+
+## [Before 3.0.0 (folded in above)]
 
 ### Added
 
@@ -47,7 +99,8 @@ is unchanged and nothing has been released from this section.
 
 ### Changed
 
-- **`accessType` on inputs narrows from `AccessType` (four values) to the new `AccessTypeInput`
+- **(Superseded in 3.0.0: `"team"` is an input again, meaning the workspace's own audience.)
+  `accessType` on inputs narrowed from `AccessType` (four values) to the new `AccessTypeInput`
   (three).** Affects the same three types. **What breaks:** `accessType: "team"` on a create, a
   create-from-storage or a rights update no longer compiles. **What to write instead:**
   `"restricted"` plus `accessEmails` for a named audience, `"public"` for anyone with the link, or

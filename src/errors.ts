@@ -73,7 +73,7 @@ export const ERROR_KEYS = {
 export type KnownErrorKey = (typeof ERROR_KEYS)[keyof typeof ERROR_KEYS];
 
 /** A known key, or any other string the server sends. */
-export type ChaindocErrorKey = KnownErrorKey | (string & {});
+export type ChaindocErrorKey = KnownErrorKey | (string & Record<never, never>);
 
 const KEY_SHAPE = /^[A-Z][A-Z0-9_]+$/;
 

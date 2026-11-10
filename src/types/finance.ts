@@ -129,7 +129,7 @@ export interface CreatePaymentInstructionParams {
   /** Print an EPC QR on invoices: an EU account in EUR only. */
   qr?: boolean;
   /** Crypto: the chain. */
-  network?: PaymentInstructionCryptoNetwork | (string & {});
+  network?: PaymentInstructionCryptoNetwork | (string & Record<never, never>);
   /** Crypto: an asset its network carries. */
   asset?: string;
   /** Crypto: the wallet address on its network, checksum checked. */
