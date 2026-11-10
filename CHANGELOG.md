@@ -7,13 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Source-only dedicated document/invoice/bill entry schema kinds and separate
+  `entrySubject` cardinality/family/side metadata. Input-field `requiredSubjects`
+  and the native request envelope are unchanged; no runtime or release claim.
+
+- Source-only explicit entry subject pin metadata and typed required-subject fields.
+  Native subject requests accept optional `fieldId`; existing declarations without
+  it remain valid envelopes. No client case-subject identity conversion, route,
+  snapshot regeneration or publication is included.
+
+- Source-only public case data/material reads, binary material/thumbnail/PDF download,
+  and paginated historical event structure. `getEvents` accepts optional
+  `afterEventUuid`/`limit`; its observation is now `public_event_history` with safe
+  `data`, `hasMore` and `nextAfter`. OpenAPI snapshot and publication remain unchanged.
+
+- Source-only public Processes case receipt/scalar metadata, event history,
+  own-key resubmit and entry intake methods. Binary full/chunk upload sends raw bytes
+  without automatic retries. Contract: [Processes](docs/PROCESSES.md).
+
+- Source-only `chaindoc.processes.list`, `getEntry`, and keyed `start`, with pinned
+  schema, request, receipt and refusal types. No SDK publication is included. Contract: [Processes](docs/PROCESSES.md).
+
 **BREAKING** — the team audience is withdrawn from the input types. Not published yet: the version
 is unchanged and nothing has been released from this section.
 
 ### Removed
 
 - **`AccessRole` — the exported interface is gone.** It was `{ roleId: number; level: "read" |
-  "write" }`. **What breaks:** any code that imports the type by name
+"write" }`. **What breaks:** any code that imports the type by name
   (`import type { AccessRole } from "@chaindoc/server-sdk"`) stops compiling. **What to write
   instead:** nothing — there is no replacement, because a team role no longer grants access to
   anything. Grant to a person: `accessEmails: [{ email, level }]`.
@@ -41,13 +64,12 @@ is unchanged and nothing has been released from this section.
 
 ### Migration
 
-| you had | you write |
-|---|---|
-| `accessType: "team"` | `accessType: "restricted"` + `accessEmails: [{ email, level }]` per person |
-| `accessRoles: [{ roleId, level }]` | `accessEmails: [{ email, level }]` per person |
-| `import type { AccessRole }` | delete the import — no replacement type exists |
-| reading `doc.accessType === "team"` | ⚠️ **unchanged** — keep it; that is the historical value |
-
+| you had                             | you write                                                                  |
+| ----------------------------------- | -------------------------------------------------------------------------- |
+| `accessType: "team"`                | `accessType: "restricted"` + `accessEmails: [{ email, level }]` per person |
+| `accessRoles: [{ roleId, level }]`  | `accessEmails: [{ email, level }]` per person                              |
+| `import type { AccessRole }`        | delete the import — no replacement type exists                             |
+| reading `doc.accessType === "team"` | ⚠️ **unchanged** — keep it; that is the historical value                   |
 
 ## [3.0.0-alpha.0]
 
@@ -192,6 +214,7 @@ Major release expanding the SDK to cover contracts, invoices, transactions, temp
 ## [1.0.0] - 2024-12-10
 
 ### Added
+
 - **Stable API**: All modules are now production-ready with a stable API
 - Comprehensive documentation including Getting Started, API Reference, and Advanced Usage guides
 - CONTRIBUTING.md for open-source collaboration guidelines
@@ -199,11 +222,13 @@ Major release expanding the SDK to cover contracts, invoices, transactions, temp
 - MIGRATION.md guide for upgrading from alpha versions
 
 ### Changed
+
 - **Production Ready**: SDK is now ready for production use
 - Improved error messages and error handling
 - Enhanced TypeScript type definitions
 
 ### Fixed
+
 - Various stability improvements from alpha testing feedback
 
 ---

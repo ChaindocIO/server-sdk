@@ -9,6 +9,9 @@
 
 ## Features
 
+Processes discovery and repeatable Start are available in source; see the bounded
+[Processes contract](docs/PROCESSES.md) for authorization, replay and release status.
+
 - **Document Management** - Create, update, and version documents with blockchain verification
 - **Digital Signatures** - Request and collect legally-binding electronic signatures
 - **Templates, Contracts, and Billing** - Generate documents and contracts from published templates, then manage invoice lifecycle and transactions
