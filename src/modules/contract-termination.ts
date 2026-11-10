@@ -7,6 +7,7 @@
  * - cancel: initiator withdraws a still-pending request
  */
 
+import { seg } from '../utils/path';
 import type { HttpClient } from '../client';
 import type {
   ApproveTerminationParams,
@@ -28,7 +29,7 @@ export class ContractTermination {
    */
   async get(contractId: string): Promise<TerminationRequestEnvelope> {
     return this.client.get<TerminationRequestEnvelope>(
-      `/api/v1/contracts/${contractId}/termination`
+      `/api/v1/contracts/${seg(contractId)}/termination`
     );
   }
 
@@ -38,14 +39,14 @@ export class ContractTermination {
    */
   async getStatus(contractId: string): Promise<TerminationStatusEnvelope> {
     return this.client.get<TerminationStatusEnvelope>(
-      `/api/v1/contracts/${contractId}/termination/status`
+      `/api/v1/contracts/${seg(contractId)}/termination/status`
     );
   }
 
   /** Get the full history of termination requests for a contract. */
   async getHistory(contractId: string): Promise<TerminationHistoryEnvelope> {
     return this.client.get<TerminationHistoryEnvelope>(
-      `/api/v1/contracts/${contractId}/termination/history`
+      `/api/v1/contracts/${seg(contractId)}/termination/history`
     );
   }
 
@@ -58,7 +59,7 @@ export class ContractTermination {
     params?: ApproveTerminationParams
   ): Promise<TerminationApproveEnvelope> {
     return this.client.post<TerminationApproveEnvelope>(
-      `/api/v1/contracts/${contractId}/termination/approve`,
+      `/api/v1/contracts/${seg(contractId)}/termination/approve`,
       params ?? {}
     );
   }
@@ -69,7 +70,7 @@ export class ContractTermination {
     params: RejectTerminationParams
   ): Promise<ContractActionResponse> {
     return this.client.post<ContractActionResponse>(
-      `/api/v1/contracts/${contractId}/termination/reject`,
+      `/api/v1/contracts/${seg(contractId)}/termination/reject`,
       params
     );
   }
@@ -80,7 +81,7 @@ export class ContractTermination {
    */
   async cancel(contractId: string): Promise<ContractActionResponse> {
     return this.client.delete<ContractActionResponse>(
-      `/api/v1/contracts/${contractId}/termination`
+      `/api/v1/contracts/${seg(contractId)}/termination`
     );
   }
 }

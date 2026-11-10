@@ -54,31 +54,6 @@ describe('SDK modules validate email fields before sending requests', () => {
     expect(client.post).not.toHaveBeenCalled();
   });
 
-  it('signatures.createRequest rejects invalid field signer email without posting', async () => {
-    const client = { post: vi.fn().mockResolvedValue({}) };
-    const signatures = new Signatures(client as any);
-
-    await expect(
-      signatures.createRequest({
-        versionId: 'version-uuid',
-        recipients: [{ email: 'owner@example.com', signingMethod: 'delegated' }],
-        fields: [
-          {
-            signerEmail: 'bad-email',
-            fieldType: 'signature',
-            pageIndex: 0,
-            xPct: 0.1,
-            yPct: 0.2,
-            wPct: 0.25,
-            hPct: 0.05,
-          },
-        ],
-        deadline: new Date('2026-04-30T00:00:00.000Z'),
-      }),
-    ).rejects.toThrow('fields[0].signerEmail');
-    expect(client.post).not.toHaveBeenCalled();
-  });
-
   it('contracts.create rejects invalid contragent email without posting', async () => {
     const client = { post: vi.fn().mockResolvedValue({}) };
     const contracts = new Contracts(client as any);

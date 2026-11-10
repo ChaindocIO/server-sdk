@@ -1,5 +1,11 @@
 # Getting Started with Chaindoc Server SDK
 
+> **3.0 notice.** Examples in this guide that create a document from `media`, or place signature `fields` by
+> page coordinates, are 2.x. In 3.0 a file is converted (`documents.createFromFile` +
+> `conversions.wait`) and recipients are bound by `role`; see the README and [MIGRATION.md](../MIGRATION.md).
+> This guide is rewritten in the next pass.
+
+
 This guide walks you through setting up the Chaindoc Server SDK and creating your first document signing workflow.
 
 ---

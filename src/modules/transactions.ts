@@ -2,6 +2,7 @@
  * Transactions Module
  */
 
+import { seg } from '../utils/path';
 import type { HttpClient } from '../client';
 import type {
   FeeEstimateParams,
@@ -19,14 +20,14 @@ export class Transactions {
    * List transactions for a contract.
    */
   async listByContract(contractId: string): Promise<TransactionListResponse> {
-    return this.client.get<TransactionListResponse>(`/api/v1/contracts/${contractId}/transactions`);
+    return this.client.get<TransactionListResponse>(`/api/v1/contracts/${seg(contractId)}/transactions`);
   }
 
   /**
    * Get a single transaction by UUID.
    */
   async get(transactionId: string): Promise<TransactionResponse> {
-    return this.client.get<TransactionResponse>(`/api/v1/transactions/${transactionId}`);
+    return this.client.get<TransactionResponse>(`/api/v1/transactions/${seg(transactionId)}`);
   }
 
   /**

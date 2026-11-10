@@ -5,7 +5,87 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.0.0] - 2026-11-10
+
+**BREAKING.** Aligns the SDK with the platform contract of November 2026 (194 public operations). Files are
+converted into text documents, signature places are chips in the text, templates use the new content format,
+and every call needs a Business plan. See [MIGRATION.md](MIGRATION.md) for every change with before/after.
+Not published: version bump only.
+
+### Added
+
+- **Documents as text.** `documents.create({ content })`; a file goes Storage -> conversion:
+  `documents.createFromStorage` / `createFromFile` answer 202 with a conversion. `conversions.get` and
+  `conversions.wait` (poll with backoff and a timeout; typed errors). `documents.getContent` (text, `roles[]`,
+  `fields[]`), `documents.convert`, `documents.addSignatureBlock`; `format` and `sendable` on `documents.get`.
+- **Accounts.** `accounts.lookup`; the `account` option on recipients, access grants and template slots;
+  `contragentAccount` on contracts; `accessType: 'team'` (the workspace's audience) is an input again.
+- **Templates in the new format.** `content` + `revision`, `workingCopy`, publish / archive / restore,
+  permanent `delete`; contracts and signature requests from a template with slots by `email` / `account`.
+- **Money.** `contragents`, `paymentInstructions` (bank, crypto with network/asset/address, `currencyCode`,
+  `qr`, `localCode`, contragent assignment), `taxTreatments`, `contracts.setPaymentInstruction` /
+  `setStripePayment`, `invoices.listCreditNotes` / `createCreditNote`, the new invoice and transaction fields
+  (`creditedAmount`, `canCancel`, `paidOn`, `method`, `removedAt`, tax summary, buyer/seller, ...).
+- **QES.** `signatures.qes.promise` / `prepare` / `finalize` (private key material is refused locally),
+  `signatures.resend`.
+- **Processes** (merged from `processes/integration`): `processes.*` with entry `kind`, `requiredSubjects`,
+  `creates`, `entrySubject`, and `processes.respond` (HMAC-signed answer of a connected system).
+- **Typed errors.** `ChaindocError.errorKey`; `ChaindocPlanError`, `ChaindocReadOnlyError`,
+  `ChaindocLimitError`, `ChaindocDocumentFileError`, `ChaindocSigningSetupError`, `ChaindocNotYourTurnError`,
+  `ChaindocTemplateError`, `ChaindocPaymentError`, `ChaindocConversionFailedError`,
+  `ChaindocConversionTimeoutError`; `hasErrorKey` and `ERROR_KEYS`.
+- **Webhooks.** `document.conversion.completed` / `.failed` (22 events in all).
+
+### Changed
+
+- `documents.createFromFile` / `createFromStorage` return the 202 conversion, not a document.
+- `documents.create` / `update` no longer take `media`; `update` from text names `baseVersionId`.
+- `recipients[].role` binds a signer to the text; every role of the text needs one recipient.
+- **Fewer automatic retries on writes (behaviour change).** GET/HEAD keep their retries (5xx, 429, timeouts,
+  network errors). POST/PUT/PATCH/DELETE are retried only when the request provably never reached the server
+  (`ECONNREFUSED`, `ENOTFOUND`, `EAI_AGAIN`) or on 429; not on 5xx, timeout, `ECONNRESET` or `ETIMEDOUT`.
+  Document writes (`create`, `createFromStorage`/`createFromFile`, `update`, `convert`, `addSignatureBlock`)
+  carry an `idempotencyKey` (generated when you give none, the same on every attempt), so the server dedupes
+  and they are retried on 5xx too. Money calls (`charge`, `markPaid`, credit notes, payment-instruction writes,
+  Stripe setting, QES) are never retried automatically.
+- Every path id is validated and percent-encoded (`seg()`): empty, `.` and `..` are refused before any request.
+- `scripts/sync-openapi-snapshot.mjs` takes its source from an argument or `CHAINDOC_PUBLIC_OPENAPI_PATH`
+  (default `../backend`).
+
+### Removed
+
+- The coordinate `fields` input of `signatures.createRequest` and the `SignatureRequestField` type (the API
+  refuses them: `SETUP_FIELDS_STAND_IN_THE_TEXT`).
+- `templates.previewPdf`, `previewHtml`, `previewUnsavedPdf` (routes removed), and `contentJson` on templates.
+- `media` on `documents.create` / `update`; `meta` and `status: 'published'` on `createFromStorage`;
+  `deleteSourceFile` (the original stays in Storage).
+- Delegated signing and `signerVariables` on template slots (refused: `TEMPLATE_SLOT_NOT_SUPPORTED`).
+- `AccessRole` and `accessRoles` (role audiences); `isForSigning`. No `workflow.*` and no escrow surface.
+
+## [Before 3.0.0 (folded in above)]
+
+### Added
+
+- Source-only dedicated document/invoice/bill entry schema kinds and separate
+  `entrySubject` cardinality/family/side metadata. Input-field `requiredSubjects`
+  and the native request envelope are unchanged; no runtime or release claim.
+
+- Source-only explicit entry subject pin metadata and typed required-subject fields.
+  Native subject requests accept optional `fieldId`; existing declarations without
+  it remain valid envelopes. No client case-subject identity conversion, route,
+  snapshot regeneration or publication is included.
+
+- Source-only public case data/material reads, binary material/thumbnail/PDF download,
+  and paginated historical event structure. `getEvents` accepts optional
+  `afterEventUuid`/`limit`; its observation is now `public_event_history` with safe
+  `data`, `hasMore` and `nextAfter`. OpenAPI snapshot and publication remain unchanged.
+
+- Source-only public Processes case receipt/scalar metadata, event history,
+  own-key resubmit and entry intake methods. Binary full/chunk upload sends raw bytes
+  without automatic retries. Contract: [Processes](docs/PROCESSES.md).
+
+- Source-only `chaindoc.processes.list`, `getEntry`, and keyed `start`, with pinned
+  schema, request, receipt and refusal types. No SDK publication is included. Contract: [Processes](docs/PROCESSES.md).
 
 **BREAKING** — the team audience is withdrawn from the input types. Not published yet: the version
 is unchanged and nothing has been released from this section.
@@ -13,7 +93,7 @@ is unchanged and nothing has been released from this section.
 ### Removed
 
 - **`AccessRole` — the exported interface is gone.** It was `{ roleId: number; level: "read" |
-  "write" }`. **What breaks:** any code that imports the type by name
+"write" }`. **What breaks:** any code that imports the type by name
   (`import type { AccessRole } from "@chaindoc/server-sdk"`) stops compiling. **What to write
   instead:** nothing — there is no replacement, because a team role no longer grants access to
   anything. Grant to a person: `accessEmails: [{ email, level }]`.
@@ -24,7 +104,8 @@ is unchanged and nothing has been released from this section.
 
 ### Changed
 
-- **`accessType` on inputs narrows from `AccessType` (four values) to the new `AccessTypeInput`
+- **(Superseded in 3.0.0: `"team"` is an input again, meaning the workspace's own audience.)
+  `accessType` on inputs narrowed from `AccessType` (four values) to the new `AccessTypeInput`
   (three).** Affects the same three types. **What breaks:** `accessType: "team"` on a create, a
   create-from-storage or a rights update no longer compiles. **What to write instead:**
   `"restricted"` plus `accessEmails` for a named audience, `"public"` for anyone with the link, or
@@ -41,13 +122,12 @@ is unchanged and nothing has been released from this section.
 
 ### Migration
 
-| you had | you write |
-|---|---|
-| `accessType: "team"` | `accessType: "restricted"` + `accessEmails: [{ email, level }]` per person |
-| `accessRoles: [{ roleId, level }]` | `accessEmails: [{ email, level }]` per person |
-| `import type { AccessRole }` | delete the import — no replacement type exists |
-| reading `doc.accessType === "team"` | ⚠️ **unchanged** — keep it; that is the historical value |
-
+| you had                             | you write                                                                  |
+| ----------------------------------- | -------------------------------------------------------------------------- |
+| `accessType: "team"`                | `accessType: "restricted"` + `accessEmails: [{ email, level }]` per person |
+| `accessRoles: [{ roleId, level }]`  | `accessEmails: [{ email, level }]` per person                              |
+| `import type { AccessRole }`        | delete the import — no replacement type exists                             |
+| reading `doc.accessType === "team"` | ⚠️ **unchanged** — keep it; that is the historical value                   |
 
 ## [3.0.0-alpha.0]
 
@@ -192,6 +272,7 @@ Major release expanding the SDK to cover contracts, invoices, transactions, temp
 ## [1.0.0] - 2024-12-10
 
 ### Added
+
 - **Stable API**: All modules are now production-ready with a stable API
 - Comprehensive documentation including Getting Started, API Reference, and Advanced Usage guides
 - CONTRIBUTING.md for open-source collaboration guidelines
@@ -199,11 +280,13 @@ Major release expanding the SDK to cover contracts, invoices, transactions, temp
 - MIGRATION.md guide for upgrading from alpha versions
 
 ### Changed
+
 - **Production Ready**: SDK is now ready for production use
 - Improved error messages and error handling
 - Enhanced TypeScript type definitions
 
 ### Fixed
+
 - Various stability improvements from alpha testing feedback
 
 ---

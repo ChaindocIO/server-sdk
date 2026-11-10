@@ -39,45 +39,29 @@ describe('normalizeEmail util', () => {
 });
 
 describe('SDK modules normalize emails on the wire', () => {
-  it('signatures.createRequest normalizes recipients and field signerEmail without mutating input', async () => {
+  it('signatures.createRequest normalizes recipients without mutating input', async () => {
     const client = { post: vi.fn().mockResolvedValue({}) };
     const signatures = new Signatures(client as any);
     const recipients = [
-      { email: 'Owner@Example.com', signingMethod: 'delegated' as const },
-      { email: 'Counterparty@Example.com', signingMethod: 'embedded' as const },
-    ];
-    const fields = [
-      {
-        signerEmail: 'Owner@Example.com',
-        fieldType: 'signature' as const,
-        pageIndex: 0,
-        xPct: 0,
-        yPct: 0,
-        wPct: 0.1,
-        hPct: 0.1,
-      },
+      { email: 'Owner@Example.com', role: 'seller', signingMethod: 'delegated' as const },
+      { email: 'Counterparty@Example.com', role: 'buyer', signingMethod: 'embedded' as const },
     ];
 
     await signatures.createRequest({
       versionId: 'v',
       recipients,
-      fields,
       deadline: new Date('2026-04-30T00:00:00.000Z'),
     });
 
     expect(client.post).toHaveBeenCalledWith('/api/v1/signatures/requests', {
       versionId: 'v',
       recipients: [
-        { email: 'owner@example.com', signingMethod: 'delegated' },
-        { email: 'counterparty@example.com', signingMethod: 'embedded' },
-      ],
-      fields: [
-        expect.objectContaining({ signerEmail: 'owner@example.com' }),
+        { email: 'owner@example.com', role: 'seller', signingMethod: 'delegated' },
+        { email: 'counterparty@example.com', role: 'buyer', signingMethod: 'embedded' },
       ],
       deadline: '2026-04-30T00:00:00.000Z',
     });
     expect(recipients[0]?.email).toBe('Owner@Example.com');
-    expect(fields[0]?.signerEmail).toBe('Owner@Example.com');
   });
 
   it('embedded.createSession lowercases the email payload', async () => {

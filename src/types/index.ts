@@ -2,6 +2,12 @@
  * Chaindoc Server SDK Types
  */
 
+export * from './processes';
+export * from './accounts';
+export * from './templates';
+export * from './finance';
+import type { AccountChoice } from './accounts';
+
 // ============================================================================
 // Configuration
 // ============================================================================
@@ -216,65 +222,94 @@ export type DocumentStatusForCreate = "draft" | "published";
 export type AccessType = "private" | "public" | "restricted" | "team";
 
 /**
- * What a document may be ASKED to be.
- *
- * The team audience is not offered: the API refuses it, so it is not in the input union either —
- * an integrator who writes `accessType: "team"` on a create or an update fails to compile rather
- * than discovering it at runtime.
+ * What a document may be ASKED to be. `"team"` is the workspace's own audience (an active member of the
+ * key's workspace). A role audience can no longer be created.
  */
-export type AccessTypeInput = "private" | "public" | "restricted";
+export type AccessTypeInput = "private" | "public" | "restricted" | "team";
 
 export interface AccessEmail {
   email: string;
-  level: "read" | "write";
+  /** Defaults to `read` on the server. */
+  level?: "read" | "write";
+  /**
+   * Where this person is addressed: one of the options `accounts.lookup` returned. Without it the grant
+   * goes to the person's personal account.
+   */
+  account?: AccountChoice;
 }
 
-export interface CreateDocumentParams {
+/** A node of the engine's document tree. Its shape is the engine's; the SDK does not restrict it. */
+export interface DocumentNode {
+  type: string;
+  attrs?: Record<string, unknown>;
+  content?: DocumentNode[];
+  text?: string;
+  marks?: Array<{ type: string; attrs?: Record<string, unknown> }>;
+  [key: string]: unknown;
+}
+
+/**
+ * A text document: the engine's content, version 2. Signature places and fields are chips of the text;
+ * `mode: 'template'` holds the field definitions (`doc.attrs.fields`) and the signer roles
+ * (`doc.attrs.signers`) a signature request binds its recipients by.
+ */
+export interface DocumentContent {
+  version: 2;
+  mode: "document" | "template";
+  doc: DocumentNode;
+}
+
+interface DocumentWriteBase {
   name: string;
-  /** Optional — omit to leave the description unset (stored as null). */
+  /** Optional - omit to leave the description unset (stored as null). */
   description?: string;
-  media: Media;
-  /** Optional — omit for a document with no metadata. */
+  /** Optional - omit for a document with no metadata. */
   meta?: MetaTag[];
-  /** Optional — omit for a document with no hashtags. */
+  /** Optional - omit for a document with no hashtags. */
   hashtags?: string[];
+  /** A document made from a file always lands as a draft: `published` with a file is refused. */
   status: DocumentStatusForCreate;
+  /**
+   * The attempt's own key. The same key again answers the same document or conversion and starts nothing;
+   * left out, a retry makes a second one (and, for a file, pays for a second conversion).
+   */
+  idempotencyKey?: string;
+}
+
+/** Create a text document directly (201, the document is made). */
+export interface CreateDocumentFromContentParams extends DocumentWriteBase {
+  content: DocumentContent;
   accessType?: AccessTypeInput;
   accessEmails?: AccessEmail[];
 }
 
 /**
- * Create a document from a file already uploaded to the caller's Drive (via
- * `media.uploadChunked`). The document gets its own copy (model C), so deleting
- * the source Drive file afterwards is safe.
+ * Create a document from a file already in Storage (`media.uploadChunked`). A file becomes a text document
+ * by conversion: the answer is 202 with a conversion; the document is made as a DRAFT when it is ready.
+ * The original stays in Storage. Takes no `meta`.
  */
-export interface CreateDocumentFromStorageParams {
+export interface CreateDocumentFromStorageParams extends Omit<DocumentWriteBase, "meta" | "status"> {
   storageFileId: string;
-  name: string;
-  /** Optional — omit to leave the description unset (stored as null). */
-  description?: string;
-  /** Optional — omit for a document with no metadata. */
-  meta?: MetaTag[];
-  /** Optional — omit for a document with no hashtags. */
-  hashtags?: string[];
-  status: DocumentStatusForCreate;
+  /** Must be `draft` (the default) - a document made from a file lands as a draft. */
+  status?: "draft";
   accessType?: AccessTypeInput;
   accessEmails?: AccessEmail[];
-  /** Delete the source Drive file once the document is created. Default false. */
-  deleteSourceFile?: boolean;
 }
 
-export interface UpdateDocumentParams {
-  name: string;
-  /** Optional — omit to leave the description unset (stored as null). */
-  description?: string;
-  media: Media;
-  /** Optional — omit for a document with no metadata. */
-  meta?: MetaTag[];
-  /** Optional — omit for a document with no hashtags. */
-  hashtags?: string[];
-  status: DocumentStatusForCreate;
+export type CreateDocumentParams = CreateDocumentFromContentParams | CreateDocumentFromStorageParams;
+
+/** Next version from text: `baseVersionId` is the version the text was read from (else 409 `DOCUMENT_WRITING_BASE_MOVED`). */
+export interface UpdateDocumentWithContentParams extends DocumentWriteBase {
+  content: DocumentContent;
+  baseVersionId: string;
 }
+
+/** Next version from a READY Storage file, converted asynchronously (202). */
+export interface UpdateDocumentWithFileParams extends Omit<DocumentWriteBase, "meta"> {
+  storageFileId: string;
+}
+
+export type UpdateDocumentParams = UpdateDocumentWithContentParams | UpdateDocumentWithFileParams;
 
 export interface UpdateDocumentRightsParams {
   accessType: AccessTypeInput;
@@ -347,6 +382,13 @@ export interface PublicDocumentDetail {
   id: string;
   txtId: string;
   accessType: AccessType;
+  /**
+   * `text` - a text document (can be edited and sent for signature); `file` - made as a file before
+   * documents became text: readable and verifiable, but sent only after `documents.convert()`.
+   */
+  format: "text" | "file";
+  /** Whether a signature request can be made on it now (`false` for a `file`). */
+  sendable: boolean;
   currentVersion: PublicDocumentVersion | null;
   createdAt: string;
   updatedAt: string;
@@ -355,6 +397,113 @@ export interface PublicDocumentDetail {
 export interface GetDocumentResponse {
   success: boolean;
   document: PublicDocumentDetail;
+}
+
+// ─── Conversion, text content and signature block ──────────────────────────
+
+export type DocumentConversionStatus = "converting" | "ready" | "failed";
+
+export interface DocumentConversion {
+  id: string;
+  status: DocumentConversionStatus;
+  /** `new`: a new document is made when ready. `version`: the next version of `documentId`. */
+  kind: "new" | "version";
+  /** Present when `ready` (and always for `version`). */
+  documentId: string | null;
+  /** The made version, when `ready`. */
+  versionId: string | null;
+  /** `ready_for_review` or `needs_review`, when the converter reported one. */
+  review?: string;
+  progress?: number;
+  /** Why it failed, when `failed`: the converter's code or `AI_LIMIT_REACHED`, `STORAGE_LIMIT_REACHED`, ... */
+  failure?: { code: string } | null;
+}
+
+/** Answer of every file entrance (202) and of `conversions.get`. */
+export interface DocumentConversionResponse {
+  success: boolean;
+  conversion: DocumentConversion;
+}
+
+/** A `ready` conversion: `documentId` and `versionId` are set. */
+export interface ReadyDocumentConversion extends DocumentConversion {
+  status: "ready";
+  documentId: string;
+  versionId: string;
+}
+
+export interface WaitForConversionOptions {
+  /** Give up after this many milliseconds (default 10 minutes). */
+  timeoutMs?: number;
+  /** First poll delay in milliseconds (default 1000); it grows by `backoffFactor` up to `maxIntervalMs`. */
+  intervalMs?: number;
+  maxIntervalMs?: number;
+  backoffFactor?: number;
+  /** Called after every poll. */
+  onPoll?: (conversion: DocumentConversion) => void;
+}
+
+export interface ConvertDocumentParams {
+  idempotencyKey?: string;
+}
+
+export interface DocumentRole {
+  id: string;
+  /** What `recipients[].role` of a signature request names. */
+  key: string;
+  name: string;
+}
+
+export interface DocumentField {
+  id: string;
+  key: string;
+  name: string;
+  type: string;
+  filledBy: string;
+  required: boolean;
+}
+
+export interface GetDocumentContentParams {
+  /** A version of the document; the current one when omitted. */
+  versionId?: string;
+}
+
+export interface DocumentContentResponse {
+  success: boolean;
+  versionId: string;
+  contentVersion: number;
+  content: DocumentContent;
+  roles: DocumentRole[];
+  fields: DocumentField[];
+}
+
+export interface SignatureBlockRole {
+  /** The role key: what `recipients[].role` names. */
+  key: string;
+  /** The name printed before the signature. */
+  name: string;
+}
+
+export interface AddSignatureBlockParams {
+  roles: SignatureBlockRole[];
+  /** The version you read; another current version is 409 `DOCUMENT_WRITING_BASE_MOVED`. */
+  baseVersionId?: string;
+  idempotencyKey?: string;
+}
+
+export interface AddSignatureBlockResponse {
+  success: boolean;
+  documentId: string;
+  /** The new version that holds the roles and their Signature / Date signed chips. */
+  versionId: string;
+  roles: string[];
+}
+
+/** Answer of a text update (`content`). */
+export interface UpdateDocumentTextResponse {
+  success: boolean;
+  documentId: string;
+  message: string;
 }
 
 export interface ListDocumentVersionsParams {
@@ -545,32 +694,24 @@ export type VerificationTxStatus =
   | "failed";
 
 export type DocumentSigningMethod = "embedded" | "delegated";
-export type SignatureRequestFieldType =
-  | "signature"
-  | "initials"
-  | "date_signed"
-  | "text"
-  | "checkbox";
-
 export interface Recipient {
   email: string;
+  /**
+   * The key of the role of the document's text this recipient signs as (`roles[].key` of
+   * `documents.getContent`). Required when the text holds roles; every role stands for exactly one recipient.
+   */
+  role?: string;
+  /** Where this person is addressed: an option from `accounts.lookup`. */
+  account?: AccountChoice;
   signingMethod?: DocumentSigningMethod;
 }
 
-export interface SignatureRequestField {
-  signerEmail: string;
-  fieldType: SignatureRequestFieldType;
-  pageIndex: number;
-  xPct: number;
-  yPct: number;
-  wPct: number;
-  hPct: number;
-  required?: boolean;
-  systemKey?: string;
-  label?: string;
-}
-
+/**
+ * Signature places are chips in the document's text; there is no coordinate input any more. A request that
+ * carries `fields` is refused (422 `SETUP_FIELDS_STAND_IN_THE_TEXT`), so the SDK does not accept it.
+ */
 export interface CreateSignatureRequestParams {
+  /** A version of a text document. A file version is refused (`DOCUMENT_FILE_CONVERTS`): convert it first. */
   versionId: string;
   message?: string;
   recipients: Recipient[];
@@ -578,7 +719,11 @@ export interface CreateSignatureRequestParams {
   isKycRequired?: boolean;
   deadline: Date;
   meta?: MetaTag[];
-  fields?: SignatureRequestField[];
+}
+
+export interface ResendSignatureRequestParams {
+  /** When omitted, the original signing window is re-applied from now. */
+  deadline?: Date;
 }
 
 export interface CancelSignatureRequestResponse {
@@ -650,6 +795,19 @@ export interface SignatureRequestStatus {
   signers: Signer[];
 }
 
+/** Answer of `signatures.resend`: a NEW request over a fresh version; the cancelled one stays as the record. */
+export interface ResendSignatureRequestResponse {
+  success: boolean;
+  requestId: string;
+  /** The request that was resent. */
+  resentFrom: string;
+  status: SignRequestStatus;
+  versionId?: string;
+  dueDate: string | null;
+  signers: Signer[];
+  message: string;
+}
+
 export interface SignatureRequestResponse {
   success: boolean;
   requestId: string;
@@ -684,6 +842,8 @@ export interface EditSignatureRequestParams {
   signerId: string;
   /** New recipient email for that signer slot. */
   recipient: string;
+  /** Where the new recipient is addressed: an option from `accounts.lookup`. */
+  account?: AccountChoice;
 }
 
 /** Response from POST /api/v1/signatures/requests/:requestId/edit */
@@ -803,29 +963,18 @@ export interface HealthCheckResponse {
 // ============================================================================
 
 /**
- * Webhook event types emitted by the Chaindoc API.
+ * Webhook event types emitted by the Chaindoc API (the contract's list of 22).
  *
- * ⛔ `AC-27.10` — **this listed seventeen and the API delivers twenty-eight.** `T18`'s ten
- * approval-route events and `additional_agreement.signed` all reach the same delivery lane and go
- * out to every active key of the workspace, so an integrator handling them had no type for them and
- * an exhaustive `switch` over this union silently missed eleven kinds of delivery. It was seventeen
- * at the backend's baseline too — a pre-existing gap, corrected here rather than introduced.
+ * There are no `workflow.*` events (the approval-workflow routes are gone) and no escrow events.
+ * Events go only to keys that can read the object, and only on a Business plan or above.
  */
 export type WebhookEventType =
   | "additional_agreement.signed"
-  | "workflow.run.started"
-  | "workflow.step.opened"
-  | "workflow.assignment.approved"
-  | "workflow.run.returned"
-  | "workflow.run.rejected"
-  | "workflow.assignment.consented"
-  | "workflow.proofs.issued"
-  | "workflow.run.completed"
-  | "workflow.run.cancelled"
-  | "workflow.run.expired"
   | "document.created"
   | "document.verified"
   | "document.signed"
+  | "document.conversion.completed"
+  | "document.conversion.failed"
   | "signature.request.created"
   | "signature.request.completed"
   | "signature.request.rejected"
@@ -839,7 +988,9 @@ export type WebhookEventType =
   | "invoice.paid"
   | "invoice.cancelled"
   | "transaction.created"
-  | "transaction.updated";
+  | "transaction.updated"
+  | "transaction.edited"
+  | "transaction.removed";
 
 /**
  * Canonical webhook envelope.
@@ -869,6 +1020,27 @@ export interface WebhookEnvelope<T = Record<string, unknown>> {
  */
 export interface WebhookEventWorkspace {
   uuid: string | null;
+}
+
+/** Payload of `document.conversion.completed`: the document (or next version) is made, as a draft. */
+export interface DocumentConversionCompletedData {
+  conversionId: string;
+  documentId: string;
+  versionId: string;
+  kind: 'new' | 'version';
+  /** `ready_for_review` or `needs_review`. */
+  review: string;
+  workspace?: WebhookEventWorkspace;
+}
+
+/** Payload of `document.conversion.failed`: nothing was made. */
+export interface DocumentConversionFailedData {
+  conversionId: string;
+  documentId?: string;
+  kind: 'new' | 'version';
+  /** The converter's code, or `AI_LIMIT_REACHED`, `STORAGE_LIMIT_REACHED`, `DOCUMENT_FILE_REFUSED`... */
+  failure: { code: string };
+  workspace?: WebhookEventWorkspace;
 }
 
 /**
@@ -943,9 +1115,15 @@ export interface BillingAddress {
 export interface ContragentInfo {
   email: string;
   name?: string;
+  /** Registered legal name, distinct from the display name. */
+  legalName?: string;
+  entityType?: 'person' | 'company';
   phone?: string;
   billingAddress?: BillingAddress;
   taxId?: string;
+  /** VAT number, distinct from the tax ID. */
+  vatNumber?: string;
+  registrationNumber?: string;
 }
 
 /** Payment term input for creating contracts */
@@ -1056,6 +1234,12 @@ export interface Contract {
   noticePeriodDays: number;
   paymentMethodRequired: boolean;
   preferredPaymentMethodType?: ContractPreferredPaymentMethodType | null;
+  /** The number the contract's own paper says (a signed contract added from outside). */
+  number?: string;
+  /** Days after the invoice date an invoice of this contract falls due (0 - on receipt). */
+  paymentTermDays?: number;
+  /** The contract-level Stripe setting of the cascade; `null` - inherits. */
+  stripePaymentAllowed?: boolean | null;
   signingPolicy: ContractSigningPolicy;
   paymentTerms: PaymentTermResponse[];
   signingRequest?: ContractSigningRequest | null;
@@ -1072,6 +1256,8 @@ export interface CreateContractParams {
   title: string;
   description?: string;
   contragent: ContragentInfo;
+  /** The workspace option `accounts.lookup` offered for the counterparty's address, proposed to them. */
+  contragentAccount?: AccountChoice;
   /** ISO 8601, min 24h from now */
   startDate?: string;
   /** ISO 8601 */
@@ -1085,6 +1271,11 @@ export interface CreateContractParams {
   paymentTerms?: PaymentTermInput[];
   paymentMethodRequired?: boolean;
   preferredPaymentMethodType?: ContractPreferredPaymentMethodType;
+  /**
+   * May invoices on this contract be paid by card via Stripe? Omit to inherit the business default; `false`
+   * is a deliberately manual contract. `true` without a connected Stripe account is refused.
+   */
+  stripePaymentAllowed?: boolean;
   signingPolicy?: Partial<ContractSigningPolicy>;
 }
 
@@ -1214,6 +1405,8 @@ export interface UpdateContractParams {
   title?: string;
   description?: string;
   contragent?: ContragentInfo;
+  /** The workspace option `accounts.lookup` offered for the counterparty's address. */
+  contragentAccount?: AccountChoice;
   /** ISO 8601, min 24h from now */
   startDate?: string;
   /** ISO 8601 */
@@ -1231,7 +1424,12 @@ export interface UpdateContractParams {
 export interface CreateEmptyContractParams {
   title: string;
   description?: string;
-  contragentEmail: string;
+  /** Counterparty e-mail. Required unless `contragent.email` is given; if both are, they must match. */
+  contragentEmail?: string;
+  /** The counterparty's full billing identity; what it carries wins over the flat fields. */
+  contragent?: ContragentInfo;
+  /** The workspace option `accounts.lookup` offered for the counterparty's address. */
+  contragentAccount?: AccountChoice;
   contragentName?: string;
   /** ISO 4217 currency code (default: USD) */
   currencyCode?: string;
@@ -1243,7 +1441,12 @@ export interface CreateMinimalContractParams {
   documentId: string;
   title: string;
   description?: string;
-  contragentEmail: string;
+  /** Counterparty e-mail. Required unless `contragent.email` is given; if both are, they must match. */
+  contragentEmail?: string;
+  /** The counterparty's full billing identity; what it carries wins over the flat fields. */
+  contragent?: ContragentInfo;
+  /** The workspace option `accounts.lookup` offered for the counterparty's address. */
+  contragentAccount?: AccountChoice;
   contragentName?: string;
   /** Skip payment setup (add later via addPaymentSetup). Default: true. */
   skipPaymentSetup?: boolean;
@@ -1255,7 +1458,12 @@ export interface CreateImportContractParams {
   documentId: string;
   title: string;
   description?: string;
-  contragentEmail: string;
+  /** Counterparty e-mail. Required unless `contragent.email` is given; if both are, they must match. */
+  contragentEmail?: string;
+  /** The counterparty's full billing identity; what it carries wins over the flat fields. */
+  contragent?: ContragentInfo;
+  /** The workspace option `accounts.lookup` offered for the counterparty's address. */
+  contragentAccount?: AccountChoice;
   contragentName?: string;
   /** ISO 4217 currency code (default: USD) */
   currencyCode?: string;
@@ -1625,344 +1833,6 @@ export type ContractWebhookEventType = Extract<
 >;
 
 // ============================================================================
-// Template Runtime
-// ============================================================================
-
-/** Variable bag used when rendering a published template */
-export type TemplateVariables = Record<string, string | number | boolean>;
-
-/** Per-slot signing mode for template document signing */
-export type TemplateSlotSigningMethod = ContractSigningMethod;
-
-/** Map template signer slots to recipient email addresses */
-export interface TemplateSlotAssignment {
-  signerKey: string;
-  email: string;
-  signingMethod?: TemplateSlotSigningMethod;
-  signerVariables?: TemplateVariables;
-}
-
-/** Map template signer slots to contract roles */
-export interface TemplateContractSlotAssignment {
-  signerKey: string;
-  role: SignerRole;
-  signerVariables?: TemplateVariables;
-}
-
-/** Parameters for creating a draft document from a published template */
-export interface CreateDocumentFromTemplateParams {
-  documentName: string;
-  documentDescription?: string;
-  variables: TemplateVariables;
-}
-
-/** Parameters for rendering a template and immediately creating a signature request */
-export interface CreateTemplateSignatureRequestParams
-  extends CreateDocumentFromTemplateParams {
-  slotAssignments: TemplateSlotAssignment[];
-  message?: string;
-  deadline: Date;
-  isKycRequired?: boolean;
-}
-
-/** Parameters for rendering a template and creating a contract */
-export interface CreateContractFromTemplateParams {
-  variables: TemplateVariables;
-  slotAssignments: TemplateContractSlotAssignment[];
-  title: string;
-  description?: string;
-  contragent: ContragentInfo;
-  startDate?: string;
-  endDate?: string;
-  autoRenew?: boolean;
-  noticePeriodDays?: number;
-  terminationType?: TerminationType;
-  currencyCode?: string;
-  paymentTerms?: PaymentTermInput[];
-  signingPolicy?: Partial<ContractSigningPolicy>;
-  messageToSigners?: string;
-  deadline: Date;
-  isKycRequired?: boolean;
-}
-
-/** Slim current-version summary returned by template runtime endpoints */
-export interface TemplateDocumentVersion {
-  id: string;
-  name: string;
-  status: DocumentStatus;
-  versionHash?: string | null;
-}
-
-/** Slim document payload returned by template runtime endpoints */
-export interface TemplateDocument {
-  id: string;
-  txtId: string;
-  accessType: AccessType;
-  currentVersion: TemplateDocumentVersion | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-/** Response from POST /api/v1/templates/:id/documents */
-export interface TemplateDocumentResponse {
-  success: boolean;
-  templateId: string;
-  templateVersionNumber: number;
-  documentId: string;
-  document: TemplateDocument;
-  message: string;
-}
-
-/** Response from POST /api/v1/templates/:id/signature-requests */
-export interface TemplateSignatureRequestResponse {
-  success: boolean;
-  templateId: string;
-  templateVersionNumber: number;
-  documentId: string;
-  document: TemplateDocument;
-  requestId: string;
-  signatureRequest: SignatureRequest | null;
-  message: string;
-}
-
-/** Response from POST /api/v1/templates/:id/contracts */
-export interface TemplateContractResponse {
-  success: boolean;
-  templateId: string;
-  templateVersionNumber: number;
-  contractId: string;
-  signingRequestId?: string;
-  contract: Contract;
-  message: string;
-}
-
-// Templates read surface (list / get / versions)
-
-export type TemplateStatus = "draft" | "published" | "archived";
-
-export type TemplateVariableDataType =
-  | "text"
-  | "long_text"
-  | "date"
-  | "number"
-  | "boolean";
-
-export type TemplateVariableScope = "document" | "signer";
-
-export interface TemplateVariable {
-  key: string;
-  label: string;
-  dataType: TemplateVariableDataType;
-  scope: TemplateVariableScope;
-  /** Required when scope === 'signer' */
-  signerKey?: string;
-  /** Canonical system key for profile-based autofill (e.g. 'full_name', 'email') */
-  systemKey?: string;
-  required: boolean;
-  defaultValue?: string | number | boolean;
-  description?: string;
-}
-
-export interface TemplatePlacedField {
-  fieldType: "signature" | "initials" | "date_signed" | "text" | "checkbox";
-  pageIndex: number;
-  xPct: number;
-  yPct: number;
-  wPct: number;
-  hPct: number;
-  required: boolean;
-  systemKey?: string;
-  label?: string;
-}
-
-export interface TemplateSignerSlot {
-  signerKey: string;
-  signerLabel: string;
-  fields: TemplatePlacedField[];
-}
-
-export interface TemplateSignatureRequirement {
-  signerKey: string;
-  signerLabel: string;
-  fieldType: "signature" | "initials" | "date_signed" | "text" | "checkbox";
-  required: boolean;
-  label?: string;
-}
-
-export interface TemplateRenderConfig {
-  format?: string;
-  marginTop?: number;
-  marginBottom?: number;
-  marginLeft?: number;
-  marginRight?: number;
-}
-
-export interface ListTemplatesParams {
-  page?: number;
-  limit?: number;
-  status?: TemplateStatus;
-  search?: string;
-}
-
-/** Slim version reference returned inside template list/summary payloads */
-export interface TemplateVersionRef {
-  versionNumber: number;
-}
-
-/** Full template version payload returned by the detail and versions endpoints */
-export interface TemplateVersionDetail {
-  versionNumber: number;
-  variablesSchema: TemplateVariable[];
-  signerSlots: TemplateSignerSlot[];
-  signatureRequirements: TemplateSignatureRequirement[];
-  renderConfig?: TemplateRenderConfig;
-  changelog?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-/** Template list item (currentVersion / lastPublishedVersion are slim refs) */
-export interface TemplateSummary {
-  id: string;
-  name?: string;
-  description?: string;
-  status: TemplateStatus;
-  category: string;
-  currentVersion: TemplateVersionRef | null;
-  lastPublishedVersion: TemplateVersionRef | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-/** Template detail payload (currentVersion / lastPublishedVersion carry full schema) */
-export interface TemplateDetail {
-  id: string;
-  name?: string;
-  description?: string;
-  status: TemplateStatus;
-  category: string;
-  currentVersion: TemplateVersionDetail | null;
-  lastPublishedVersion: TemplateVersionDetail | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface TemplateListResponse {
-  success: boolean;
-  templates: TemplateSummary[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
-
-export interface TemplateGetResponse {
-  success: boolean;
-  template: TemplateDetail;
-}
-
-export interface TemplateVersionsResponse {
-  success: boolean;
-  versions: TemplateVersionDetail[];
-}
-
-// --- Template write surface ---
-
-export type TemplateCategory =
-  | "contract"
-  | "agreement"
-  | "invoice"
-  | "nda"
-  | "proposal"
-  | "letter"
-  | "other";
-
-/** Template variable as supplied when creating/updating a template. */
-export interface TemplateVariableInput {
-  key: string;
-  label: string;
-  dataType: TemplateVariableDataType;
-  /** Defaults to 'document'. */
-  scope?: TemplateVariableScope;
-  /** Required when scope === 'signer'. */
-  signerKey?: string;
-  systemKey?: string;
-  required: boolean;
-  defaultValue?: string | number | boolean;
-  description?: string;
-}
-
-/** Parameters for creating a template. */
-export interface CreateTemplateParams {
-  name: string;
-  description?: string;
-  category: TemplateCategory;
-  /** Tiptap JSON document AST. */
-  contentJson: Record<string, unknown>;
-  variablesSchema?: TemplateVariableInput[];
-  signatureRequirements?: TemplateSignatureRequirement[];
-  signerSlots?: TemplateSignerSlot[];
-  renderConfig?: TemplateRenderConfig;
-  meta?: MetaTag[];
-}
-
-/** Parameters for updating a template. All fields optional. */
-export interface UpdateTemplateParams {
-  name?: string;
-  description?: string;
-  category?: TemplateCategory;
-  contentJson?: Record<string, unknown>;
-  variablesSchema?: TemplateVariableInput[];
-  signatureRequirements?: TemplateSignatureRequirement[];
-  signerSlots?: TemplateSignerSlot[];
-  renderConfig?: TemplateRenderConfig;
-}
-
-/** Parameters for publishing a template. */
-export interface PublishTemplateParams {
-  /** Optional changelog recorded on the published version. */
-  changelog?: string;
-}
-
-/** Parameters for rendering a template preview PDF. */
-export interface PreviewTemplateParams {
-  /** Variable values substituted into the rendered preview. */
-  variables?: Record<string, string | number | boolean>;
-}
-
-/** Response from rendering a saved template to preview HTML. */
-export interface PreviewTemplateHtmlResponse {
-  success: boolean;
-  html: string;
-}
-
-/** Parameters for rendering ad-hoc Tiptap content to a preview PDF. */
-export interface PreviewUnsavedPdfParams {
-  /** Tiptap JSON document to render. */
-  contentJson: Record<string, unknown>;
-  /** Optional render configuration (margins, page size, etc.). */
-  renderConfig?: TemplateRenderConfig;
-  /** Variable values substituted into the rendered preview. */
-  variables?: Record<string, string | number | boolean>;
-}
-
-/** Response from create / update / publish / archive / restore. */
-export interface TemplateEnvelope {
-  success: boolean;
-  template: TemplateDetail;
-  message: string;
-}
-
-/** Response from DELETE a template. */
-export interface TemplateDeleteResponse {
-  success: boolean;
-  templateId: string;
-  message: string;
-}
-
-// ============================================================================
 // Invoices and Transactions
 // ============================================================================
 
@@ -1997,7 +1867,67 @@ export interface InvoiceLineItemInput {
 
 /** Line item returned in invoice responses */
 export interface InvoiceLineItem extends InvoiceLineItemInput {
+  /** Derived line amount: unit price x quantity, less the line's own discount (its net). */
   amount: string;
+  grossAmount?: string;
+  /** Effective tax percentage applied to this line. */
+  rate?: string;
+  taxAmount?: string;
+  treatmentCode?: string;
+}
+
+export interface InvoiceDiscount {
+  type: 'fixed' | 'percent';
+  /** Decimal string, at most 2 decimals: a money amount for `fixed`, a 0-100 percentage for `percent`. Applied before tax. */
+  value: string;
+}
+
+export type InvoicePaymentMethod = 'bank-transfer' | 'cash' | 'other';
+
+export interface InvoiceTaxRateGroup {
+  key: string;
+  code: string;
+  label: string;
+  rate: string;
+  net: string;
+  tax: string;
+  gross: string;
+}
+
+export interface InvoiceTaxSummary {
+  rateGroups: InvoiceTaxRateGroup[];
+  /** Legal notes the document must print, e.g. the reverse-charge wording. */
+  legalNotes: string[];
+  totals: { net: string; tax: string; amount: string; discountTotal: string };
+}
+
+export interface InvoicePartyAddress {
+  line1: string | null;
+  line2: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  countryCode: string | null;
+  countryName: string | null;
+}
+
+export interface InvoiceBuyer {
+  name: string | null;
+  email: string | null;
+  entityType: 'person' | 'company' | null;
+  taxId: string | null;
+  vatNumber: string | null;
+  registrationNumber: string | null;
+  address: InvoicePartyAddress | null;
+}
+
+export interface InvoiceSeller {
+  legalName: string | null;
+  email: string | null;
+  taxId: string | null;
+  vatNumber: string | null;
+  website: string | null;
+  address: InvoicePartyAddress | null;
 }
 
 /** Transaction summary embedded into invoice responses */
@@ -2010,6 +1940,14 @@ export interface InvoiceTransactionSummary {
   receiptUrl?: string | null;
   source?: string | null;
   note?: string | null;
+  /** Ledger row kind; always `payment` (a credit note writes no transaction). */
+  kind?: 'payment' | 'credit_note';
+  /** How a seller's record says the money came; absent on a payment made through Chaindoc. */
+  method?: InvoicePaymentMethod;
+  /** The day a seller's record says the money came (YYYY-MM-DD). */
+  paidOn?: string;
+  /** When the seller removed a payment they had recorded: it reads CANCELLED and stays listed. */
+  removedAt?: string;
   paymentMethodType?: string;
   platformFee?: string;
   stripeFee?: string;
@@ -2040,12 +1978,39 @@ export interface Invoice {
   issueDate: string;
   dueDate: string;
   paidAt?: string | null;
+  /** The day the money came as a seller's record named it (YYYY-MM-DD). */
+  paidOn?: string;
   isOverdue: boolean;
   daysOverdue?: number;
   checkoutUrl?: string | null;
   hasInvoicePdf: boolean;
   transactions?: InvoiceTransactionSummary[];
   fundingInstructions?: Record<string, unknown>;
+  /** Credit-note face applied against this invoice ("0" when none); already deducted from `remainingAmount`. */
+  creditedAmount: string;
+  /** The partner's paid ahead this invoice took when sent; already deducted from `remainingAmount`. */
+  paidAheadAmount: string;
+  /** Whether it may be cancelled: no money and no credit note reached it (else `INVOICE_MONEY_OR_CREDIT_NOTE`). */
+  canCancel: boolean;
+  displayNumber?: string | null;
+  /** This invoice's own payment-instruction selection, or null (the cascade resolves one at issue). */
+  paymentInstructionId: string | null;
+  showUnpaid: boolean;
+  takePaidAhead: boolean;
+  /** `INHERIT` lets the levels above decide card payment at send; `FORBID` keeps the invoice manual. */
+  stripeAllowedIntent: 'INHERIT' | 'FORBID';
+  /** Frozen when sent; `null` on a draft. */
+  stripePaymentAllowed: boolean | null;
+  /** `snapshot` - frozen at issue; `preview` - provisional, can still change. */
+  partiesSource: 'snapshot' | 'preview';
+  buyer?: InvoiceBuyer;
+  seller?: InvoiceSeller;
+  taxSummary?: InvoiceTaxSummary | null;
+  /** Appendix to its contract; its number among the contract's appendices. */
+  appendix?: boolean;
+  appendixNumber?: number;
+  poNumber?: string;
+  servicePeriod?: string;
   createdAt: string;
 }
 
@@ -2057,6 +2022,18 @@ export interface CreateInvoiceParams {
   currencyCode?: string;
   dueDate: string;
   lineItems?: InvoiceLineItemInput[];
+  /** An invoice-level discount, applied before tax. */
+  discount?: InvoiceDiscount;
+  /** An active payment instruction to print; omit and the cascade (contract, counterparty, default) resolves one. */
+  paymentInstructionId?: string;
+  /** One of the business's tax treatments (`taxTreatments.list`); omit for the counterparty's VAT setting, else the default. */
+  taxTreatmentId?: string;
+  /** Omit to inherit; `false` is a deliberately manual invoice. */
+  stripePaymentAllowed?: boolean;
+  /** Print what the partner still owes on other open invoices. Default true. */
+  showUnpaid?: boolean;
+  /** Take the partner's paid ahead when sent. Default true. */
+  takePaidAhead?: boolean;
   autoCharge?: boolean;
   sendImmediately?: boolean;
 }
@@ -2089,12 +2066,19 @@ export interface UpdateInvoiceParams {
   dueDate?: string;
   /** When provided, replaces the existing line item set. */
   lineItems?: InvoiceLineItemInput[];
+  /** `null` clears the invoice's own selection. */
+  paymentInstructionId?: string | null;
+  showUnpaid?: boolean;
+  takePaidAhead?: boolean;
 }
 
 /** Parameters for manually marking an invoice as paid */
 export interface MarkInvoicePaidParams {
   note?: string;
+  /** When the money was received (ISO 8601); defaults to now. */
   paidAt?: string;
+  /** How the money came, as the record names it. */
+  method?: InvoicePaymentMethod;
 }
 
 /** Response envelope containing a single invoice */
@@ -2132,6 +2116,7 @@ export interface InvoiceActionResponse {
 export interface TransactionInvoiceSummary {
   id: string;
   invoiceNumber: string;
+  displayNumber?: string | null;
   title: string;
 }
 
@@ -2149,6 +2134,10 @@ export interface Transaction {
   amount: string;
   currencyCode: string;
   status: TransactionStatus;
+  kind?: 'payment' | 'credit_note';
+  method?: InvoicePaymentMethod;
+  paidOn?: string;
+  removedAt?: string;
   paymentMethodType?: string;
   platformFee?: string;
   stripeFee?: string;
@@ -2258,5 +2247,73 @@ export type InvoiceWebhookEventType = Extract<
 /** Transaction webhook event types */
 export type TransactionWebhookEventType = Extract<
   WebhookEventType,
-  'transaction.created' | 'transaction.updated'
+  'transaction.created' | 'transaction.updated' | 'transaction.edited' | 'transaction.removed'
 >;
+
+// ============================================================================
+// QES (qualified electronic signature): promise -> prepare -> finalize
+// ============================================================================
+
+/**
+ * Phase 0: record the signer's promise - consent, field values and appearance, no crypto. It is the
+ * integration key's act, attributed to the key, and commits the request to the qualified lane. A contract
+ * counterparty is refused (`CONTRAGENT_QES_REQUIRES_SIGNER_SESSION`): their consent comes from their own
+ * embedded session.
+ */
+export interface QesPromiseParams {
+  /** Filled placed-field values keyed by field placement id (required signer fields: `SIGNING_FIELDS_EMPTY`). */
+  fieldValues?: Record<string, string | number | boolean>;
+  meta?: MetaTag[];
+  /** Hash of a saved signature whose image becomes the appearance; omitted - no appearance (the device's own signature is the visible artifact). */
+  signatureHash?: string;
+}
+
+export interface QesPromiseResponse {
+  lane: 'qes';
+  requestId: string;
+  signerUuid: string;
+}
+
+/** Phase 1: the signer's PUBLIC certificate material. A private key is never accepted. */
+export interface QesPrepareParams {
+  /** PEM of the signer's end-entity (qualified) certificate. */
+  signerCertPem: string;
+  /** PEM of the issuer chain (X.509 blocks only). */
+  chainPem?: string;
+}
+
+export interface QesPrepareResponse {
+  /** Base64 DSS ToBeSigned bytes for the device to sign. */
+  dataToSignB64: string;
+  digestAlgorithm: 'SHA256';
+  /** Opaque signing-session id to hand back to `finalize`. */
+  sessionId: string;
+  signatureAlgorithm: 'RSA_SHA256' | 'ECDSA_SHA256';
+}
+
+/** Phase 2: the signature value the device computed over the ToBeSigned bytes. */
+export interface QesFinalizeParams {
+  sessionId: string;
+  /** Standard base64 signature value. */
+  signatureValueB64: string;
+}
+
+export interface QesSignerFacts {
+  certificate: { issuer: string | null; serial: string | null; subject: string | null };
+  /** `PAdES-BES` / `PAdES-LT` / `PAdES-LTA`. */
+  containerProfile: string | null;
+  legalClass: string;
+  /** `true` qualified, `false` not qualified, `null` no verdict was obtained (not a synonym for `false`). */
+  qualifiedCertificate: boolean | null;
+  validatorLevel: string | null;
+}
+
+export interface QesFinalizeResponse {
+  hasContributed: boolean;
+  requiredSignatureKind: 'internal' | 'qes' | null;
+  signatureKind: 'internal' | 'qes';
+  /** Status of the signature request after this signature. */
+  status: string;
+  /** Present only when the lane is `qes` and the request is completed. */
+  qes?: QesSignerFacts;
+}

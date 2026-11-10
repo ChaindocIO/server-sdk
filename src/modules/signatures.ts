@@ -2,7 +2,10 @@
  * Signatures Module
  */
 
+import { Qes } from './qes';
+import { seg } from '../utils/path';
 import { ChaindocError } from '../client';
+import { ChaindocSigningSetupError, ERROR_KEYS } from '../errors';
 import type { DownloadResult, HttpClient } from '../client';
 import type {
   CancelSignatureRequestResponse,
@@ -17,16 +20,23 @@ import type {
   PaginationParams,
   RemindSignatureRequestParams,
   RemindSignatureRequestResponse,
+  ResendSignatureRequestParams,
+  ResendSignatureRequestResponse,
   SignDocumentParams,
   SignatureRequestResponse,
   SignatureRequestStatus,
   ValidatePdfSignaturesResponse,
 } from '../types';
-import { normalizeEmail, withNormalizedEmail, withNormalizedSignerEmail } from '../utils/normalize-email';
+import { normalizeEmail, withNormalizedEmail } from '../utils/normalize-email';
 import { assertValidEmail } from '../utils/validate-email';
 
 export class Signatures {
-  constructor(private client: HttpClient) {}
+  /** Qualified electronic signature: promise, prepare, finalize. */
+  readonly qes: Qes;
+
+  constructor(private client: HttpClient) {
+    this.qes = new Qes(client);
+  }
 
   /**
    * Create a signature request
@@ -36,16 +46,21 @@ export class Signatures {
    * - Backend enforces KYC at signing time
    */
   async createRequest(params: CreateSignatureRequestParams): Promise<SignatureRequestResponse> {
+    // Coordinates are refused by the API; a JS caller (or a cast) that still passes them is told before the call.
+    const coordinates = (params as { fields?: unknown }).fields;
+    if (Array.isArray(coordinates) && coordinates.length > 0) {
+      throw new ChaindocSigningSetupError(
+        'A signature place is a chip in the text, not a box on a page: put the signers\' chips into the document and bind each recipient by `role`.',
+        422,
+        { errorKey: ERROR_KEYS.SETUP_FIELDS_STAND_IN_THE_TEXT },
+      );
+    }
     params.recipients.forEach((r, i) =>
       assertValidEmail(r?.email, `recipients[${i}].email`),
-    );
-    params.fields?.forEach((f, i) =>
-      assertValidEmail(f?.signerEmail, `fields[${i}].signerEmail`),
     );
     return this.client.post<SignatureRequestResponse>('/api/v1/signatures/requests', {
       ...params,
       recipients: params.recipients.map(withNormalizedEmail),
-      fields: params.fields?.map(withNormalizedSignerEmail),
       deadline: params.deadline.toISOString(),
     });
   }
@@ -54,7 +69,7 @@ export class Signatures {
    * Get signature request status
    */
   async getRequestStatus(requestId: string): Promise<SignatureRequestStatus> {
-    return this.client.get<SignatureRequestStatus>(`/api/v1/signatures/requests/${requestId}/status`);
+    return this.client.get<SignatureRequestStatus>(`/api/v1/signatures/requests/${seg(requestId)}/status`);
   }
 
   /**
@@ -87,7 +102,7 @@ export class Signatures {
   ): Promise<EditSignatureRequestResponse> {
     assertValidEmail(params.recipient, 'recipient');
     return this.client.post<EditSignatureRequestResponse>(
-      `/api/v1/signatures/requests/${requestId}/edit`,
+      `/api/v1/signatures/requests/${seg(requestId)}/edit`,
       { ...params, recipient: normalizeEmail(params.recipient) },
     );
   }
@@ -139,8 +154,23 @@ export class Signatures {
    */
   async cancel(requestId: string): Promise<CancelSignatureRequestResponse> {
     return this.client.post<CancelSignatureRequestResponse>(
-      `/api/v1/signatures/requests/${requestId}/cancel`,
+      `/api/v1/signatures/requests/${seg(requestId)}/cancel`,
       {},
+    );
+  }
+
+  /**
+   * Resend a cancelled or expired request: opens a NEW request over a fresh copy of the version, carrying the
+   * original signers, and leaves the first one standing as the record. A request that is still active, or
+   * belongs to a contract, is refused (400).
+   */
+  async resend(
+    requestId: string,
+    params?: ResendSignatureRequestParams,
+  ): Promise<ResendSignatureRequestResponse> {
+    return this.client.post<ResendSignatureRequestResponse>(
+      `/api/v1/signatures/requests/${seg(requestId)}/resend`,
+      { deadline: params?.deadline?.toISOString() },
     );
   }
 
@@ -167,7 +197,7 @@ export class Signatures {
       body.signerEmails = params.signerEmails.map((e) => normalizeEmail(e));
     }
     return this.client.post<RemindSignatureRequestResponse>(
-      `/api/v1/signatures/requests/${requestId}/remind`,
+      `/api/v1/signatures/requests/${seg(requestId)}/remind`,
       body,
     );
   }
@@ -177,7 +207,7 @@ export class Signatures {
    * Accepts both pk_ and sk_ keys.
    */
   async downloadCertificate(versionId: string): Promise<DownloadResult> {
-    return this.client.download(`/api/v1/signatures/versions/${versionId}/certificate`);
+    return this.client.download(`/api/v1/signatures/versions/${seg(versionId)}/certificate`);
   }
 
   /**
@@ -185,6 +215,6 @@ export class Signatures {
    * Accepts both pk_ and sk_ keys.
    */
   async downloadSignedDocument(versionId: string): Promise<DownloadResult> {
-    return this.client.download(`/api/v1/signatures/versions/${versionId}/signed-document`);
+    return this.client.download(`/api/v1/signatures/versions/${seg(versionId)}/signed-document`);
   }
 }

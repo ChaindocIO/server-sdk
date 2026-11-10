@@ -35,6 +35,7 @@ describe('Invoices module', () => {
       2,
       '/api/v1/contracts/contract-uuid/invoices/invoice-uuid/charge',
       {},
+      { noRetry: true },
     );
   });
 
@@ -87,6 +88,7 @@ describe('Invoices module', () => {
         note: 'Wire received',
         paidAt: '2026-04-03T10:00:00.000Z',
       },
+      { noRetry: true },
     );
   });
 

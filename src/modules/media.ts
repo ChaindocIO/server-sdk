@@ -2,6 +2,7 @@
  * Media Module
  */
 
+import { seg } from '../utils/path';
 import { ChaindocError, type HttpClient } from '../client';
 import type {
   MediaUploadResponse,
@@ -59,12 +60,12 @@ export class Media {
 
   /** Inspect an in-progress chunked upload (current offset for resuming). */
   async getChunkedUploadStatus(uploadId: string): Promise<ChunkedUploadStatus> {
-    return this.client.get<ChunkedUploadStatus>(`${CHUNKED_PATH}/${uploadId}`);
+    return this.client.get<ChunkedUploadStatus>(`${CHUNKED_PATH}/${seg(uploadId)}`);
   }
 
   /** Abort an in-progress chunked upload and release its temporary data. */
   async cancelChunkedUpload(uploadId: string): Promise<void> {
-    await this.client.delete<void>(`${CHUNKED_PATH}/${uploadId}`);
+    await this.client.delete<void>(`${CHUNKED_PATH}/${seg(uploadId)}`);
   }
 
   /**
@@ -93,7 +94,7 @@ export class Media {
     });
 
     const chunkSize = session.chunkSize;
-    const chunkPath = `${CHUNKED_PATH}/${session.uploadId}`;
+    const chunkPath = `${CHUNKED_PATH}/${seg(session.uploadId)}`;
     let offset = 0;
     let resumeAttempts = 0;
 

@@ -41,6 +41,11 @@
 
 import { HttpClient } from "./client";
 import { Documents } from "./modules/documents";
+import { Contragents } from "./modules/contragents";
+import { PaymentInstructions } from "./modules/payment-instructions";
+import { TaxTreatments } from "./modules/tax-treatments";
+import { Accounts } from "./modules/accounts";
+import { Conversions } from "./modules/conversions";
 import { Signatures } from "./modules/signatures";
 import { Contracts } from "./modules/contracts";
 import { Templates } from "./modules/templates";
@@ -49,6 +54,7 @@ import { Transactions } from "./modules/transactions";
 import { Embedded } from "./modules/embedded";
 import { Media } from "./modules/media";
 import { Webhooks } from "./modules/webhooks";
+import { Processes } from "./modules/processes";
 import type { ChaindocConfig, ApiKeyInfo, HealthCheckResponse } from "./types";
 
 export class Chaindoc {
@@ -69,6 +75,27 @@ export class Chaindoc {
    * Create, update, and verify documents
    */
   public readonly documents: Documents;
+
+  /** Counterparties (address book) */
+  public readonly contragents: Contragents;
+
+  /** Payment instructions: bank, crypto and other details printed on invoices */
+  public readonly paymentInstructions: PaymentInstructions;
+
+  /** Tax treatments an invoice can name */
+  public readonly taxTreatments: TaxTreatments;
+
+  /**
+   * Accounts API
+   * Find where a person can be addressed (personal or a workspace)
+   */
+  public readonly accounts: Accounts;
+
+  /**
+   * Conversions API
+   * Follow a file's conversion into a text document
+   */
+  public readonly conversions: Conversions;
 
   /**
    * Signatures API
@@ -112,10 +139,18 @@ export class Chaindoc {
    */
   public readonly media: Media;
 
+  /** Explicitly granted Process discovery and repeatable Start. */
+  public readonly processes: Processes;
+
   constructor(config: ChaindocConfig) {
     this.client = new HttpClient(config);
 
     this.documents = new Documents(this.client);
+    this.accounts = new Accounts(this.client);
+    this.contragents = new Contragents(this.client);
+    this.paymentInstructions = new PaymentInstructions(this.client);
+    this.taxTreatments = new TaxTreatments(this.client);
+    this.conversions = new Conversions(this.client);
     this.signatures = new Signatures(this.client);
     this.contracts = new Contracts(this.client);
     this.templates = new Templates(this.client);
@@ -123,6 +158,7 @@ export class Chaindoc {
     this.transactions = new Transactions(this.client);
     this.embedded = new Embedded(this.client);
     this.media = new Media(this.client);
+    this.processes = new Processes(this.client);
   }
 
   /**

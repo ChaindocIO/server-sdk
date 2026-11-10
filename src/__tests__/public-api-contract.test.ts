@@ -11,16 +11,15 @@ import type {
 const SNAPSHOT_PATH = path.resolve(__dirname, '../../references/public-api.snapshot.json');
 
 /**
- * ⛔ The published enum is DERIVED from the backend's vocabulary now, and this list is the third
- * copy of it — kept because this package cannot import that enum, and updated here to the
- * twenty-eight the API actually delivers. It listed seventeen, which is what let `T18`'s ten route
- * events and `additional_agreement.signed` go undeclared on the published surface for as long as
- * they have existed.
+ * Keep the SDK union aligned with the backend's current public vocabulary.
+ * Retiring development-only approval routes does not retire native amendment signing events.
  */
 const EXPECTED_WEBHOOK_EVENTS: WebhookEventType[] = [
   'document.created',
   'document.verified',
   'document.signed',
+  'document.conversion.completed',
+  'document.conversion.failed',
   'signature.request.created',
   'signature.request.completed',
   'signature.request.rejected',
@@ -36,16 +35,8 @@ const EXPECTED_WEBHOOK_EVENTS: WebhookEventType[] = [
   'invoice.cancelled',
   'transaction.created',
   'transaction.updated',
-  'workflow.run.started',
-  'workflow.step.opened',
-  'workflow.assignment.approved',
-  'workflow.run.returned',
-  'workflow.run.rejected',
-  'workflow.assignment.consented',
-  'workflow.proofs.issued',
-  'workflow.run.completed',
-  'workflow.run.cancelled',
-  'workflow.run.expired',
+  'transaction.edited',
+  'transaction.removed',
 ];
 
 const EXPECTED_CONTRACT_WEBHOOK_EVENTS: ContractWebhookEventType[] = [
@@ -66,6 +57,8 @@ const EXPECTED_INVOICE_WEBHOOK_EVENTS: InvoiceWebhookEventType[] = [
 const EXPECTED_TRANSACTION_WEBHOOK_EVENTS: TransactionWebhookEventType[] = [
   'transaction.created',
   'transaction.updated',
+  'transaction.edited',
+  'transaction.removed',
 ];
 
 const EXPECTED_ROUTE_MATRIX: Record<string, Record<string, string[]>> = {
@@ -234,15 +227,6 @@ const EXPECTED_ROUTE_MATRIX: Record<string, Record<string, string[]>> = {
     post: ['200'],
   },
   '/api/v1/templates/{templateId}/restore': {
-    post: ['200'],
-  },
-  '/api/v1/templates/{templateId}/preview-pdf': {
-    post: ['200'],
-  },
-  '/api/v1/templates/{templateId}/preview-html': {
-    post: ['200'],
-  },
-  '/api/v1/templates/preview-unsaved-pdf': {
     post: ['200'],
   },
   '/api/v1/templates/{templateId}/documents': {

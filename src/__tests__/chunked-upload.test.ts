@@ -97,7 +97,6 @@ describe('Documents.createFromStorage / createFromFile', () => {
       storageFileId: 'sf-1',
       name: 'Doc',
       description: 'd',
-      meta: [],
       hashtags: [],
       status: 'draft',
       accessEmails: [{ email: 'user@example.com', level: 'read' }],
@@ -108,7 +107,9 @@ describe('Documents.createFromStorage / createFromFile', () => {
       expect.objectContaining({
         storageFileId: 'sf-1',
         accessEmails: [{ email: 'user@example.com', level: 'read' }],
+        idempotencyKey: expect.any(String),
       }),
+      { idempotent: true },
     );
   });
 
@@ -117,17 +118,15 @@ describe('Documents.createFromStorage / createFromFile', () => {
       post: vi
         .fn()
         .mockResolvedValueOnce({ uploadId: 'u1', chunkSize: 100, expiresAt: 'x', uploadUrl: '' }) // init
-        .mockResolvedValueOnce({ id: 'doc-9' }), // from-storage
+        .mockResolvedValueOnce({ success: true, conversion: { id: 'conv-9', status: 'converting' } }), // from-storage
       sendChunk: vi.fn().mockResolvedValue({ offset: 5, complete: true, storageFileId: 'sf-9' }),
     };
     const documents = new Documents(client as any);
 
-    const doc = await documents.createFromFile(blob(5), {
+    const accepted = await documents.createFromFile(blob(5), {
       name: 'D',
       description: 'd',
-      meta: [],
       hashtags: [],
-      status: 'draft',
     });
 
     expect(client.sendChunk).toHaveBeenCalledTimes(1);
@@ -135,7 +134,8 @@ describe('Documents.createFromStorage / createFromFile', () => {
       2,
       '/api/v1/documents/from-storage',
       expect.objectContaining({ storageFileId: 'sf-9' }),
+      { idempotent: true },
     );
-    expect(doc).toEqual({ id: 'doc-9' });
+    expect(accepted.conversion).toMatchObject({ id: 'conv-9', status: 'converting' });
   });
 });

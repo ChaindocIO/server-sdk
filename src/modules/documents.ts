@@ -2,13 +2,23 @@
  * Documents Module
  */
 
+import { seg } from '../utils/path';
+import { randomUUID } from 'crypto';
 import type { DownloadResult, HttpClient } from '../client';
 import type {
   AccessEmail,
-  CreateDocumentParams,
+  AddSignatureBlockParams,
+  AddSignatureBlockResponse,
+  ConvertDocumentParams,
+  CreateDocumentFromContentParams,
   CreateDocumentFromStorageParams,
+  DocumentContentResponse,
+  DocumentConversionResponse,
+  GetDocumentContentParams,
+  UpdateDocumentTextResponse,
+  UpdateDocumentWithContentParams,
+  UpdateDocumentWithFileParams,
   UploadChunkedOptions,
-  UpdateDocumentParams,
   UpdateDocumentRightsParams,
   DocumentResponse,
   GetDocumentResponse,
@@ -43,64 +53,130 @@ export class Documents {
   }
 
   /**
-   * Create a new document
-   * Creates document with first version. Set status to "published" to verify in blockchain immediately.
+   * Create a text document directly from `content` (201: the document is made).
+   * Signature places are chips in the text; use `mode: 'template'` content to hold fields and signer roles.
    */
-  async create(params: CreateDocumentParams): Promise<DocumentResponse> {
-    return this.client.post<DocumentResponse>('/api/v1/documents', {
-      ...params,
-      accessEmails: normalizeAccessEmails(params.accessEmails),
-    });
+  async create(params: CreateDocumentFromContentParams): Promise<DocumentResponse> {
+    return this.client.post<DocumentResponse>(
+      '/api/v1/documents',
+      {
+        ...params,
+        idempotencyKey: params.idempotencyKey ?? randomUUID(),
+        accessEmails: normalizeAccessEmails(params.accessEmails),
+      },
+      { idempotent: true },
+    );
   }
 
   /**
-   * Create a document from a file already uploaded to the caller's Drive via
-   * `media.uploadChunked()`. The document gets its own copy (model C), so the source
-   * Drive file can be deleted afterwards (`deleteSourceFile: true`).
+   * Convert an uploaded Storage file into a text document, as the app does. The answer is 202 with a
+   * conversion (`status: 'converting'`): the document is made when it is ready, always as a DRAFT, and
+   * `document.conversion.completed` / `.failed` is sent. Follow it with `conversions.get` or
+   * `conversions.wait`.
+   *
+   * Refused before anything is spent: `STORAGE_LIMIT_REACHED`, `AI_LIMIT_REACHED`, `AI_NOT_IN_PLAN`,
+   * `DOCUMENT_FILE_NOT_CONVERTED` (type the converter does not take).
    */
   async createFromStorage(
     params: CreateDocumentFromStorageParams,
-  ): Promise<DocumentResponse> {
-    return this.client.post<DocumentResponse>('/api/v1/documents/from-storage', {
-      ...params,
-      accessEmails: normalizeAccessEmails(params.accessEmails),
-    });
+  ): Promise<DocumentConversionResponse> {
+    return this.client.post<DocumentConversionResponse>(
+      '/api/v1/documents/from-storage',
+      {
+        ...params,
+        status: params.status ?? 'draft',
+        idempotencyKey: params.idempotencyKey ?? randomUUID(),
+        accessEmails: normalizeAccessEmails(params.accessEmails),
+      },
+      { idempotent: true },
+    );
   }
 
   /**
-   * Convenience: chunked-upload a (potentially large) file and create a document from
-   * it in one call. Avoids the in-memory `/media` path that times out on large files.
+   * Chunked-upload a (potentially large) file to Storage and start its conversion into a document.
+   * Returns the 202 conversion; wait for it with `chaindoc.conversions.wait(id)`.
    *
    * @example
    * ```typescript
    * const file = new Blob([await readFile('./contract.pdf')], { type: 'application/pdf' });
-   * const doc = await chaindoc.documents.createFromFile(file, {
-   *   name: 'Contract', description: 'Q3 contract', meta: [], hashtags: [], status: 'draft',
-   * }, { filename: 'contract.pdf' });
+   * const { conversion } = await chaindoc.documents.createFromFile(file, { name: 'Contract' }, { filename: 'contract.pdf' });
+   * const ready = await chaindoc.conversions.wait(conversion.id);
    * ```
    */
   async createFromFile(
     file: Blob,
     params: Omit<CreateDocumentFromStorageParams, 'storageFileId'>,
     options?: UploadChunkedOptions,
-  ): Promise<DocumentResponse> {
+  ): Promise<DocumentConversionResponse> {
     const { storageFileId } = await this.media.uploadChunked(file, options);
     return this.createFromStorage({ ...params, storageFileId });
   }
 
   /**
-   * Update document (creates new version)
-   * Set status to "published" to verify in blockchain.
+   * Update a document: the next version from `content` (+ `baseVersionId`, the version you read) answers
+   * 200; from a Storage file it is converted asynchronously and answers 202.
    */
-  async update(documentId: string, params: UpdateDocumentParams): Promise<DocumentResponse> {
-    return this.client.put<DocumentResponse>(`/api/v1/documents/${documentId}`, params);
+  async update(documentId: string, params: UpdateDocumentWithContentParams): Promise<UpdateDocumentTextResponse>;
+  async update(documentId: string, params: UpdateDocumentWithFileParams): Promise<DocumentConversionResponse>;
+  async update(
+    documentId: string,
+    params: UpdateDocumentWithContentParams | UpdateDocumentWithFileParams,
+  ): Promise<UpdateDocumentTextResponse | DocumentConversionResponse> {
+    return this.client.put<UpdateDocumentTextResponse | DocumentConversionResponse>(
+      `/api/v1/documents/${seg(documentId)}`,
+      { ...params, idempotencyKey: params.idempotencyKey ?? randomUUID() },
+      { idempotent: true },
+    );
+  }
+
+  /**
+   * Read a version's text with its signer `roles[]` (what `recipients[].role` binds to) and `fields[]`.
+   * A version that is a file holds no text: `DOCUMENT_FILE_CONVERTS` - convert it with `convert()`.
+   */
+  async getContent(
+    documentId: string,
+    params?: GetDocumentContentParams,
+  ): Promise<DocumentContentResponse> {
+    const qs = params?.versionId ? `?versionId=${encodeURIComponent(params.versionId)}` : '';
+    return this.client.get<DocumentContentResponse>(`/api/v1/documents/${seg(documentId)}/content${qs}`);
+  }
+
+  /**
+   * Convert a file document's own file into its next version (202). For documents made as a file before
+   * documents became text. The old version, its requests and its verification stay.
+   */
+  async convert(
+    documentId: string,
+    params?: ConvertDocumentParams,
+  ): Promise<DocumentConversionResponse> {
+    return this.client.post<DocumentConversionResponse>(
+      `/api/v1/documents/${seg(documentId)}/conversion`,
+      { ...params, idempotencyKey: params?.idempotencyKey ?? randomUUID() },
+      { idempotent: true },
+    );
+  }
+
+  /**
+   * Add signer roles with their Signature and Date signed chips at the end of the text (next version), so
+   * the document can be sent with `recipients[].role`. A role the text holds already is
+   * `SIGNATURE_ROLE_TWICE`; a file document is `DOCUMENT_FILE_CONVERTS`.
+   */
+  async addSignatureBlock(
+    documentId: string,
+    params: AddSignatureBlockParams,
+  ): Promise<AddSignatureBlockResponse> {
+    return this.client.post<AddSignatureBlockResponse>(
+      `/api/v1/documents/${seg(documentId)}/signature-block`,
+      { ...params, idempotencyKey: params.idempotencyKey ?? randomUUID() },
+      { idempotent: true },
+    );
   }
 
   /**
    * Update document access rights
    */
   async updateRights(documentId: string, params: UpdateDocumentRightsParams): Promise<DocumentResponse> {
-    return this.client.put<DocumentResponse>(`/api/v1/documents/${documentId}/rights`, {
+    return this.client.put<DocumentResponse>(`/api/v1/documents/${seg(documentId)}/rights`, {
       ...params,
       accessEmails: normalizeAccessEmails(params.accessEmails),
     });
@@ -117,7 +193,7 @@ export class Documents {
    * Get verification status for a document version
    */
   async getVerificationStatus(versionId: string): Promise<VerifyDocumentResponse> {
-    return this.client.get<VerifyDocumentResponse>(`/api/v1/documents/versions/${versionId}/verification`);
+    return this.client.get<VerifyDocumentResponse>(`/api/v1/documents/versions/${seg(versionId)}/verification`);
   }
 
   /**
@@ -125,7 +201,7 @@ export class Documents {
    * Accepts both pk_ and sk_ keys.
    */
   async get(documentId: string): Promise<GetDocumentResponse> {
-    return this.client.get<GetDocumentResponse>(`/api/v1/documents/${documentId}`);
+    return this.client.get<GetDocumentResponse>(`/api/v1/documents/${seg(documentId)}`);
   }
 
   /**
@@ -142,7 +218,7 @@ export class Documents {
 
     const qs = query.toString();
     return this.client.get<GetDocumentVersionsResponse>(
-      `/api/v1/documents/${documentId}/versions${qs ? `?${qs}` : ''}`,
+      `/api/v1/documents/${seg(documentId)}/versions${qs ? `?${qs}` : ''}`,
     );
   }
 
@@ -152,7 +228,7 @@ export class Documents {
    * parsed from Content-Disposition). Accepts both pk_ and sk_ keys.
    */
   async download(versionId: string): Promise<DownloadResult> {
-    return this.client.download(`/api/v1/documents/versions/${versionId}/download`);
+    return this.client.download(`/api/v1/documents/versions/${seg(versionId)}/download`);
   }
 
   /**
@@ -161,7 +237,7 @@ export class Documents {
    * rather than a download. Accepts both pk_ and sk_ keys.
    */
   async preview(versionId: string): Promise<DownloadResult> {
-    return this.client.download(`/api/v1/documents/versions/${versionId}/preview`);
+    return this.client.download(`/api/v1/documents/versions/${seg(versionId)}/preview`);
   }
 
   /**
@@ -190,7 +266,7 @@ export class Documents {
    */
   async getActivity(documentId: string): Promise<DocumentActivityResponse> {
     return this.client.get<DocumentActivityResponse>(
-      `/api/v1/documents/${documentId}/activity`,
+      `/api/v1/documents/${seg(documentId)}/activity`,
     );
   }
 
@@ -199,7 +275,7 @@ export class Documents {
    */
   async getDownloads(documentId: string): Promise<DocumentDownloadsResponse> {
     return this.client.get<DocumentDownloadsResponse>(
-      `/api/v1/documents/${documentId}/downloads`,
+      `/api/v1/documents/${seg(documentId)}/downloads`,
     );
   }
 
@@ -215,7 +291,7 @@ export class Documents {
     assertValidEmail(params.email, 'email');
 
     return this.client.post<SendPublicLinkResponse>(
-      `/api/v1/documents/${documentId}/send-public-link`,
+      `/api/v1/documents/${seg(documentId)}/send-public-link`,
       { ...params, email: normalizeEmail(params.email) },
     );
   }

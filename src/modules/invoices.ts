@@ -2,9 +2,12 @@
  * Invoices Module
  */
 
+import { seg } from '../utils/path';
 import type { DownloadResult, HttpClient } from '../client';
 import type {
+  CreateCreditNoteParams,
   CreateInvoiceParams,
+  CreditNote,
   InvoiceActionResponse,
   InvoiceListAllParams,
   InvoiceListAllResponse,
@@ -23,7 +26,7 @@ export class Invoices {
    * Create an invoice for a contract.
    */
   async create(contractId: string, params: CreateInvoiceParams): Promise<InvoiceResponse> {
-    return this.client.post<InvoiceResponse>(`/api/v1/contracts/${contractId}/invoices`, params);
+    return this.client.post<InvoiceResponse>(`/api/v1/contracts/${seg(contractId)}/invoices`, params);
   }
 
   /**
@@ -41,7 +44,7 @@ export class Invoices {
 
     const qs = query.toString();
     return this.client.get<InvoiceListResponse>(
-      `/api/v1/contracts/${contractId}/invoices${qs ? `?${qs}` : ''}`,
+      `/api/v1/contracts/${seg(contractId)}/invoices${qs ? `?${qs}` : ''}`,
     );
   }
 
@@ -68,7 +71,7 @@ export class Invoices {
    * Get a single invoice by UUID.
    */
   async get(contractId: string, invoiceId: string): Promise<InvoiceResponse> {
-    return this.client.get<InvoiceResponse>(`/api/v1/contracts/${contractId}/invoices/${invoiceId}`);
+    return this.client.get<InvoiceResponse>(`/api/v1/contracts/${seg(contractId)}/invoices/${seg(invoiceId)}`);
   }
 
   /**
@@ -80,7 +83,7 @@ export class Invoices {
     params?: SendInvoiceParams,
   ): Promise<InvoiceActionResponse> {
     return this.client.post<InvoiceActionResponse>(
-      `/api/v1/contracts/${contractId}/invoices/${invoiceId}/send`,
+      `/api/v1/contracts/${seg(contractId)}/invoices/${seg(invoiceId)}/send`,
       params ?? {},
     );
   }
@@ -90,8 +93,9 @@ export class Invoices {
    */
   async charge(contractId: string, invoiceId: string): Promise<InvoiceActionResponse> {
     return this.client.post<InvoiceActionResponse>(
-      `/api/v1/contracts/${contractId}/invoices/${invoiceId}/charge`,
+      `/api/v1/contracts/${seg(contractId)}/invoices/${seg(invoiceId)}/charge`,
       {},
+      { noRetry: true },
     );
   }
 
@@ -104,8 +108,9 @@ export class Invoices {
     params?: MarkInvoicePaidParams,
   ): Promise<InvoiceResponse> {
     return this.client.post<InvoiceResponse>(
-      `/api/v1/contracts/${contractId}/invoices/${invoiceId}/mark-paid`,
+      `/api/v1/contracts/${seg(contractId)}/invoices/${seg(invoiceId)}/mark-paid`,
       params ?? {},
+      { noRetry: true },
     );
   }
 
@@ -119,7 +124,7 @@ export class Invoices {
     params: UpdateInvoiceParams,
   ): Promise<InvoiceResponse> {
     return this.client.patch<InvoiceResponse>(
-      `/api/v1/contracts/${contractId}/invoices/${invoiceId}`,
+      `/api/v1/contracts/${seg(contractId)}/invoices/${seg(invoiceId)}`,
       params,
     );
   }
@@ -129,7 +134,7 @@ export class Invoices {
    */
   async cancel(contractId: string, invoiceId: string): Promise<InvoiceActionResponse> {
     return this.client.post<InvoiceActionResponse>(
-      `/api/v1/contracts/${contractId}/invoices/${invoiceId}/cancel`,
+      `/api/v1/contracts/${seg(contractId)}/invoices/${seg(invoiceId)}/cancel`,
       {},
     );
   }
@@ -140,7 +145,30 @@ export class Invoices {
    */
   async downloadPdf(contractId: string, invoiceId: string): Promise<DownloadResult> {
     return this.client.download(
-      `/api/v1/contracts/${contractId}/invoices/${invoiceId}/pdf`,
+      `/api/v1/contracts/${seg(contractId)}/invoices/${seg(invoiceId)}/pdf`,
+    );
+  }
+
+  /** List the credit notes issued against an invoice. */
+  async listCreditNotes(contractId: string, invoiceId: string): Promise<CreditNote[]> {
+    return this.client.get<CreditNote[]>(
+      `/api/v1/contracts/${seg(contractId)}/invoices/${seg(invoiceId)}/credit-notes`,
+    );
+  }
+
+  /**
+   * Credit an issued invoice, in full or in part. The invoice itself is not rewritten; excess already paid
+   * is refunded on the original rail. Money: not retried automatically.
+   */
+  async createCreditNote(
+    contractId: string,
+    invoiceId: string,
+    params: CreateCreditNoteParams,
+  ): Promise<CreditNote> {
+    return this.client.post<CreditNote>(
+      `/api/v1/contracts/${seg(contractId)}/invoices/${seg(invoiceId)}/credit-notes`,
+      params,
+      { noRetry: true },
     );
   }
 }
