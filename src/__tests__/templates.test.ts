@@ -1,275 +1,160 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { Chaindoc } from '../chaindoc';
+import { ChaindocTemplateError } from '../errors';
 import { Templates } from '../modules/templates';
+import { fakeClient } from './helpers';
+
+const template = { version: 2 as const, mode: 'template' as const, doc: { type: 'doc' } };
 
 describe('Templates module', () => {
-  it('calls the expected template runtime routes', async () => {
-    const client = {
-      post: vi.fn().mockResolvedValue({}),
-    };
+  it('has no preview methods (the routes are gone)', () => {
+    const templates = new Templates(fakeClient().client) as unknown as Record<string, unknown>;
+    expect(templates['previewPdf']).toBeUndefined();
+    expect(templates['previewHtml']).toBeUndefined();
+    expect(templates['previewUnsavedPdf']).toBeUndefined();
+  });
 
-    const templates = new Templates(client as any);
-
-    await templates.createDocument('template-uuid', {
-      documentName: 'Generated NDA',
-      variables: { client_name: 'Acme' },
-    });
-    await templates.sendForSigning('template-uuid', {
-      documentName: 'Generated NDA',
-      variables: { client_name: 'Acme' },
-      slotAssignments: [
-        {
-          signerKey: 'business',
-          email: 'owner@example.com',
-          signingMethod: 'delegated',
-          signerVariables: {
-            company_name: 'Acme Inc.',
-          },
-        },
-        {
-          signerKey: 'counterparty',
-          email: 'signer@example.com',
-          signingMethod: 'embedded',
-        },
-      ],
-      deadline: new Date('2026-04-30T00:00:00.000Z'),
-      isKycRequired: false,
-    });
-    await templates.createContract('template-uuid', {
-      title: 'Generated MSA',
-      variables: { company_name: 'Acme' },
-      contragent: { email: 'partner@example.com', name: 'Partner Corp' },
-      slotAssignments: [
-        {
-          signerKey: 'party_a',
-          role: 'business',
-          signerVariables: {
-            company_name: 'Acme Inc.',
-          },
-        },
-        { signerKey: 'party_b', role: 'contragent' },
-      ],
-      signingPolicy: {
-        business: 'delegated',
-        contragent: 'embedded',
-      },
-      deadline: new Date('2026-04-30T00:00:00.000Z'),
-    });
-
-    expect(client.post).toHaveBeenNthCalledWith(
-      1,
-      '/api/v1/templates/template-uuid/documents',
-      {
+  describe('runtime (documents, signature requests, contracts)', () => {
+    it('createDocument posts values to the documents route', async () => {
+      const f = fakeClient();
+      await new Templates(f.client).createDocument('t-1', {
         documentName: 'Generated NDA',
         variables: { client_name: 'Acme' },
-      },
-    );
-    expect(client.post).toHaveBeenNthCalledWith(
-      2,
-      '/api/v1/templates/template-uuid/signature-requests',
-      {
+      });
+      expect(f.post).toHaveBeenCalledWith('/api/v1/templates/t-1/documents', {
+        documentName: 'Generated NDA',
+        variables: { client_name: 'Acme' },
+      });
+    });
+
+    it('sendForSigning fills slots by email and account, normalizing the address', async () => {
+      const f = fakeClient();
+      await new Templates(f.client).sendForSigning('t-1', {
         documentName: 'Generated NDA',
         variables: { client_name: 'Acme' },
         slotAssignments: [
+          { signerKey: 'seller', email: ' Owner@Example.com ' },
           {
-            signerKey: 'business',
-            email: 'owner@example.com',
-            signingMethod: 'delegated',
-            signerVariables: {
-              company_name: 'Acme Inc.',
-            },
-          },
-          {
-            signerKey: 'counterparty',
+            signerKey: 'buyer',
             email: 'signer@example.com',
+            account: { kind: 'workspace', workspaceId: 'ws-1' },
             signingMethod: 'embedded',
           },
         ],
         deadline: new Date('2026-04-30T00:00:00.000Z'),
-        isKycRequired: false,
-      },
-    );
-    expect(client.post).toHaveBeenNthCalledWith(
-      3,
-      '/api/v1/templates/template-uuid/contracts',
-      {
+      });
+      const [url, body] = f.post.mock.calls[0] as [string, { slotAssignments: unknown[] }];
+      expect(url).toBe('/api/v1/templates/t-1/signature-requests');
+      expect(body.slotAssignments).toEqual([
+        { signerKey: 'seller', email: 'owner@example.com' },
+        { signerKey: 'buyer', email: 'signer@example.com', account: { kind: 'workspace', workspaceId: 'ws-1' }, signingMethod: 'embedded' },
+      ]);
+    });
+
+    it('createContract sends the counterparty, contragentAccount and role slots', async () => {
+      const f = fakeClient();
+      await new Templates(f.client).createContract('t-1', {
         title: 'Generated MSA',
         variables: { company_name: 'Acme' },
-        contragent: { email: 'partner@example.com', name: 'Partner Corp' },
+        contragent: { email: 'Partner@Example.com', name: 'Partner Corp' },
+        contragentAccount: { kind: 'personal' },
         slotAssignments: [
-          {
-            signerKey: 'party_a',
-            role: 'business',
-            signerVariables: {
-              company_name: 'Acme Inc.',
-            },
-          },
+          { signerKey: 'party_a', role: 'business' },
           { signerKey: 'party_b', role: 'contragent' },
         ],
-        signingPolicy: {
-          business: 'delegated',
-          contragent: 'embedded',
-        },
         deadline: new Date('2026-04-30T00:00:00.000Z'),
-      },
-    );
+      });
+      const [url, body] = f.post.mock.calls[0] as [string, Record<string, unknown>];
+      expect(url).toBe('/api/v1/templates/t-1/contracts');
+      expect(body['contragent']).toEqual({ email: 'partner@example.com', name: 'Partner Corp' });
+      expect(body['contragentAccount']).toEqual({ kind: 'personal' });
+    });
+
+    it('rejects a malformed slot email before calling', async () => {
+      const f = fakeClient();
+      await expect(
+        new Templates(f.client).sendForSigning('t-1', {
+          documentName: 'n',
+          variables: {},
+          slotAssignments: [{ signerKey: 'a', email: 'not-an-email' }],
+          deadline: new Date(),
+        }),
+      ).rejects.toThrow('slotAssignments[0].email');
+      expect(f.post).not.toHaveBeenCalled();
+    });
   });
 
-  describe('read-surface (list / get / versions)', () => {
+  describe('read surface', () => {
     it('list builds the query string with status, search, page, limit', async () => {
-      const client = { get: vi.fn().mockResolvedValue({}) };
-      const templates = new Templates(client as any);
-
+      const f = fakeClient();
+      const templates = new Templates(f.client);
       await templates.list();
-      await templates.list({ page: 2, limit: 25, status: 'published', search: 'NDA' });
-
-      expect(client.get).toHaveBeenNthCalledWith(1, '/api/v1/templates');
-      expect(client.get).toHaveBeenNthCalledWith(
-        2,
-        '/api/v1/templates?page=2&limit=25&status=published&search=NDA',
-      );
+      await templates.list({ page: 2, limit: 10, status: 'published', search: 'nda' });
+      expect(f.get).toHaveBeenNthCalledWith(1, '/api/v1/templates');
+      expect(f.get).toHaveBeenNthCalledWith(2, '/api/v1/templates?page=2&limit=10&status=published&search=nda');
     });
 
-    it('get hits the detail endpoint with the template UUID', async () => {
-      const client = { get: vi.fn().mockResolvedValue({}) };
-      const templates = new Templates(client as any);
-
-      await templates.get('tpl-uuid');
-
-      expect(client.get).toHaveBeenCalledWith('/api/v1/templates/tpl-uuid');
-    });
-
-    it('getVersions hits the versions endpoint with the template UUID', async () => {
-      const client = { get: vi.fn().mockResolvedValue({}) };
-      const templates = new Templates(client as any);
-
-      await templates.getVersions('tpl-uuid');
-
-      expect(client.get).toHaveBeenCalledWith('/api/v1/templates/tpl-uuid/versions');
+    it('get and getVersions address the template', async () => {
+      const f = fakeClient();
+      const templates = new Templates(f.client);
+      await templates.get('t-1');
+      await templates.getVersions('t-1');
+      expect(f.get).toHaveBeenNthCalledWith(1, '/api/v1/templates/t-1');
+      expect(f.get).toHaveBeenNthCalledWith(2, '/api/v1/templates/t-1/versions');
     });
   });
 
   describe('write surface', () => {
-    it('create POSTs to the templates collection route', async () => {
-      const client = { post: vi.fn().mockResolvedValue({}) };
-      const templates = new Templates(client as any);
-
-      await templates.create({
-        name: 'Service Agreement',
-        category: 'contract',
-        contentJson: { type: 'doc', content: [] },
-      });
-
-      expect(client.post).toHaveBeenCalledWith('/api/v1/templates', {
-        name: 'Service Agreement',
-        category: 'contract',
-        contentJson: { type: 'doc', content: [] },
-      });
+    it('create sends content in the new format', async () => {
+      const f = fakeClient();
+      await new Templates(f.client).create({ name: 'NDA', category: 'nda', content: template });
+      expect(f.post).toHaveBeenCalledWith('/api/v1/templates', { name: 'NDA', category: 'nda', content: template });
     });
 
-    it('update PATCHes the template route', async () => {
-      const client = { patch: vi.fn().mockResolvedValue({}) };
-      const templates = new Templates(client as any);
-
-      await templates.update('tpl-uuid', { name: 'Renamed Template' });
-
-      expect(client.patch).toHaveBeenCalledWith('/api/v1/templates/tpl-uuid', {
-        name: 'Renamed Template',
-      });
+    it('update names the revision with the content', async () => {
+      const f = fakeClient();
+      await new Templates(f.client).update('t-1', { content: template, revision: 4 });
+      expect(f.patch).toHaveBeenCalledWith('/api/v1/templates/t-1', { content: template, revision: 4 });
     });
 
-    it('publish POSTs to the publish route, defaulting body to {}', async () => {
-      const client = { post: vi.fn().mockResolvedValue({}) };
-      const templates = new Templates(client as any);
-
-      await templates.publish('tpl-uuid');
-      await templates.publish('tpl-uuid', { changelog: 'Initial release' });
-
-      expect(client.post).toHaveBeenNthCalledWith(1, '/api/v1/templates/tpl-uuid/publish', {});
-      expect(client.post).toHaveBeenNthCalledWith(2, '/api/v1/templates/tpl-uuid/publish', {
-        changelog: 'Initial release',
-      });
+    it('publish, archive, restore and delete use their routes', async () => {
+      const f = fakeClient();
+      const templates = new Templates(f.client);
+      await templates.publish('t-1', { changelog: 'v2', revision: 4 });
+      await templates.publish('t-1');
+      await templates.archive('t-1');
+      await templates.restore('t-1');
+      await templates.delete('t-1');
+      expect(f.post).toHaveBeenNthCalledWith(1, '/api/v1/templates/t-1/publish', { changelog: 'v2', revision: 4 });
+      expect(f.post).toHaveBeenNthCalledWith(2, '/api/v1/templates/t-1/publish', {});
+      expect(f.post).toHaveBeenNthCalledWith(3, '/api/v1/templates/t-1/archive', {});
+      expect(f.post).toHaveBeenNthCalledWith(4, '/api/v1/templates/t-1/restore', {});
+      expect(f.delete).toHaveBeenCalledWith('/api/v1/templates/t-1');
     });
+  });
+});
 
-    it('archive and restore POST to their routes with an empty body', async () => {
-      const client = { post: vi.fn().mockResolvedValue({}) };
-      const templates = new Templates(client as any);
+describe('template refusals over the wire', () => {
+  afterEach(() => vi.unstubAllGlobals());
 
-      await templates.archive('tpl-uuid');
-      await templates.restore('tpl-uuid');
-
-      expect(client.post).toHaveBeenNthCalledWith(1, '/api/v1/templates/tpl-uuid/archive', {});
-      expect(client.post).toHaveBeenNthCalledWith(2, '/api/v1/templates/tpl-uuid/restore', {});
-    });
-
-    it('delete DELETEs the template route', async () => {
-      const client = { delete: vi.fn().mockResolvedValue({}) };
-      const templates = new Templates(client as any);
-
-      await templates.delete('tpl-uuid');
-
-      expect(client.delete).toHaveBeenCalledWith('/api/v1/templates/tpl-uuid');
-    });
-
-    it('previewPdf downloads via POST with the variables body', async () => {
-      const fake = { data: new ArrayBuffer(8), contentType: 'application/pdf' };
-      const client = { download: vi.fn().mockResolvedValue(fake) };
-      const templates = new Templates(client as any);
-
-      const result = await templates.previewPdf('tpl-uuid', {
-        variables: { client_name: 'Acme' },
-      });
-
-      expect(client.download).toHaveBeenCalledWith('/api/v1/templates/tpl-uuid/preview-pdf', {
-        method: 'POST',
-        body: { variables: { client_name: 'Acme' } },
-      });
-      expect(result).toBe(fake);
-    });
-
-    it('previewPdf defaults the body to {} when no params given', async () => {
-      const client = { download: vi.fn().mockResolvedValue({}) };
-      const templates = new Templates(client as any);
-
-      await templates.previewPdf('tpl-uuid');
-
-      expect(client.download).toHaveBeenCalledWith('/api/v1/templates/tpl-uuid/preview-pdf', {
-        method: 'POST',
-        body: {},
-      });
-    });
-
-    it('previewHtml POSTs to the preview-html route', async () => {
-      const client = { post: vi.fn().mockResolvedValue({}) };
-      const templates = new Templates(client as any);
-
-      await templates.previewHtml('tpl-uuid');
-      await templates.previewHtml('tpl-uuid', { variables: { client_name: 'Acme' } });
-
-      expect(client.post).toHaveBeenNthCalledWith(
-        1,
-        '/api/v1/templates/tpl-uuid/preview-html',
-        {},
-      );
-      expect(client.post).toHaveBeenNthCalledWith(
-        2,
-        '/api/v1/templates/tpl-uuid/preview-html',
-        { variables: { client_name: 'Acme' } },
-      );
-    });
-
-    it('previewUnsavedPdf downloads via POST with the content body', async () => {
-      const fake = { data: new ArrayBuffer(8), contentType: 'application/pdf' };
-      const client = { download: vi.fn().mockResolvedValue(fake) };
-      const templates = new Templates(client as any);
-      const params = { contentJson: { type: 'doc', content: [] } };
-
-      const result = await templates.previewUnsavedPdf(params);
-
-      expect(client.download).toHaveBeenCalledWith('/api/v1/templates/preview-unsaved-pdf', {
-        method: 'POST',
-        body: params,
-      });
-      expect(result).toBe(fake);
-    });
+  it.each([
+    [409, 'TEMPLATE_WORKING_COPY_MOVED'],
+    [422, 'TEMPLATE_REVISION_REQUIRED'],
+    [410, 'TEMPLATE_RETIRED'],
+    [422, 'TEMPLATE_SLOTS_REFUSED'],
+  ])('%s %s is a ChaindocTemplateError carrying the answer body', async (status, errorKey) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ message: 'refused', errorKey, workingCopy: { revision: 5 } }), {
+          status,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+    const chaindoc = new Chaindoc({ secretKey: 'sk_test', retry: { maxRetries: 0 } });
+    const error = await chaindoc.templates.update('t-1', { content: template, revision: 1 }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ChaindocTemplateError);
+    expect(error).toMatchObject({ errorKey, statusCode: status, response: { workingCopy: { revision: 5 } } });
   });
 });
