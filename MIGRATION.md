@@ -1,5 +1,7 @@
 # Migration Guide
 
+> Start with [What changed (November 2026)](docs/WHATS-CHANGED-2026-11.md): the platform change as a whole (plan, workspaces, files converted, templates, money, QES, processes, webhooks, embed), with every new refusal code.
+
 ## Upgrading from 2.x to 3.0.0
 
 ```bash

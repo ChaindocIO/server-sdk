@@ -2,7 +2,7 @@
 
 **Official server-side SDK for Chaindoc API - documents, signatures, contracts, invoicing, and webhook-safe integrations.**
 
-> **3.0 is a breaking release.** A file you send is now *converted* into a text document (it is no longer signed as a file), signature places are chips in that text and recipients are bound by `role`, and templates use the new content format. Read [MIGRATION.md](MIGRATION.md) before upgrading from 2.x. Every `/api/v1` call needs a Business plan or above (`403 INTEGRATIONS_NOT_IN_PLAN` otherwise).
+> **3.0 is a breaking release.** A file you send is now *converted* into a text document (it is no longer signed as a file), signature places are chips in that text and recipients are bound by `role`, and templates use the new content format. Read [MIGRATION.md](MIGRATION.md) before upgrading from 2.x. For the whole platform change (including the embed and MCP), see [What changed (November 2026)](docs/WHATS-CHANGED-2026-11.md). Every `/api/v1` call needs a Business plan or above (`403 INTEGRATIONS_NOT_IN_PLAN` otherwise).
 
 [![npm version](https://img.shields.io/npm/v/@chaindoc_io/server-sdk.svg)](https://www.npmjs.com/package/@chaindoc_io/server-sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
