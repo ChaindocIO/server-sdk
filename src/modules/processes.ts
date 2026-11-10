@@ -1,3 +1,5 @@
+import { createHmac } from 'crypto';
+import { ChaindocError } from '../client';
 import type { DownloadResult, HttpClient } from '../client';
 import type {
   ProcessCase,
@@ -14,6 +16,8 @@ import type {
   ProcessListResponse,
   ProcessStartParams,
   ProcessStartReceipt,
+  ProcessIntegrationResponseParams,
+  ProcessIntegrationResponseReceipt,
 } from '../types';
 
 /** Public Processes source transports. Authorization remains with the server. */
@@ -130,6 +134,33 @@ export class Processes {
       `${this.intakePath(processKey, entryKey, intakeUuid)}/chunks`,
       bytes,
       offset,
+    );
+  }
+
+  /**
+   * Answer a "Wait for a system" request as the connected system. The body is signed with the integration's
+   * own secret (`v1=` + HMAC-SHA256 of `<timestamp>.<raw body>`); the secret never leaves this call and is
+   * never logged. A repeat of the same reply returns `duplicate: true`.
+   */
+  async respond(
+    integrationUuid: string,
+    params: ProcessIntegrationResponseParams,
+    integrationSecret: string,
+  ): Promise<ProcessIntegrationResponseReceipt> {
+    if (!integrationSecret) {
+      throw new ChaindocError('integrationSecret is required to answer a process request');
+    }
+    const raw = JSON.stringify(params);
+    const timestamp = new Date().toISOString();
+    const signature = `v1=${createHmac('sha256', integrationSecret).update(`${timestamp}.${raw}`).digest('hex')}`;
+    return this.client.request<ProcessIntegrationResponseReceipt>(
+      `/api/v1/processes/integrations/${encodeURIComponent(integrationUuid)}/responses`,
+      {
+        method: 'POST',
+        rawBody: new TextEncoder().encode(raw),
+        headers: { 'X-Chaindoc-Signature': signature, 'X-Chaindoc-Timestamp': timestamp },
+        noRetry: true,
+      },
     );
   }
 

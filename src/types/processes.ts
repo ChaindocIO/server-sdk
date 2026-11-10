@@ -96,6 +96,11 @@ export interface ProcessEntrySchema {
   readonly inputSchema: { readonly fields: readonly ProcessInputField[] };
   readonly requiredSubjects: readonly ProcessSubjectRequirement[];
   readonly entrySubject: ProcessEntrySubjectRequirement | null;
+  /**
+   * Native new-partner creation from confirmed input fields, present only when the entry's authored executor is
+   * currently admitted; `null` otherwise. Grants no read authority over existing subjects.
+   */
+  readonly creates: Readonly<Record<string, unknown>> | null;
   readonly materials: readonly {
     readonly fieldId: string;
     readonly required: boolean;
@@ -276,4 +281,24 @@ export interface ProcessMaterials {
   readonly caseUuid: string;
   readonly view: ProcessMaterialView;
   readonly items: readonly ProcessMaterial[];
+}
+
+/** The connected system's answer to a "Wait for a system" request (signed with the integration's own secret). */
+export interface ProcessIntegrationResponseParams {
+  /** `attemptNumber` from the request correlation. */
+  readonly attemptNumber: number;
+  /** `deliveryUuid` of the request this answers. */
+  readonly deliveryUuid: string;
+  /** One of the result codes approved for the operation. */
+  readonly resultCode: string;
+  /** The system's own event id; a repeat with the same meaning is a duplicate. */
+  readonly sourceEventId: string;
+  /** `stepUuid` from the request correlation. */
+  readonly stepUuid: string;
+}
+
+export interface ProcessIntegrationResponseReceipt {
+  readonly accepted: boolean;
+  /** True when the same reply had already been recorded. */
+  readonly duplicate: boolean;
 }
