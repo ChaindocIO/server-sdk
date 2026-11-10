@@ -7,6 +7,6 @@
  */
 
 export { Chaindoc } from "./chaindoc";
-export { ChaindocError } from "./client";
+export * from "./errors";
 export type { DownloadResult } from "./client";
 export * from "./types";

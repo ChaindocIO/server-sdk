@@ -3,19 +3,10 @@
  * Uses native fetch (Node 18+)
  */
 
+import { ChaindocError, createChaindocError } from "./errors";
 import type { ChaindocConfig, ChaindocEnvironment, RetryConfig } from "./types";
 
-export class ChaindocError extends Error {
-  constructor(
-    message: string,
-    public statusCode?: number,
-    public response?: unknown,
-    public isRetryable: boolean = false
-  ) {
-    super(message);
-    this.name = "ChaindocError";
-  }
-}
+export { ChaindocError } from "./errors";
 
 export interface RequestOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -217,7 +208,7 @@ export class HttpClient {
               ? data.message
               : `Request failed with status ${response.status}`;
           const isRetryable = this.isRetryableError(null, response.status);
-          lastError = new ChaindocError(
+          lastError = createChaindocError(
             errorMessage,
             response.status,
             data,
@@ -365,7 +356,7 @@ export class HttpClient {
           typeof data.message === "string"
             ? data.message
             : `Chunk upload failed with status ${response.status}`;
-        throw new ChaindocError(
+        throw createChaindocError(
           errorMessage,
           response.status,
           data,
@@ -449,7 +440,7 @@ export class HttpClient {
             }
           }
           const isRetryable = this.isRetryableError(null, response.status);
-          lastError = new ChaindocError(
+          lastError = createChaindocError(
             errorMessage,
             response.status,
             errorBody,
@@ -566,7 +557,7 @@ export class HttpClient {
               ? data.message
               : `Upload failed with status ${response.status}`;
           const isRetryable = this.isRetryableError(null, response.status);
-          lastError = new ChaindocError(
+          lastError = createChaindocError(
             errorMessage,
             response.status,
             data,
