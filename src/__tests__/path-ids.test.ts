@@ -22,8 +22,9 @@ describe('path ids are encoded', () => {
     expect(f.post.mock.calls[2]?.[0]).toBe(`/api/v1/signatures/requests/${enc}/resend`);
     expect(f.get).toHaveBeenNthCalledWith(2, `/api/v1/contracts/c/invoices/${enc}`);
     for (const call of [...f.get.mock.calls, ...f.post.mock.calls]) {
-      expect(String(call[0])).not.toContain('..');
-      expect(String(call[0]).split('?')[0]).not.toContain('#');
+      // No raw slash, query or fragment from the id: the id is exactly one path segment.
+      expect(String(call[0])).not.toMatch(/[?#]/);
+      expect(String(call[0]).split('/').filter((p) => p === '..')).toEqual([]);
     }
   });
 });
