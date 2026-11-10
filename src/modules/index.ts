@@ -9,3 +9,4 @@ export { Media } from './media';
 export { Webhooks } from './webhooks';
 export { Processes } from './processes';
 export { Conversions } from './conversions';
+export { Accounts } from './accounts';

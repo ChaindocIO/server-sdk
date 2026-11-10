@@ -1091,9 +1091,15 @@ export interface BillingAddress {
 export interface ContragentInfo {
   email: string;
   name?: string;
+  /** Registered legal name, distinct from the display name. */
+  legalName?: string;
+  entityType?: 'person' | 'company';
   phone?: string;
   billingAddress?: BillingAddress;
   taxId?: string;
+  /** VAT number, distinct from the tax ID. */
+  vatNumber?: string;
+  registrationNumber?: string;
 }
 
 /** Payment term input for creating contracts */
@@ -1220,6 +1226,8 @@ export interface CreateContractParams {
   title: string;
   description?: string;
   contragent: ContragentInfo;
+  /** The workspace option `accounts.lookup` offered for the counterparty's address, proposed to them. */
+  contragentAccount?: AccountChoice;
   /** ISO 8601, min 24h from now */
   startDate?: string;
   /** ISO 8601 */
@@ -1362,6 +1370,8 @@ export interface UpdateContractParams {
   title?: string;
   description?: string;
   contragent?: ContragentInfo;
+  /** The workspace option `accounts.lookup` offered for the counterparty's address. */
+  contragentAccount?: AccountChoice;
   /** ISO 8601, min 24h from now */
   startDate?: string;
   /** ISO 8601 */
@@ -1379,7 +1389,12 @@ export interface UpdateContractParams {
 export interface CreateEmptyContractParams {
   title: string;
   description?: string;
-  contragentEmail: string;
+  /** Counterparty e-mail. Required unless `contragent.email` is given; if both are, they must match. */
+  contragentEmail?: string;
+  /** The counterparty's full billing identity; what it carries wins over the flat fields. */
+  contragent?: ContragentInfo;
+  /** The workspace option `accounts.lookup` offered for the counterparty's address. */
+  contragentAccount?: AccountChoice;
   contragentName?: string;
   /** ISO 4217 currency code (default: USD) */
   currencyCode?: string;
@@ -1391,7 +1406,12 @@ export interface CreateMinimalContractParams {
   documentId: string;
   title: string;
   description?: string;
-  contragentEmail: string;
+  /** Counterparty e-mail. Required unless `contragent.email` is given; if both are, they must match. */
+  contragentEmail?: string;
+  /** The counterparty's full billing identity; what it carries wins over the flat fields. */
+  contragent?: ContragentInfo;
+  /** The workspace option `accounts.lookup` offered for the counterparty's address. */
+  contragentAccount?: AccountChoice;
   contragentName?: string;
   /** Skip payment setup (add later via addPaymentSetup). Default: true. */
   skipPaymentSetup?: boolean;
@@ -1403,7 +1423,12 @@ export interface CreateImportContractParams {
   documentId: string;
   title: string;
   description?: string;
-  contragentEmail: string;
+  /** Counterparty e-mail. Required unless `contragent.email` is given; if both are, they must match. */
+  contragentEmail?: string;
+  /** The counterparty's full billing identity; what it carries wins over the flat fields. */
+  contragent?: ContragentInfo;
+  /** The workspace option `accounts.lookup` offered for the counterparty's address. */
+  contragentAccount?: AccountChoice;
   contragentName?: string;
   /** ISO 4217 currency code (default: USD) */
   currencyCode?: string;

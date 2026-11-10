@@ -41,6 +41,7 @@
 
 import { HttpClient } from "./client";
 import { Documents } from "./modules/documents";
+import { Accounts } from "./modules/accounts";
 import { Conversions } from "./modules/conversions";
 import { Signatures } from "./modules/signatures";
 import { Contracts } from "./modules/contracts";
@@ -71,6 +72,12 @@ export class Chaindoc {
    * Create, update, and verify documents
    */
   public readonly documents: Documents;
+
+  /**
+   * Accounts API
+   * Find where a person can be addressed (personal or a workspace)
+   */
+  public readonly accounts: Accounts;
 
   /**
    * Conversions API
@@ -127,6 +134,7 @@ export class Chaindoc {
     this.client = new HttpClient(config);
 
     this.documents = new Documents(this.client);
+    this.accounts = new Accounts(this.client);
     this.conversions = new Conversions(this.client);
     this.signatures = new Signatures(this.client);
     this.contracts = new Contracts(this.client);

@@ -2,6 +2,7 @@
  * Contracts Module
  */
 
+import { ChaindocError } from '../client';
 import type { HttpClient } from '../client';
 import type {
   CreateContractParams,
@@ -177,11 +178,7 @@ export class Contracts {
    * Activates immediately. Use when no document needs to be signed (manual invoicing).
    */
   async createEmpty(params: CreateEmptyContractParams): Promise<ContractResponse> {
-    assertValidEmail(params.contragentEmail, 'contragentEmail');
-    return this.client.post<ContractResponse>('/api/v1/contracts/empty', {
-      ...params,
-      contragentEmail: normalizeEmail(params.contragentEmail),
-    });
+    return this.client.post<ContractResponse>('/api/v1/contracts/empty', withCounterpartyEmails(params));
   }
 
   /**
@@ -190,11 +187,7 @@ export class Contracts {
    * Add payment setup and send for signing later.
    */
   async createMinimal(params: CreateMinimalContractParams): Promise<ContractResponse> {
-    assertValidEmail(params.contragentEmail, 'contragentEmail');
-    return this.client.post<ContractResponse>('/api/v1/contracts/minimal', {
-      ...params,
-      contragentEmail: normalizeEmail(params.contragentEmail),
-    });
+    return this.client.post<ContractResponse>('/api/v1/contracts/minimal', withCounterpartyEmails(params));
   }
 
   /**
@@ -203,11 +196,7 @@ export class Contracts {
    * agreement was already signed off-platform.
    */
   async import(params: CreateImportContractParams): Promise<ContractResponse> {
-    assertValidEmail(params.contragentEmail, 'contragentEmail');
-    return this.client.post<ContractResponse>('/api/v1/contracts/import', {
-      ...params,
-      contragentEmail: normalizeEmail(params.contragentEmail),
-    });
+    return this.client.post<ContractResponse>('/api/v1/contracts/import', withCounterpartyEmails(params));
   }
 
   /**
@@ -326,4 +315,24 @@ export class Contracts {
       params
     );
   }
+}
+
+/** Validate and normalize the counterparty's address, given flat (`contragentEmail`) or as `contragent.email`. */
+function withCounterpartyEmails<
+  T extends { contragentEmail?: string; contragent?: { email: string } },
+>(params: T): T {
+  if (params.contragentEmail === undefined && params.contragent === undefined) {
+    throw new ChaindocError('contragentEmail or contragent.email is required');
+  }
+  if (params.contragentEmail !== undefined) {
+    assertValidEmail(params.contragentEmail, 'contragentEmail');
+  }
+  if (params.contragent !== undefined) {
+    assertValidEmail(params.contragent.email, 'contragent.email');
+  }
+  return {
+    ...params,
+    ...(params.contragentEmail !== undefined ? { contragentEmail: normalizeEmail(params.contragentEmail) } : {}),
+    ...(params.contragent !== undefined ? { contragent: withNormalizedEmail(params.contragent) } : {}),
+  };
 }
