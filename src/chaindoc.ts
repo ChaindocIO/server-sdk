@@ -41,6 +41,9 @@
 
 import { HttpClient } from "./client";
 import { Documents } from "./modules/documents";
+import { Contragents } from "./modules/contragents";
+import { PaymentInstructions } from "./modules/payment-instructions";
+import { TaxTreatments } from "./modules/tax-treatments";
 import { Accounts } from "./modules/accounts";
 import { Conversions } from "./modules/conversions";
 import { Signatures } from "./modules/signatures";
@@ -72,6 +75,15 @@ export class Chaindoc {
    * Create, update, and verify documents
    */
   public readonly documents: Documents;
+
+  /** Counterparties (address book) */
+  public readonly contragents: Contragents;
+
+  /** Payment instructions: bank, crypto and other details printed on invoices */
+  public readonly paymentInstructions: PaymentInstructions;
+
+  /** Tax treatments an invoice can name */
+  public readonly taxTreatments: TaxTreatments;
 
   /**
    * Accounts API
@@ -135,6 +147,9 @@ export class Chaindoc {
 
     this.documents = new Documents(this.client);
     this.accounts = new Accounts(this.client);
+    this.contragents = new Contragents(this.client);
+    this.paymentInstructions = new PaymentInstructions(this.client);
+    this.taxTreatments = new TaxTreatments(this.client);
     this.conversions = new Conversions(this.client);
     this.signatures = new Signatures(this.client);
     this.contracts = new Contracts(this.client);

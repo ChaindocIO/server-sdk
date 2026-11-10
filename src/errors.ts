@@ -63,6 +63,11 @@ export const ERROR_KEYS = {
   TEMPLATE_HAS_NO_SIGNERS: 'TEMPLATE_HAS_NO_SIGNERS',
   // money
   INVOICE_MONEY_OR_CREDIT_NOTE: 'INVOICE_MONEY_OR_CREDIT_NOTE',
+  STRIPE_MANUAL_BY_DESIGN: 'STRIPE_MANUAL_BY_DESIGN',
+  STRIPE_NOT_READY: 'STRIPE_NOT_READY',
+  STRIPE_LEGACY_EXPRESS: 'STRIPE_LEGACY_EXPRESS',
+  STRIPE_NOT_ALLOWED_BY_CASCADE: 'STRIPE_NOT_ALLOWED_BY_CASCADE',
+  STRIPE_SETTING_REQUIRES_STRIPE: 'STRIPE_SETTING_REQUIRES_STRIPE',
 } as const;
 
 export type KnownErrorKey = (typeof ERROR_KEYS)[keyof typeof ERROR_KEYS];
@@ -70,10 +75,14 @@ export type KnownErrorKey = (typeof ERROR_KEYS)[keyof typeof ERROR_KEYS];
 /** A known key, or any other string the server sends. */
 export type ChaindocErrorKey = KnownErrorKey | (string & {});
 
+const KEY_SHAPE = /^[A-Z][A-Z0-9_]+$/;
+
 function readErrorKey(response: unknown): string | undefined {
-  if (response && typeof response === 'object' && 'errorKey' in response) {
-    const key = (response as { errorKey: unknown }).errorKey;
-    if (typeof key === 'string' && key.length > 0) return key;
+  if (response && typeof response === 'object') {
+    const body = response as { errorKey?: unknown; code?: unknown };
+    if (typeof body.errorKey === 'string' && body.errorKey.length > 0) return body.errorKey;
+    // Money refusals (Stripe cascade, invoice cancel) name their reason in `code`.
+    if (typeof body.code === 'string' && KEY_SHAPE.test(body.code)) return body.code;
   }
   return undefined;
 }
@@ -107,6 +116,14 @@ export class ChaindocPlanError extends ChaindocError {
   constructor(message: string, statusCode?: number, response?: unknown, isRetryable = false) {
     super(message, statusCode, response, isRetryable);
     this.name = 'ChaindocPlanError';
+  }
+}
+
+/** A money refusal: the Stripe cascade (`STRIPE_*`) or `INVOICE_MONEY_OR_CREDIT_NOTE`. Never retried blindly. */
+export class ChaindocPaymentError extends ChaindocError {
+  constructor(message: string, statusCode?: number, response?: unknown, isRetryable = false) {
+    super(message, statusCode, response, isRetryable);
+    this.name = 'ChaindocPaymentError';
   }
 }
 
@@ -220,6 +237,9 @@ export function createChaindocError(
   if (key && LIMIT_KEYS.has(key)) return new ChaindocLimitError(message, statusCode, response, isRetryable);
   if (key && DOCUMENT_FILE_KEYS.has(key)) return new ChaindocDocumentFileError(message, statusCode, response, isRetryable);
   if (key && SIGNING_SETUP_KEYS.has(key)) return new ChaindocSigningSetupError(message, statusCode, response, isRetryable);
+  if (key && (key.startsWith('STRIPE_') || key === ERROR_KEYS.INVOICE_MONEY_OR_CREDIT_NOTE)) {
+    return new ChaindocPaymentError(message, statusCode, response, isRetryable);
+  }
   if (key?.startsWith('TEMPLATE_')) return new ChaindocTemplateError(message, statusCode, response, isRetryable);
   return new ChaindocError(message, statusCode, response, isRetryable);
 }

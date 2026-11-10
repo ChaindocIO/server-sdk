@@ -5,7 +5,9 @@
 import { seg } from '../utils/path';
 import type { DownloadResult, HttpClient } from '../client';
 import type {
+  CreateCreditNoteParams,
   CreateInvoiceParams,
+  CreditNote,
   InvoiceActionResponse,
   InvoiceListAllParams,
   InvoiceListAllResponse,
@@ -93,6 +95,7 @@ export class Invoices {
     return this.client.post<InvoiceActionResponse>(
       `/api/v1/contracts/${seg(contractId)}/invoices/${seg(invoiceId)}/charge`,
       {},
+      { noRetry: true },
     );
   }
 
@@ -107,6 +110,7 @@ export class Invoices {
     return this.client.post<InvoiceResponse>(
       `/api/v1/contracts/${seg(contractId)}/invoices/${seg(invoiceId)}/mark-paid`,
       params ?? {},
+      { noRetry: true },
     );
   }
 
@@ -142,6 +146,29 @@ export class Invoices {
   async downloadPdf(contractId: string, invoiceId: string): Promise<DownloadResult> {
     return this.client.download(
       `/api/v1/contracts/${seg(contractId)}/invoices/${seg(invoiceId)}/pdf`,
+    );
+  }
+
+  /** List the credit notes issued against an invoice. */
+  async listCreditNotes(contractId: string, invoiceId: string): Promise<CreditNote[]> {
+    return this.client.get<CreditNote[]>(
+      `/api/v1/contracts/${seg(contractId)}/invoices/${seg(invoiceId)}/credit-notes`,
+    );
+  }
+
+  /**
+   * Credit an issued invoice, in full or in part. The invoice itself is not rewritten; excess already paid
+   * is refunded on the original rail. Money: not retried automatically.
+   */
+  async createCreditNote(
+    contractId: string,
+    invoiceId: string,
+    params: CreateCreditNoteParams,
+  ): Promise<CreditNote> {
+    return this.client.post<CreditNote>(
+      `/api/v1/contracts/${seg(contractId)}/invoices/${seg(invoiceId)}/credit-notes`,
+      params,
+      { noRetry: true },
     );
   }
 }

@@ -5,6 +5,7 @@
 export * from './processes';
 export * from './accounts';
 export * from './templates';
+export * from './finance';
 import type { AccountChoice } from './accounts';
 
 // ============================================================================
@@ -1210,6 +1211,12 @@ export interface Contract {
   noticePeriodDays: number;
   paymentMethodRequired: boolean;
   preferredPaymentMethodType?: ContractPreferredPaymentMethodType | null;
+  /** The number the contract's own paper says (a signed contract added from outside). */
+  number?: string;
+  /** Days after the invoice date an invoice of this contract falls due (0 - on receipt). */
+  paymentTermDays?: number;
+  /** The contract-level Stripe setting of the cascade; `null` - inherits. */
+  stripePaymentAllowed?: boolean | null;
   signingPolicy: ContractSigningPolicy;
   paymentTerms: PaymentTermResponse[];
   signingRequest?: ContractSigningRequest | null;
@@ -1241,6 +1248,11 @@ export interface CreateContractParams {
   paymentTerms?: PaymentTermInput[];
   paymentMethodRequired?: boolean;
   preferredPaymentMethodType?: ContractPreferredPaymentMethodType;
+  /**
+   * May invoices on this contract be paid by card via Stripe? Omit to inherit the business default; `false`
+   * is a deliberately manual contract. `true` without a connected Stripe account is refused.
+   */
+  stripePaymentAllowed?: boolean;
   signingPolicy?: Partial<ContractSigningPolicy>;
 }
 
@@ -1832,7 +1844,67 @@ export interface InvoiceLineItemInput {
 
 /** Line item returned in invoice responses */
 export interface InvoiceLineItem extends InvoiceLineItemInput {
+  /** Derived line amount: unit price x quantity, less the line's own discount (its net). */
   amount: string;
+  grossAmount?: string;
+  /** Effective tax percentage applied to this line. */
+  rate?: string;
+  taxAmount?: string;
+  treatmentCode?: string;
+}
+
+export interface InvoiceDiscount {
+  type: 'fixed' | 'percent';
+  /** Decimal string, at most 2 decimals: a money amount for `fixed`, a 0-100 percentage for `percent`. Applied before tax. */
+  value: string;
+}
+
+export type InvoicePaymentMethod = 'bank-transfer' | 'cash' | 'other';
+
+export interface InvoiceTaxRateGroup {
+  key: string;
+  code: string;
+  label: string;
+  rate: string;
+  net: string;
+  tax: string;
+  gross: string;
+}
+
+export interface InvoiceTaxSummary {
+  rateGroups: InvoiceTaxRateGroup[];
+  /** Legal notes the document must print, e.g. the reverse-charge wording. */
+  legalNotes: string[];
+  totals: { net: string; tax: string; amount: string; discountTotal: string };
+}
+
+export interface InvoicePartyAddress {
+  line1: string | null;
+  line2: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  countryCode: string | null;
+  countryName: string | null;
+}
+
+export interface InvoiceBuyer {
+  name: string | null;
+  email: string | null;
+  entityType: 'person' | 'company' | null;
+  taxId: string | null;
+  vatNumber: string | null;
+  registrationNumber: string | null;
+  address: InvoicePartyAddress | null;
+}
+
+export interface InvoiceSeller {
+  legalName: string | null;
+  email: string | null;
+  taxId: string | null;
+  vatNumber: string | null;
+  website: string | null;
+  address: InvoicePartyAddress | null;
 }
 
 /** Transaction summary embedded into invoice responses */
@@ -1845,6 +1917,14 @@ export interface InvoiceTransactionSummary {
   receiptUrl?: string | null;
   source?: string | null;
   note?: string | null;
+  /** Ledger row kind; always `payment` (a credit note writes no transaction). */
+  kind?: 'payment' | 'credit_note';
+  /** How a seller's record says the money came; absent on a payment made through Chaindoc. */
+  method?: InvoicePaymentMethod;
+  /** The day a seller's record says the money came (YYYY-MM-DD). */
+  paidOn?: string;
+  /** When the seller removed a payment they had recorded: it reads CANCELLED and stays listed. */
+  removedAt?: string;
   paymentMethodType?: string;
   platformFee?: string;
   stripeFee?: string;
@@ -1875,12 +1955,39 @@ export interface Invoice {
   issueDate: string;
   dueDate: string;
   paidAt?: string | null;
+  /** The day the money came as a seller's record named it (YYYY-MM-DD). */
+  paidOn?: string;
   isOverdue: boolean;
   daysOverdue?: number;
   checkoutUrl?: string | null;
   hasInvoicePdf: boolean;
   transactions?: InvoiceTransactionSummary[];
   fundingInstructions?: Record<string, unknown>;
+  /** Credit-note face applied against this invoice ("0" when none); already deducted from `remainingAmount`. */
+  creditedAmount: string;
+  /** The partner's paid ahead this invoice took when sent; already deducted from `remainingAmount`. */
+  paidAheadAmount: string;
+  /** Whether it may be cancelled: no money and no credit note reached it (else `INVOICE_MONEY_OR_CREDIT_NOTE`). */
+  canCancel: boolean;
+  displayNumber?: string | null;
+  /** This invoice's own payment-instruction selection, or null (the cascade resolves one at issue). */
+  paymentInstructionId: string | null;
+  showUnpaid: boolean;
+  takePaidAhead: boolean;
+  /** `INHERIT` lets the levels above decide card payment at send; `FORBID` keeps the invoice manual. */
+  stripeAllowedIntent: 'INHERIT' | 'FORBID';
+  /** Frozen when sent; `null` on a draft. */
+  stripePaymentAllowed: boolean | null;
+  /** `snapshot` - frozen at issue; `preview` - provisional, can still change. */
+  partiesSource: 'snapshot' | 'preview';
+  buyer?: InvoiceBuyer;
+  seller?: InvoiceSeller;
+  taxSummary?: InvoiceTaxSummary | null;
+  /** Appendix to its contract; its number among the contract's appendices. */
+  appendix?: boolean;
+  appendixNumber?: number;
+  poNumber?: string;
+  servicePeriod?: string;
   createdAt: string;
 }
 
@@ -1892,6 +1999,18 @@ export interface CreateInvoiceParams {
   currencyCode?: string;
   dueDate: string;
   lineItems?: InvoiceLineItemInput[];
+  /** An invoice-level discount, applied before tax. */
+  discount?: InvoiceDiscount;
+  /** An active payment instruction to print; omit and the cascade (contract, counterparty, default) resolves one. */
+  paymentInstructionId?: string;
+  /** One of the business's tax treatments (`taxTreatments.list`); omit for the counterparty's VAT setting, else the default. */
+  taxTreatmentId?: string;
+  /** Omit to inherit; `false` is a deliberately manual invoice. */
+  stripePaymentAllowed?: boolean;
+  /** Print what the partner still owes on other open invoices. Default true. */
+  showUnpaid?: boolean;
+  /** Take the partner's paid ahead when sent. Default true. */
+  takePaidAhead?: boolean;
   autoCharge?: boolean;
   sendImmediately?: boolean;
 }
@@ -1924,12 +2043,19 @@ export interface UpdateInvoiceParams {
   dueDate?: string;
   /** When provided, replaces the existing line item set. */
   lineItems?: InvoiceLineItemInput[];
+  /** `null` clears the invoice's own selection. */
+  paymentInstructionId?: string | null;
+  showUnpaid?: boolean;
+  takePaidAhead?: boolean;
 }
 
 /** Parameters for manually marking an invoice as paid */
 export interface MarkInvoicePaidParams {
   note?: string;
+  /** When the money was received (ISO 8601); defaults to now. */
   paidAt?: string;
+  /** How the money came, as the record names it. */
+  method?: InvoicePaymentMethod;
 }
 
 /** Response envelope containing a single invoice */
@@ -1967,6 +2093,7 @@ export interface InvoiceActionResponse {
 export interface TransactionInvoiceSummary {
   id: string;
   invoiceNumber: string;
+  displayNumber?: string | null;
   title: string;
 }
 
@@ -1984,6 +2111,10 @@ export interface Transaction {
   amount: string;
   currencyCode: string;
   status: TransactionStatus;
+  kind?: 'payment' | 'credit_note';
+  method?: InvoicePaymentMethod;
+  paidOn?: string;
+  removedAt?: string;
   paymentMethodType?: string;
   platformFee?: string;
   stripeFee?: string;

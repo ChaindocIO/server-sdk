@@ -10,3 +10,6 @@ export { Webhooks } from './webhooks';
 export { Processes } from './processes';
 export { Conversions } from './conversions';
 export { Accounts } from './accounts';
+export { Contragents } from './contragents';
+export { PaymentInstructions } from './payment-instructions';
+export { TaxTreatments } from './tax-treatments';

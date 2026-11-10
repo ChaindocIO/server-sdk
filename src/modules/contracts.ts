@@ -30,6 +30,8 @@ import type {
   SigningRequestGetResponse,
   BusinessSignParams,
   BusinessSignResponse,
+  ContractPaymentInstructionAssignedResponse,
+  SetContractStripePaymentParams,
 } from '../types';
 import { normalizeEmail, withNormalizedEmail } from '../utils/normalize-email';
 import { assertValidEmail } from '../utils/validate-email';
@@ -164,6 +166,38 @@ export class Contracts {
       ...params,
       contragent: params.contragent ? withNormalizedEmail(params.contragent) : undefined,
     });
+  }
+
+  /**
+   * Assign (or clear with `null`) the payment instruction every invoice on this contract uses: the
+   * contract level of the cascade invoice > contract > counterparty > business default. Invoices already
+   * issued keep the instruction frozen on them.
+   */
+  async setPaymentInstruction(
+    contractId: string,
+    paymentInstructionId: string | null,
+  ): Promise<ContractPaymentInstructionAssignedResponse> {
+    return this.client.patch<ContractPaymentInstructionAssignedResponse>(
+      `/api/v1/contracts/${seg(contractId)}/payment-instruction`,
+      { paymentInstructionId },
+      { noRetry: true },
+    );
+  }
+
+  /**
+   * Enable or disable Stripe card payment for a contract. Enabling needs a connected Stripe account
+   * (`STRIPE_NOT_ALLOWED_BY_CASCADE` otherwise); disabling also turns every Stripe-demanding setting on
+   * the contract to manual.
+   */
+  async setStripePayment(
+    contractId: string,
+    params: SetContractStripePaymentParams,
+  ): Promise<ContractResponse> {
+    return this.client.patch<ContractResponse>(
+      `/api/v1/contracts/${seg(contractId)}/stripe-payment`,
+      params,
+      { noRetry: true },
+    );
   }
 
   /**
