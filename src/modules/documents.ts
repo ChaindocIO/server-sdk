@@ -3,6 +3,7 @@
  */
 
 import { seg } from '../utils/path';
+import { randomUUID } from 'crypto';
 import type { DownloadResult, HttpClient } from '../client';
 import type {
   AccessEmail,
@@ -56,10 +57,15 @@ export class Documents {
    * Signature places are chips in the text; use `mode: 'template'` content to hold fields and signer roles.
    */
   async create(params: CreateDocumentFromContentParams): Promise<DocumentResponse> {
-    return this.client.post<DocumentResponse>('/api/v1/documents', {
-      ...params,
-      accessEmails: normalizeAccessEmails(params.accessEmails),
-    });
+    return this.client.post<DocumentResponse>(
+      '/api/v1/documents',
+      {
+        ...params,
+        idempotencyKey: params.idempotencyKey ?? randomUUID(),
+        accessEmails: normalizeAccessEmails(params.accessEmails),
+      },
+      { idempotent: true },
+    );
   }
 
   /**
@@ -74,11 +80,16 @@ export class Documents {
   async createFromStorage(
     params: CreateDocumentFromStorageParams,
   ): Promise<DocumentConversionResponse> {
-    return this.client.post<DocumentConversionResponse>('/api/v1/documents/from-storage', {
-      ...params,
-      status: params.status ?? 'draft',
-      accessEmails: normalizeAccessEmails(params.accessEmails),
-    });
+    return this.client.post<DocumentConversionResponse>(
+      '/api/v1/documents/from-storage',
+      {
+        ...params,
+        status: params.status ?? 'draft',
+        idempotencyKey: params.idempotencyKey ?? randomUUID(),
+        accessEmails: normalizeAccessEmails(params.accessEmails),
+      },
+      { idempotent: true },
+    );
   }
 
   /**
@@ -113,7 +124,8 @@ export class Documents {
   ): Promise<UpdateDocumentTextResponse | DocumentConversionResponse> {
     return this.client.put<UpdateDocumentTextResponse | DocumentConversionResponse>(
       `/api/v1/documents/${seg(documentId)}`,
-      params,
+      { ...params, idempotencyKey: params.idempotencyKey ?? randomUUID() },
+      { idempotent: true },
     );
   }
 
@@ -139,7 +151,8 @@ export class Documents {
   ): Promise<DocumentConversionResponse> {
     return this.client.post<DocumentConversionResponse>(
       `/api/v1/documents/${seg(documentId)}/conversion`,
-      params ?? {},
+      { ...params, idempotencyKey: params?.idempotencyKey ?? randomUUID() },
+      { idempotent: true },
     );
   }
 
@@ -154,7 +167,8 @@ export class Documents {
   ): Promise<AddSignatureBlockResponse> {
     return this.client.post<AddSignatureBlockResponse>(
       `/api/v1/documents/${seg(documentId)}/signature-block`,
-      params,
+      { ...params, idempotencyKey: params.idempotencyKey ?? randomUUID() },
+      { idempotent: true },
     );
   }
 

@@ -38,8 +38,8 @@ describe('path ids are encoded', () => {
     await new Invoices(f.client).get('c', evil);
 
     expect(f.get).toHaveBeenNthCalledWith(1, `/api/v1/documents/${enc}/content`);
-    expect(f.post).toHaveBeenNthCalledWith(1, `/api/v1/documents/${enc}/conversion`, {});
-    expect(f.post).toHaveBeenNthCalledWith(2, `/api/v1/documents/${enc}/signature-block`, { roles: [] });
+    expect(f.post).toHaveBeenNthCalledWith(1, `/api/v1/documents/${enc}/conversion`, { idempotencyKey: expect.any(String) }, { idempotent: true });
+    expect(f.post).toHaveBeenNthCalledWith(2, `/api/v1/documents/${enc}/signature-block`, { roles: [], idempotencyKey: expect.any(String) }, { idempotent: true });
     expect(f.post.mock.calls[2]?.[0]).toBe(`/api/v1/signatures/requests/${enc}/resend`);
     expect(f.get).toHaveBeenNthCalledWith(2, `/api/v1/contracts/c/invoices/${enc}`);
     for (const call of [...f.get.mock.calls, ...f.post.mock.calls]) {

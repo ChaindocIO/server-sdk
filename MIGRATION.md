@@ -202,7 +202,21 @@ events and no escrow surface. `workspace.uuid` is on every event whose object ha
 carry `side`. Signature verification is unchanged (`Chaindoc.webhooks.verify`). Webhooks are dropped below a
 Business plan.
 
-### 9. Smaller changes
+### 9. Retries: writes are not repeated blind (behaviour change)
+
+2.x retried every request on 5xx, 429, timeouts and connection resets, so a POST could be done twice
+(a second invoice, a second signature request). In 3.0:
+
+- GET/HEAD: unchanged.
+- POST/PUT/PATCH/DELETE: retried only on 429 or when the request never reached the server (`ECONNREFUSED`,
+  `ENOTFOUND`, `EAI_AGAIN`). A 5xx, a timeout, `ECONNRESET` or `ETIMEDOUT` surfaces as an error: read the
+  object, then decide.
+- Document writes carry an `idempotencyKey` (the SDK generates one if you pass none and reuses it on every
+  attempt), so they are still retried on 5xx without risk. Pass your own key to make a retry of your own
+  safe across processes.
+- `noRetry` still disables retries for a request.
+
+### 10. Smaller changes
 
 - `Contract` create/update/import/empty/minimal accept `contragent` (full billing identity: `legalName`,
   `vatNumber`, `registrationNumber`, `entityType`) as well as `contragentEmail`.

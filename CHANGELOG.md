@@ -41,8 +41,13 @@ Not published: version bump only.
 - `documents.createFromFile` / `createFromStorage` return the 202 conversion, not a document.
 - `documents.create` / `update` no longer take `media`; `update` from text names `baseVersionId`.
 - `recipients[].role` binds a signer to the text; every role of the text needs one recipient.
-- Money calls (`charge`, `markPaid`, credit notes, payment-instruction writes, Stripe setting, QES) are never
-  retried automatically.
+- **Fewer automatic retries on writes (behaviour change).** GET/HEAD keep their retries (5xx, 429, timeouts,
+  network errors). POST/PUT/PATCH/DELETE are retried only when the request provably never reached the server
+  (`ECONNREFUSED`, `ENOTFOUND`, `EAI_AGAIN`) or on 429; not on 5xx, timeout, `ECONNRESET` or `ETIMEDOUT`.
+  Document writes (`create`, `createFromStorage`/`createFromFile`, `update`, `convert`, `addSignatureBlock`)
+  carry an `idempotencyKey` (generated when you give none, the same on every attempt), so the server dedupes
+  and they are retried on 5xx too. Money calls (`charge`, `markPaid`, credit notes, payment-instruction writes,
+  Stripe setting, QES) are never retried automatically.
 - Every path id is validated and percent-encoded (`seg()`): empty, `.` and `..` are refused before any request.
 - `scripts/sync-openapi-snapshot.mjs` takes its source from an argument or `CHAINDOC_PUBLIC_OPENAPI_PATH`
   (default `../backend`).

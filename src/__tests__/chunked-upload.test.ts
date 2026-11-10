@@ -107,7 +107,9 @@ describe('Documents.createFromStorage / createFromFile', () => {
       expect.objectContaining({
         storageFileId: 'sf-1',
         accessEmails: [{ email: 'user@example.com', level: 'read' }],
+        idempotencyKey: expect.any(String),
       }),
+      { idempotent: true },
     );
   });
 
@@ -132,6 +134,7 @@ describe('Documents.createFromStorage / createFromFile', () => {
       2,
       '/api/v1/documents/from-storage',
       expect.objectContaining({ storageFileId: 'sf-9' }),
+      { idempotent: true },
     );
     expect(accepted.conversion).toMatchObject({ id: 'conv-9', status: 'converting' });
   });

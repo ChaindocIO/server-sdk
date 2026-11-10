@@ -24,11 +24,12 @@ describe('documents as text', () => {
     const documents = new Documents(f.client);
     await documents.convert('doc-1', { idempotencyKey: 'k1' });
     await documents.addSignatureBlock('doc-1', { roles: [{ key: 'client', name: 'Client' }], baseVersionId: 'v1' });
-    expect(f.post).toHaveBeenNthCalledWith(1, '/api/v1/documents/doc-1/conversion', { idempotencyKey: 'k1' });
+    expect(f.post).toHaveBeenNthCalledWith(1, '/api/v1/documents/doc-1/conversion', { idempotencyKey: 'k1' }, { idempotent: true });
     expect(f.post).toHaveBeenNthCalledWith(2, '/api/v1/documents/doc-1/signature-block', {
       roles: [{ key: 'client', name: 'Client' }],
       baseVersionId: 'v1',
-    });
+      idempotencyKey: expect.any(String),
+    }, { idempotent: true });
   });
 });
 

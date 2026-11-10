@@ -17,6 +17,11 @@ export interface RequestOptions {
   timeout?: number;
   /** Disable retry for this specific request */
   noRetry?: boolean;
+  /**
+   * The server dedupes this call (it carries an idempotency key), so replaying it after an uncertain failure
+   * is safe. Without it a write is retried only when it provably never reached the server.
+   */
+  idempotent?: boolean;
 }
 
 /** Result of `HttpClient.download()` — binary body + content metadata. */
@@ -109,29 +114,18 @@ export class HttpClient {
   }
 
   /**
-   * Check if error is retryable
+   * Check if an error is worth another attempt.
+   *
+   * `replaySafe` is true for GET/HEAD and for calls marked `idempotent`: they are retried on 5xx, 429,
+   * timeouts and any network failure. Any other write may already have been done by the server, so it is
+   * retried only when it provably never reached it: 429, `ECONNREFUSED`, `ENOTFOUND`, `EAI_AGAIN`.
    */
-  private isRetryableError(error: unknown, statusCode?: number): boolean {
-    // Retry on 5xx server errors
-    if (statusCode && statusCode >= 500) {
-      return true;
-    }
-    // Retry on 429 Too Many Requests
-    if (statusCode === 429) {
-      return true;
-    }
-    // Retry on network errors
+  private isRetryableError(error: unknown, statusCode: number | undefined, replaySafe: boolean): boolean {
+    if (statusCode === 429) return true;
+    if (statusCode && statusCode >= 500) return replaySafe;
     if (error instanceof Error) {
-      const networkErrors = [
-        "ECONNRESET",
-        "ECONNREFUSED",
-        "ETIMEDOUT",
-        "ENOTFOUND",
-        "EAI_AGAIN",
-      ];
       // Node's global fetch wraps the real network error in `cause` and surfaces a
-      // generic "fetch failed" message — inspect both so transient network failures
-      // (and resumable chunk uploads) are correctly retried.
+      // generic "fetch failed" message - inspect both.
       const haystack: string[] = [error.message];
       const cause = (error as { cause?: unknown }).cause;
       if (cause instanceof Error) {
@@ -139,13 +133,21 @@ export class HttpClient {
       } else if (cause && typeof cause === "object" && "code" in cause) {
         haystack.push(String((cause as { code: unknown }).code));
       }
-      return (
-        networkErrors.some((code) => haystack.some((m) => m.includes(code))) ||
-        error.name === "AbortError" ||
-        error.message === "fetch failed"
+      const neverReached = ["ECONNREFUSED", "ENOTFOUND", "EAI_AGAIN"].some((code) =>
+        haystack.some((m) => m.includes(code)),
       );
+      if (neverReached) return true;
+      if (!replaySafe) return false;
+      const maybeReached = ["ECONNRESET", "ETIMEDOUT"].some((code) =>
+        haystack.some((m) => m.includes(code)),
+      );
+      return maybeReached || error.name === "AbortError" || error.message === "fetch failed";
     }
     return false;
+  }
+
+  private static isReplaySafe(method: string, idempotent?: boolean): boolean {
+    return idempotent === true || method === "GET" || method === "HEAD";
   }
 
   /**
@@ -161,6 +163,7 @@ export class HttpClient {
     }
     const url = `${this.baseUrl}${endpoint}`;
     const maxAttempts = options.noRetry ? 1 : this.retryConfig.maxRetries + 1;
+    const replaySafe = HttpClient.isReplaySafe(options.method ?? "GET", options.idempotent);
     let lastError: ChaindocError | undefined;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -207,7 +210,7 @@ export class HttpClient {
             typeof data.message === "string"
               ? data.message
               : `Request failed with status ${response.status}`;
-          const isRetryable = this.isRetryableError(null, response.status);
+          const isRetryable = this.isRetryableError(null, response.status, replaySafe);
           lastError = createChaindocError(
             errorMessage,
             response.status,
@@ -236,7 +239,7 @@ export class HttpClient {
           continue;
         }
 
-        const isRetryable = this.isRetryableError(error);
+        const isRetryable = this.isRetryableError(error, undefined, replaySafe);
         if (error instanceof Error) {
           const message =
             error.name === "AbortError" ? "Request timeout" : error.message;
@@ -360,7 +363,7 @@ export class HttpClient {
           errorMessage,
           response.status,
           data,
-          this.isRetryableError(null, response.status)
+          this.isRetryableError(null, response.status, true)
         );
       }
 
@@ -375,7 +378,7 @@ export class HttpClient {
       if (error instanceof Error) {
         const message =
           error.name === "AbortError" ? "Request timeout" : error.message;
-        throw new ChaindocError(message, undefined, undefined, this.isRetryableError(error));
+        throw new ChaindocError(message, undefined, undefined, this.isRetryableError(error, undefined, true));
       }
 
       throw new ChaindocError("Unknown error occurred");
@@ -398,6 +401,7 @@ export class HttpClient {
     const url = `${this.baseUrl}${endpoint}`;
     const maxAttempts = options?.noRetry ? 1 : this.retryConfig.maxRetries + 1;
     const method = options?.method ?? "GET";
+    const replaySafe = HttpClient.isReplaySafe(method, options?.idempotent);
     const hasBody = options?.body !== undefined;
     let lastError: ChaindocError | undefined;
 
@@ -439,7 +443,7 @@ export class HttpClient {
               errorMessage = (errorBody as { message: string }).message;
             }
           }
-          const isRetryable = this.isRetryableError(null, response.status);
+          const isRetryable = this.isRetryableError(null, response.status, replaySafe);
           lastError = createChaindocError(
             errorMessage,
             response.status,
@@ -476,7 +480,7 @@ export class HttpClient {
           continue;
         }
 
-        const isRetryable = this.isRetryableError(error);
+        const isRetryable = this.isRetryableError(error, undefined, replaySafe);
         if (error instanceof Error) {
           const message =
             error.name === "AbortError" ? "Download timeout" : error.message;
@@ -513,6 +517,7 @@ export class HttpClient {
     fieldName = "media"
   ): Promise<T> {
     const maxAttempts = this.retryConfig.maxRetries + 1;
+    const replaySafe = false; // a multipart POST has no idempotency key
     let lastError: ChaindocError | undefined;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -556,7 +561,7 @@ export class HttpClient {
             typeof data.message === "string"
               ? data.message
               : `Upload failed with status ${response.status}`;
-          const isRetryable = this.isRetryableError(null, response.status);
+          const isRetryable = this.isRetryableError(null, response.status, replaySafe);
           lastError = createChaindocError(
             errorMessage,
             response.status,
@@ -585,7 +590,7 @@ export class HttpClient {
           continue;
         }
 
-        const isRetryable = this.isRetryableError(error);
+        const isRetryable = this.isRetryableError(error, undefined, replaySafe);
         if (error instanceof Error) {
           const message =
             error.name === "AbortError" ? "Upload timeout" : error.message;
