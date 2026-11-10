@@ -18,6 +18,8 @@ const EXPECTED_WEBHOOK_EVENTS: WebhookEventType[] = [
   'document.created',
   'document.verified',
   'document.signed',
+  'document.conversion.completed',
+  'document.conversion.failed',
   'signature.request.created',
   'signature.request.completed',
   'signature.request.rejected',
@@ -225,15 +227,6 @@ const EXPECTED_ROUTE_MATRIX: Record<string, Record<string, string[]>> = {
     post: ['200'],
   },
   '/api/v1/templates/{templateId}/restore': {
-    post: ['200'],
-  },
-  '/api/v1/templates/{templateId}/preview-pdf': {
-    post: ['200'],
-  },
-  '/api/v1/templates/{templateId}/preview-html': {
-    post: ['200'],
-  },
-  '/api/v1/templates/preview-unsaved-pdf': {
     post: ['200'],
   },
   '/api/v1/templates/{templateId}/documents': {
