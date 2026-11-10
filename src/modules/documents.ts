@@ -111,7 +111,7 @@ export class Documents {
     params: UpdateDocumentWithContentParams | UpdateDocumentWithFileParams,
   ): Promise<UpdateDocumentTextResponse | DocumentConversionResponse> {
     return this.client.put<UpdateDocumentTextResponse | DocumentConversionResponse>(
-      `/api/v1/documents/${documentId}`,
+      `/api/v1/documents/${encodeURIComponent(documentId)}`,
       params,
     );
   }
@@ -125,7 +125,7 @@ export class Documents {
     params?: GetDocumentContentParams,
   ): Promise<DocumentContentResponse> {
     const qs = params?.versionId ? `?versionId=${encodeURIComponent(params.versionId)}` : '';
-    return this.client.get<DocumentContentResponse>(`/api/v1/documents/${documentId}/content${qs}`);
+    return this.client.get<DocumentContentResponse>(`/api/v1/documents/${encodeURIComponent(documentId)}/content${qs}`);
   }
 
   /**
@@ -137,7 +137,7 @@ export class Documents {
     params?: ConvertDocumentParams,
   ): Promise<DocumentConversionResponse> {
     return this.client.post<DocumentConversionResponse>(
-      `/api/v1/documents/${documentId}/conversion`,
+      `/api/v1/documents/${encodeURIComponent(documentId)}/conversion`,
       params ?? {},
     );
   }
@@ -152,7 +152,7 @@ export class Documents {
     params: AddSignatureBlockParams,
   ): Promise<AddSignatureBlockResponse> {
     return this.client.post<AddSignatureBlockResponse>(
-      `/api/v1/documents/${documentId}/signature-block`,
+      `/api/v1/documents/${encodeURIComponent(documentId)}/signature-block`,
       params,
     );
   }
@@ -161,7 +161,7 @@ export class Documents {
    * Update document access rights
    */
   async updateRights(documentId: string, params: UpdateDocumentRightsParams): Promise<DocumentResponse> {
-    return this.client.put<DocumentResponse>(`/api/v1/documents/${documentId}/rights`, {
+    return this.client.put<DocumentResponse>(`/api/v1/documents/${encodeURIComponent(documentId)}/rights`, {
       ...params,
       accessEmails: normalizeAccessEmails(params.accessEmails),
     });
@@ -178,7 +178,7 @@ export class Documents {
    * Get verification status for a document version
    */
   async getVerificationStatus(versionId: string): Promise<VerifyDocumentResponse> {
-    return this.client.get<VerifyDocumentResponse>(`/api/v1/documents/versions/${versionId}/verification`);
+    return this.client.get<VerifyDocumentResponse>(`/api/v1/documents/versions/${encodeURIComponent(versionId)}/verification`);
   }
 
   /**
@@ -186,7 +186,7 @@ export class Documents {
    * Accepts both pk_ and sk_ keys.
    */
   async get(documentId: string): Promise<GetDocumentResponse> {
-    return this.client.get<GetDocumentResponse>(`/api/v1/documents/${documentId}`);
+    return this.client.get<GetDocumentResponse>(`/api/v1/documents/${encodeURIComponent(documentId)}`);
   }
 
   /**
@@ -203,7 +203,7 @@ export class Documents {
 
     const qs = query.toString();
     return this.client.get<GetDocumentVersionsResponse>(
-      `/api/v1/documents/${documentId}/versions${qs ? `?${qs}` : ''}`,
+      `/api/v1/documents/${encodeURIComponent(documentId)}/versions${qs ? `?${qs}` : ''}`,
     );
   }
 
@@ -213,7 +213,7 @@ export class Documents {
    * parsed from Content-Disposition). Accepts both pk_ and sk_ keys.
    */
   async download(versionId: string): Promise<DownloadResult> {
-    return this.client.download(`/api/v1/documents/versions/${versionId}/download`);
+    return this.client.download(`/api/v1/documents/versions/${encodeURIComponent(versionId)}/download`);
   }
 
   /**
@@ -222,7 +222,7 @@ export class Documents {
    * rather than a download. Accepts both pk_ and sk_ keys.
    */
   async preview(versionId: string): Promise<DownloadResult> {
-    return this.client.download(`/api/v1/documents/versions/${versionId}/preview`);
+    return this.client.download(`/api/v1/documents/versions/${encodeURIComponent(versionId)}/preview`);
   }
 
   /**
@@ -251,7 +251,7 @@ export class Documents {
    */
   async getActivity(documentId: string): Promise<DocumentActivityResponse> {
     return this.client.get<DocumentActivityResponse>(
-      `/api/v1/documents/${documentId}/activity`,
+      `/api/v1/documents/${encodeURIComponent(documentId)}/activity`,
     );
   }
 
@@ -260,7 +260,7 @@ export class Documents {
    */
   async getDownloads(documentId: string): Promise<DocumentDownloadsResponse> {
     return this.client.get<DocumentDownloadsResponse>(
-      `/api/v1/documents/${documentId}/downloads`,
+      `/api/v1/documents/${encodeURIComponent(documentId)}/downloads`,
     );
   }
 
@@ -276,7 +276,7 @@ export class Documents {
     assertValidEmail(params.email, 'email');
 
     return this.client.post<SendPublicLinkResponse>(
-      `/api/v1/documents/${documentId}/send-public-link`,
+      `/api/v1/documents/${encodeURIComponent(documentId)}/send-public-link`,
       { ...params, email: normalizeEmail(params.email) },
     );
   }

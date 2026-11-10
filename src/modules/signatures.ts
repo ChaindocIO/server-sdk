@@ -62,7 +62,7 @@ export class Signatures {
    * Get signature request status
    */
   async getRequestStatus(requestId: string): Promise<SignatureRequestStatus> {
-    return this.client.get<SignatureRequestStatus>(`/api/v1/signatures/requests/${requestId}/status`);
+    return this.client.get<SignatureRequestStatus>(`/api/v1/signatures/requests/${encodeURIComponent(requestId)}/status`);
   }
 
   /**
@@ -95,7 +95,7 @@ export class Signatures {
   ): Promise<EditSignatureRequestResponse> {
     assertValidEmail(params.recipient, 'recipient');
     return this.client.post<EditSignatureRequestResponse>(
-      `/api/v1/signatures/requests/${requestId}/edit`,
+      `/api/v1/signatures/requests/${encodeURIComponent(requestId)}/edit`,
       { ...params, recipient: normalizeEmail(params.recipient) },
     );
   }
@@ -147,7 +147,7 @@ export class Signatures {
    */
   async cancel(requestId: string): Promise<CancelSignatureRequestResponse> {
     return this.client.post<CancelSignatureRequestResponse>(
-      `/api/v1/signatures/requests/${requestId}/cancel`,
+      `/api/v1/signatures/requests/${encodeURIComponent(requestId)}/cancel`,
       {},
     );
   }
@@ -162,7 +162,7 @@ export class Signatures {
     params?: ResendSignatureRequestParams,
   ): Promise<ResendSignatureRequestResponse> {
     return this.client.post<ResendSignatureRequestResponse>(
-      `/api/v1/signatures/requests/${requestId}/resend`,
+      `/api/v1/signatures/requests/${encodeURIComponent(requestId)}/resend`,
       { deadline: params?.deadline?.toISOString() },
     );
   }
@@ -190,7 +190,7 @@ export class Signatures {
       body.signerEmails = params.signerEmails.map((e) => normalizeEmail(e));
     }
     return this.client.post<RemindSignatureRequestResponse>(
-      `/api/v1/signatures/requests/${requestId}/remind`,
+      `/api/v1/signatures/requests/${encodeURIComponent(requestId)}/remind`,
       body,
     );
   }
@@ -200,7 +200,7 @@ export class Signatures {
    * Accepts both pk_ and sk_ keys.
    */
   async downloadCertificate(versionId: string): Promise<DownloadResult> {
-    return this.client.download(`/api/v1/signatures/versions/${versionId}/certificate`);
+    return this.client.download(`/api/v1/signatures/versions/${encodeURIComponent(versionId)}/certificate`);
   }
 
   /**
@@ -208,6 +208,6 @@ export class Signatures {
    * Accepts both pk_ and sk_ keys.
    */
   async downloadSignedDocument(versionId: string): Promise<DownloadResult> {
-    return this.client.download(`/api/v1/signatures/versions/${versionId}/signed-document`);
+    return this.client.download(`/api/v1/signatures/versions/${encodeURIComponent(versionId)}/signed-document`);
   }
 }

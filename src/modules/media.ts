@@ -93,7 +93,7 @@ export class Media {
     });
 
     const chunkSize = session.chunkSize;
-    const chunkPath = `${CHUNKED_PATH}/${session.uploadId}`;
+    const chunkPath = `${CHUNKED_PATH}/${encodeURIComponent(session.uploadId)}`;
     let offset = 0;
     let resumeAttempts = 0;
 

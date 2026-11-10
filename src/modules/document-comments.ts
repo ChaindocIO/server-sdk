@@ -24,7 +24,7 @@ export class DocumentComments {
    */
   async add(documentId: string, params: CreateCommentParams): Promise<AddCommentResponse> {
     return this.client.post<AddCommentResponse>(
-      `/api/v1/documents/${documentId}/comments`,
+      `/api/v1/documents/${encodeURIComponent(documentId)}/comments`,
       params,
     );
   }
@@ -40,7 +40,7 @@ export class DocumentComments {
 
     const qs = query.toString();
     return this.client.get<CommentListResponse>(
-      `/api/v1/documents/${documentId}/comments${qs ? `?${qs}` : ''}`,
+      `/api/v1/documents/${encodeURIComponent(documentId)}/comments${qs ? `?${qs}` : ''}`,
     );
   }
 }

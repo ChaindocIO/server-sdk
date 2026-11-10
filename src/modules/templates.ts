@@ -45,7 +45,7 @@ export class Templates {
    * versions (variables schema and signer slots inlined).
    */
   async get(templateId: string): Promise<TemplateGetResponse> {
-    return this.client.get<TemplateGetResponse>(`/api/v1/templates/${templateId}`);
+    return this.client.get<TemplateGetResponse>(`/api/v1/templates/${encodeURIComponent(templateId)}`);
   }
 
   /**
@@ -54,7 +54,7 @@ export class Templates {
    */
   async getVersions(templateId: string): Promise<TemplateVersionsResponse> {
     return this.client.get<TemplateVersionsResponse>(
-      `/api/v1/templates/${templateId}/versions`,
+      `/api/v1/templates/${encodeURIComponent(templateId)}/versions`,
     );
   }
 
@@ -65,7 +65,7 @@ export class Templates {
     templateId: string,
     params: CreateDocumentFromTemplateParams,
   ): Promise<TemplateDocumentResponse> {
-    return this.client.post<TemplateDocumentResponse>(`/api/v1/templates/${templateId}/documents`, params);
+    return this.client.post<TemplateDocumentResponse>(`/api/v1/templates/${encodeURIComponent(templateId)}/documents`, params);
   }
 
   /**
@@ -80,7 +80,7 @@ export class Templates {
       assertValidEmail(a?.email, `slotAssignments[${i}].email`),
     );
     return this.client.post<TemplateSignatureRequestResponse>(
-      `/api/v1/templates/${templateId}/signature-requests`,
+      `/api/v1/templates/${encodeURIComponent(templateId)}/signature-requests`,
       {
         ...params,
         slotAssignments: params.slotAssignments.map(withNormalizedEmail),
@@ -98,7 +98,7 @@ export class Templates {
     params: CreateContractFromTemplateParams,
   ): Promise<TemplateContractResponse> {
     assertValidEmail(params.contragent?.email, 'contragent.email');
-    return this.client.post<TemplateContractResponse>(`/api/v1/templates/${templateId}/contracts`, {
+    return this.client.post<TemplateContractResponse>(`/api/v1/templates/${encodeURIComponent(templateId)}/contracts`, {
       ...params,
       contragent: withNormalizedEmail(params.contragent),
     });
@@ -118,29 +118,29 @@ export class Templates {
    * version never changes.
    */
   async update(templateId: string, params: UpdateTemplateParams): Promise<TemplateEnvelope> {
-    return this.client.patch<TemplateEnvelope>(`/api/v1/templates/${templateId}`, params);
+    return this.client.patch<TemplateEnvelope>(`/api/v1/templates/${encodeURIComponent(templateId)}`, params);
   }
 
   /** Publish the working copy as the template's next version (pass `revision` to refuse a moved copy). */
   async publish(templateId: string, params?: PublishTemplateParams): Promise<TemplateEnvelope> {
     return this.client.post<TemplateEnvelope>(
-      `/api/v1/templates/${templateId}/publish`,
+      `/api/v1/templates/${encodeURIComponent(templateId)}/publish`,
       params ?? {},
     );
   }
 
   /** Archive a template (soft delete — hidden from default listings, not editable). */
   async archive(templateId: string): Promise<TemplateEnvelope> {
-    return this.client.post<TemplateEnvelope>(`/api/v1/templates/${templateId}/archive`, {});
+    return this.client.post<TemplateEnvelope>(`/api/v1/templates/${encodeURIComponent(templateId)}/archive`, {});
   }
 
   /** Restore an archived template: PUBLISHED when it has a published version, DRAFT when it never had one. */
   async restore(templateId: string): Promise<TemplateEnvelope> {
-    return this.client.post<TemplateEnvelope>(`/api/v1/templates/${templateId}/restore`, {});
+    return this.client.post<TemplateEnvelope>(`/api/v1/templates/${encodeURIComponent(templateId)}/restore`, {});
   }
 
   /** Delete a template for good (not recoverable; documents made from it stay). */
   async delete(templateId: string): Promise<TemplateDeleteResponse> {
-    return this.client.delete<TemplateDeleteResponse>(`/api/v1/templates/${templateId}`);
+    return this.client.delete<TemplateDeleteResponse>(`/api/v1/templates/${encodeURIComponent(templateId)}`);
   }
 }

@@ -20,7 +20,7 @@ export class ContractPaymentTerms {
   /** List all payment terms for a contract. */
   async list(contractId: string): Promise<PaymentTermListResponse> {
     return this.client.get<PaymentTermListResponse>(
-      `/api/v1/contracts/${contractId}/payment-terms`
+      `/api/v1/contracts/${encodeURIComponent(contractId)}/payment-terms`
     );
   }
 
@@ -30,7 +30,7 @@ export class ContractPaymentTerms {
    */
   async create(contractId: string, params: PaymentTermInput): Promise<PaymentTermEnvelope> {
     return this.client.post<PaymentTermEnvelope>(
-      `/api/v1/contracts/${contractId}/payment-terms`,
+      `/api/v1/contracts/${encodeURIComponent(contractId)}/payment-terms`,
       params
     );
   }
@@ -42,7 +42,7 @@ export class ContractPaymentTerms {
     params: UpdatePaymentTermParams
   ): Promise<PaymentTermEnvelope> {
     return this.client.patch<PaymentTermEnvelope>(
-      `/api/v1/contracts/${contractId}/payment-terms/${termId}`,
+      `/api/v1/contracts/${encodeURIComponent(contractId)}/payment-terms/${encodeURIComponent(termId)}`,
       params
     );
   }
@@ -50,7 +50,7 @@ export class ContractPaymentTerms {
   /** Remove a payment term from a DRAFT contract. */
   async delete(contractId: string, termId: string): Promise<PaymentTermDeleteResponse> {
     return this.client.delete<PaymentTermDeleteResponse>(
-      `/api/v1/contracts/${contractId}/payment-terms/${termId}`
+      `/api/v1/contracts/${encodeURIComponent(contractId)}/payment-terms/${encodeURIComponent(termId)}`
     );
   }
 }

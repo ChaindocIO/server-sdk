@@ -24,7 +24,7 @@ export class ContractAgreements {
    */
   async create(contractId: string, params: CreateAgreementParams): Promise<AgreementEnvelope> {
     return this.client.post<AgreementEnvelope>(
-      `/api/v1/contracts/${contractId}/agreements`,
+      `/api/v1/contracts/${encodeURIComponent(contractId)}/agreements`,
       params
     );
   }
@@ -32,14 +32,14 @@ export class ContractAgreements {
   /** List all amendments attached to a contract. */
   async list(contractId: string): Promise<AgreementListResponse> {
     return this.client.get<AgreementListResponse>(
-      `/api/v1/contracts/${contractId}/agreements`
+      `/api/v1/contracts/${encodeURIComponent(contractId)}/agreements`
     );
   }
 
   /** Get a single amendment by UUID. */
   async get(contractId: string, agreementId: string): Promise<AgreementEnvelope> {
     return this.client.get<AgreementEnvelope>(
-      `/api/v1/contracts/${contractId}/agreements/${agreementId}`
+      `/api/v1/contracts/${encodeURIComponent(contractId)}/agreements/${encodeURIComponent(agreementId)}`
     );
   }
 
@@ -60,7 +60,7 @@ export class ContractAgreements {
       : {};
 
     return this.client.post<AgreementSigningResponse>(
-      `/api/v1/contracts/${contractId}/agreements/${agreementId}/initiate-signing`,
+      `/api/v1/contracts/${encodeURIComponent(contractId)}/agreements/${encodeURIComponent(agreementId)}/initiate-signing`,
       body
     );
   }
@@ -68,7 +68,7 @@ export class ContractAgreements {
   /** Delete a DRAFT amendment. */
   async delete(contractId: string, agreementId: string): Promise<AgreementDeleteResponse> {
     return this.client.delete<AgreementDeleteResponse>(
-      `/api/v1/contracts/${contractId}/agreements/${agreementId}`
+      `/api/v1/contracts/${encodeURIComponent(contractId)}/agreements/${encodeURIComponent(agreementId)}`
     );
   }
 }

@@ -84,7 +84,7 @@ export class Contracts {
    * Returns full contract details including payment terms and signing status.
    */
   async get(contractId: string): Promise<ContractResponse> {
-    return this.client.get<ContractResponse>(`/api/v1/contracts/${contractId}`);
+    return this.client.get<ContractResponse>(`/api/v1/contracts/${encodeURIComponent(contractId)}`);
   }
 
   /**
@@ -92,7 +92,7 @@ export class Contracts {
    * Returns lightweight status summary including signing progress and payment overview.
    */
   async getStatus(contractId: string): Promise<ContractStatusResponse> {
-    return this.client.get<ContractStatusResponse>(`/api/v1/contracts/${contractId}/status`);
+    return this.client.get<ContractStatusResponse>(`/api/v1/contracts/${encodeURIComponent(contractId)}/status`);
   }
 
   /**
@@ -106,7 +106,7 @@ export class Contracts {
 
     const qs = query.toString();
     return this.client.get<ContractActivitiesResponse>(
-      `/api/v1/contracts/${contractId}/activities${qs ? `?${qs}` : ''}`
+      `/api/v1/contracts/${encodeURIComponent(contractId)}/activities${qs ? `?${qs}` : ''}`
     );
   }
 
@@ -115,7 +115,7 @@ export class Contracts {
    * Adds payment terms to a DRAFT contract that was created without them.
    */
   async addPaymentSetup(contractId: string, params: PaymentSetupParams): Promise<ContractResponse> {
-    return this.client.post<ContractResponse>(`/api/v1/contracts/${contractId}/payment-setup`, params);
+    return this.client.post<ContractResponse>(`/api/v1/contracts/${encodeURIComponent(contractId)}/payment-setup`, params);
   }
 
   /**
@@ -123,7 +123,7 @@ export class Contracts {
    * Initiates the signing flow for a DRAFT contract.
    */
   async send(contractId: string, params?: ContractSendParams): Promise<ContractSendResponse> {
-    return this.client.post<ContractSendResponse>(`/api/v1/contracts/${contractId}/send`, {
+    return this.client.post<ContractSendResponse>(`/api/v1/contracts/${encodeURIComponent(contractId)}/send`, {
       ...params,
       deadline: params?.deadline?.toISOString(),
     });
@@ -134,7 +134,7 @@ export class Contracts {
    * Cancels a DRAFT contract.
    */
   async cancel(contractId: string): Promise<ContractActionResponse> {
-    return this.client.post<ContractActionResponse>(`/api/v1/contracts/${contractId}/cancel`, {});
+    return this.client.post<ContractActionResponse>(`/api/v1/contracts/${encodeURIComponent(contractId)}/cancel`, {});
   }
 
   /**
@@ -145,7 +145,7 @@ export class Contracts {
    */
   async terminate(contractId: string, params?: TerminateContractParams): Promise<ContractActionResponse> {
     return this.client.post<ContractActionResponse>(
-      `/api/v1/contracts/${contractId}/terminate`,
+      `/api/v1/contracts/${encodeURIComponent(contractId)}/terminate`,
       params ?? {}
     );
   }
@@ -158,7 +158,7 @@ export class Contracts {
     if (params.contragent !== undefined) {
       assertValidEmail(params.contragent.email, 'contragent.email');
     }
-    return this.client.patch<ContractResponse>(`/api/v1/contracts/${contractId}`, {
+    return this.client.patch<ContractResponse>(`/api/v1/contracts/${encodeURIComponent(contractId)}`, {
       ...params,
       contragent: params.contragent ? withNormalizedEmail(params.contragent) : undefined,
     });
@@ -169,7 +169,7 @@ export class Contracts {
    * Only DRAFT contracts can be deleted; usage is decremented atomically.
    */
   async delete(contractId: string): Promise<ContractActionResponse> {
-    return this.client.delete<ContractActionResponse>(`/api/v1/contracts/${contractId}`);
+    return this.client.delete<ContractActionResponse>(`/api/v1/contracts/${encodeURIComponent(contractId)}`);
   }
 
   /**
@@ -220,7 +220,7 @@ export class Contracts {
     params: AttachDocumentParams
   ): Promise<ContractResponse> {
     return this.client.patch<ContractResponse>(
-      `/api/v1/contracts/${contractId}/document`,
+      `/api/v1/contracts/${encodeURIComponent(contractId)}/document`,
       params
     );
   }
@@ -230,7 +230,7 @@ export class Contracts {
    * Returns aggregate financial overview: contract value, paid/pending amounts, invoice count.
    */
   async getStats(contractId: string): Promise<ContractStatsResponse> {
-    return this.client.get<ContractStatsResponse>(`/api/v1/contracts/${contractId}/stats`);
+    return this.client.get<ContractStatsResponse>(`/api/v1/contracts/${encodeURIComponent(contractId)}/stats`);
   }
 
   /**
@@ -240,7 +240,7 @@ export class Contracts {
    */
   async setupRecurring(contractId: string, params: RecurringSetupParams): Promise<ContractResponse> {
     return this.client.post<ContractResponse>(
-      `/api/v1/contracts/${contractId}/recurring-setup`,
+      `/api/v1/contracts/${encodeURIComponent(contractId)}/recurring-setup`,
       params
     );
   }
@@ -248,7 +248,7 @@ export class Contracts {
   /** Resend the pending recurring approval invitation email to the contragent. */
   async resendRecurringApproval(contractId: string): Promise<ContractActionResponse> {
     return this.client.post<ContractActionResponse>(
-      `/api/v1/contracts/${contractId}/recurring-approval/resend`,
+      `/api/v1/contracts/${encodeURIComponent(contractId)}/recurring-approval/resend`,
       {}
     );
   }
@@ -256,7 +256,7 @@ export class Contracts {
   /** Cancel a pending recurring approval request and remove the related pending payment terms. */
   async cancelRecurringApproval(contractId: string): Promise<ContractActionResponse> {
     return this.client.delete<ContractActionResponse>(
-      `/api/v1/contracts/${contractId}/recurring-approval`
+      `/api/v1/contracts/${encodeURIComponent(contractId)}/recurring-approval`
     );
   }
 
@@ -266,7 +266,7 @@ export class Contracts {
    */
   async listSigningRequests(contractId: string): Promise<SigningRequestListResponse> {
     return this.client.get<SigningRequestListResponse>(
-      `/api/v1/contracts/${contractId}/signing-requests`
+      `/api/v1/contracts/${encodeURIComponent(contractId)}/signing-requests`
     );
   }
 
@@ -276,7 +276,7 @@ export class Contracts {
     requestId: string
   ): Promise<SigningRequestGetResponse> {
     return this.client.get<SigningRequestGetResponse>(
-      `/api/v1/contracts/${contractId}/signing-requests/${requestId}`
+      `/api/v1/contracts/${encodeURIComponent(contractId)}/signing-requests/${encodeURIComponent(requestId)}`
     );
   }
 
@@ -286,7 +286,7 @@ export class Contracts {
     requestId: string
   ): Promise<SigningRequestActionResponse> {
     return this.client.post<SigningRequestActionResponse>(
-      `/api/v1/contracts/${contractId}/signing-requests/${requestId}/resend`,
+      `/api/v1/contracts/${encodeURIComponent(contractId)}/signing-requests/${encodeURIComponent(requestId)}/resend`,
       {}
     );
   }
@@ -300,7 +300,7 @@ export class Contracts {
     requestId: string
   ): Promise<SigningRequestActionResponse> {
     return this.client.delete<SigningRequestActionResponse>(
-      `/api/v1/contracts/${contractId}/signing-requests/${requestId}`
+      `/api/v1/contracts/${encodeURIComponent(contractId)}/signing-requests/${encodeURIComponent(requestId)}`
     );
   }
 
@@ -322,7 +322,7 @@ export class Contracts {
     params: BusinessSignParams
   ): Promise<BusinessSignResponse> {
     return this.client.post<BusinessSignResponse>(
-      `/api/v1/contracts/${contractId}/signing-requests/${requestId}/business-sign`,
+      `/api/v1/contracts/${encodeURIComponent(contractId)}/signing-requests/${encodeURIComponent(requestId)}/business-sign`,
       params
     );
   }
