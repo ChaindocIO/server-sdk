@@ -5,6 +5,7 @@
  * this module reads it and waits for its end.
  */
 
+import { seg } from '../utils/path';
 import type { HttpClient } from '../client';
 import { ChaindocConversionFailedError, ChaindocConversionTimeoutError } from '../errors';
 import type {
@@ -25,7 +26,7 @@ export class Conversions {
   /** Where a conversion stands: `converting`, `ready` (with `documentId` and `versionId`) or `failed` (with `failure.code`). */
   async get(conversionId: string): Promise<DocumentConversionResponse> {
     return this.client.get<DocumentConversionResponse>(
-      `/api/v1/documents/conversions/${encodeURIComponent(conversionId)}`,
+      `/api/v1/documents/conversions/${seg(conversionId)}`,
     );
   }
 

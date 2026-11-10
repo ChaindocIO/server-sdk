@@ -2,6 +2,7 @@
  * Signatures Module
  */
 
+import { seg } from '../utils/path';
 import { ChaindocError } from '../client';
 import { ChaindocSigningSetupError, ERROR_KEYS } from '../errors';
 import type { DownloadResult, HttpClient } from '../client';
@@ -62,7 +63,7 @@ export class Signatures {
    * Get signature request status
    */
   async getRequestStatus(requestId: string): Promise<SignatureRequestStatus> {
-    return this.client.get<SignatureRequestStatus>(`/api/v1/signatures/requests/${encodeURIComponent(requestId)}/status`);
+    return this.client.get<SignatureRequestStatus>(`/api/v1/signatures/requests/${seg(requestId)}/status`);
   }
 
   /**
@@ -95,7 +96,7 @@ export class Signatures {
   ): Promise<EditSignatureRequestResponse> {
     assertValidEmail(params.recipient, 'recipient');
     return this.client.post<EditSignatureRequestResponse>(
-      `/api/v1/signatures/requests/${encodeURIComponent(requestId)}/edit`,
+      `/api/v1/signatures/requests/${seg(requestId)}/edit`,
       { ...params, recipient: normalizeEmail(params.recipient) },
     );
   }
@@ -147,7 +148,7 @@ export class Signatures {
    */
   async cancel(requestId: string): Promise<CancelSignatureRequestResponse> {
     return this.client.post<CancelSignatureRequestResponse>(
-      `/api/v1/signatures/requests/${encodeURIComponent(requestId)}/cancel`,
+      `/api/v1/signatures/requests/${seg(requestId)}/cancel`,
       {},
     );
   }
@@ -162,7 +163,7 @@ export class Signatures {
     params?: ResendSignatureRequestParams,
   ): Promise<ResendSignatureRequestResponse> {
     return this.client.post<ResendSignatureRequestResponse>(
-      `/api/v1/signatures/requests/${encodeURIComponent(requestId)}/resend`,
+      `/api/v1/signatures/requests/${seg(requestId)}/resend`,
       { deadline: params?.deadline?.toISOString() },
     );
   }
@@ -190,7 +191,7 @@ export class Signatures {
       body.signerEmails = params.signerEmails.map((e) => normalizeEmail(e));
     }
     return this.client.post<RemindSignatureRequestResponse>(
-      `/api/v1/signatures/requests/${encodeURIComponent(requestId)}/remind`,
+      `/api/v1/signatures/requests/${seg(requestId)}/remind`,
       body,
     );
   }
@@ -200,7 +201,7 @@ export class Signatures {
    * Accepts both pk_ and sk_ keys.
    */
   async downloadCertificate(versionId: string): Promise<DownloadResult> {
-    return this.client.download(`/api/v1/signatures/versions/${encodeURIComponent(versionId)}/certificate`);
+    return this.client.download(`/api/v1/signatures/versions/${seg(versionId)}/certificate`);
   }
 
   /**
@@ -208,6 +209,6 @@ export class Signatures {
    * Accepts both pk_ and sk_ keys.
    */
   async downloadSignedDocument(versionId: string): Promise<DownloadResult> {
-    return this.client.download(`/api/v1/signatures/versions/${encodeURIComponent(versionId)}/signed-document`);
+    return this.client.download(`/api/v1/signatures/versions/${seg(versionId)}/signed-document`);
   }
 }

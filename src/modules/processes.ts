@@ -1,3 +1,4 @@
+import { seg } from '../utils/path';
 import { createHmac } from 'crypto';
 import { ChaindocError } from '../client';
 import type { DownloadResult, HttpClient } from '../client';
@@ -154,7 +155,7 @@ export class Processes {
     const timestamp = new Date().toISOString();
     const signature = `v1=${createHmac('sha256', integrationSecret).update(`${timestamp}.${raw}`).digest('hex')}`;
     return this.client.request<ProcessIntegrationResponseReceipt>(
-      `/api/v1/processes/integrations/${encodeURIComponent(integrationUuid)}/responses`,
+      `/api/v1/processes/integrations/${seg(integrationUuid)}/responses`,
       {
         method: 'POST',
         rawBody: new TextEncoder().encode(raw),
@@ -165,18 +166,18 @@ export class Processes {
   }
 
   private materialPath(caseUuid: string, materialUuid: string): string {
-    return `${this.casePath(caseUuid)}/materials/${encodeURIComponent(materialUuid)}`;
+    return `${this.casePath(caseUuid)}/materials/${seg(materialUuid)}`;
   }
 
   private casePath(caseUuid: string): string {
-    return `/api/v1/processes/cases/${encodeURIComponent(caseUuid)}`;
+    return `/api/v1/processes/cases/${seg(caseUuid)}`;
   }
 
   private intakePath(processKey: string, entryKey: string, intakeUuid: string): string {
-    return `${this.entryPath(processKey, entryKey)}/intakes/${encodeURIComponent(intakeUuid)}`;
+    return `${this.entryPath(processKey, entryKey)}/intakes/${seg(intakeUuid)}`;
   }
 
   private entryPath(processKey: string, entryKey: string): string {
-    return `/api/v1/processes/${encodeURIComponent(processKey)}/entries/${encodeURIComponent(entryKey)}`;
+    return `/api/v1/processes/${seg(processKey)}/entries/${seg(entryKey)}`;
   }
 }

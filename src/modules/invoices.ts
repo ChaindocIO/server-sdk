@@ -2,6 +2,7 @@
  * Invoices Module
  */
 
+import { seg } from '../utils/path';
 import type { DownloadResult, HttpClient } from '../client';
 import type {
   CreateInvoiceParams,
@@ -23,7 +24,7 @@ export class Invoices {
    * Create an invoice for a contract.
    */
   async create(contractId: string, params: CreateInvoiceParams): Promise<InvoiceResponse> {
-    return this.client.post<InvoiceResponse>(`/api/v1/contracts/${encodeURIComponent(contractId)}/invoices`, params);
+    return this.client.post<InvoiceResponse>(`/api/v1/contracts/${seg(contractId)}/invoices`, params);
   }
 
   /**
@@ -41,7 +42,7 @@ export class Invoices {
 
     const qs = query.toString();
     return this.client.get<InvoiceListResponse>(
-      `/api/v1/contracts/${encodeURIComponent(contractId)}/invoices${qs ? `?${qs}` : ''}`,
+      `/api/v1/contracts/${seg(contractId)}/invoices${qs ? `?${qs}` : ''}`,
     );
   }
 
@@ -68,7 +69,7 @@ export class Invoices {
    * Get a single invoice by UUID.
    */
   async get(contractId: string, invoiceId: string): Promise<InvoiceResponse> {
-    return this.client.get<InvoiceResponse>(`/api/v1/contracts/${encodeURIComponent(contractId)}/invoices/${encodeURIComponent(invoiceId)}`);
+    return this.client.get<InvoiceResponse>(`/api/v1/contracts/${seg(contractId)}/invoices/${seg(invoiceId)}`);
   }
 
   /**
@@ -80,7 +81,7 @@ export class Invoices {
     params?: SendInvoiceParams,
   ): Promise<InvoiceActionResponse> {
     return this.client.post<InvoiceActionResponse>(
-      `/api/v1/contracts/${encodeURIComponent(contractId)}/invoices/${encodeURIComponent(invoiceId)}/send`,
+      `/api/v1/contracts/${seg(contractId)}/invoices/${seg(invoiceId)}/send`,
       params ?? {},
     );
   }
@@ -90,7 +91,7 @@ export class Invoices {
    */
   async charge(contractId: string, invoiceId: string): Promise<InvoiceActionResponse> {
     return this.client.post<InvoiceActionResponse>(
-      `/api/v1/contracts/${encodeURIComponent(contractId)}/invoices/${encodeURIComponent(invoiceId)}/charge`,
+      `/api/v1/contracts/${seg(contractId)}/invoices/${seg(invoiceId)}/charge`,
       {},
     );
   }
@@ -104,7 +105,7 @@ export class Invoices {
     params?: MarkInvoicePaidParams,
   ): Promise<InvoiceResponse> {
     return this.client.post<InvoiceResponse>(
-      `/api/v1/contracts/${encodeURIComponent(contractId)}/invoices/${encodeURIComponent(invoiceId)}/mark-paid`,
+      `/api/v1/contracts/${seg(contractId)}/invoices/${seg(invoiceId)}/mark-paid`,
       params ?? {},
     );
   }
@@ -119,7 +120,7 @@ export class Invoices {
     params: UpdateInvoiceParams,
   ): Promise<InvoiceResponse> {
     return this.client.patch<InvoiceResponse>(
-      `/api/v1/contracts/${encodeURIComponent(contractId)}/invoices/${encodeURIComponent(invoiceId)}`,
+      `/api/v1/contracts/${seg(contractId)}/invoices/${seg(invoiceId)}`,
       params,
     );
   }
@@ -129,7 +130,7 @@ export class Invoices {
    */
   async cancel(contractId: string, invoiceId: string): Promise<InvoiceActionResponse> {
     return this.client.post<InvoiceActionResponse>(
-      `/api/v1/contracts/${encodeURIComponent(contractId)}/invoices/${encodeURIComponent(invoiceId)}/cancel`,
+      `/api/v1/contracts/${seg(contractId)}/invoices/${seg(invoiceId)}/cancel`,
       {},
     );
   }
@@ -140,7 +141,7 @@ export class Invoices {
    */
   async downloadPdf(contractId: string, invoiceId: string): Promise<DownloadResult> {
     return this.client.download(
-      `/api/v1/contracts/${encodeURIComponent(contractId)}/invoices/${encodeURIComponent(invoiceId)}/pdf`,
+      `/api/v1/contracts/${seg(contractId)}/invoices/${seg(invoiceId)}/pdf`,
     );
   }
 }

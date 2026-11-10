@@ -4,6 +4,27 @@ import { Invoices } from '../modules/invoices';
 import { Signatures } from '../modules/signatures';
 import { fakeClient } from './helpers';
 
+import { seg } from '../utils/path';
+import { Processes } from '../modules/processes';
+import { Conversions } from '../modules/conversions';
+
+describe('seg refuses ids that could leave their route', () => {
+  it.each(['', '.', '..'])('refuses %j before any request', async (id) => {
+    const f = fakeClient({});
+    expect(() => seg(id)).toThrow('non-empty identifier');
+    await expect(new Documents(f.client).getContent(id)).rejects.toThrow('non-empty identifier');
+    await expect(new Conversions(f.client).get(id)).rejects.toThrow('non-empty identifier');
+    await expect(new Processes(f.client).getCase(id)).rejects.toThrow('non-empty identifier');
+    expect(f.get).not.toHaveBeenCalled();
+  });
+
+  it('keeps a/b inside one segment and lets numeric and prefixed ids through', () => {
+    expect(seg('a/b')).toBe('a%2Fb');
+    expect(seg('12345')).toBe('12345');
+    expect(seg('inv_abc-1')).toBe('inv_abc-1');
+  });
+});
+
 describe('path ids are encoded', () => {
   const evil = '../../contracts/x?y=1#z';
   const enc = encodeURIComponent(evil);
