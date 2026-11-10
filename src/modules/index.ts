@@ -13,3 +13,4 @@ export { Accounts } from './accounts';
 export { Contragents } from './contragents';
 export { PaymentInstructions } from './payment-instructions';
 export { TaxTreatments } from './tax-treatments';
+export { Qes } from './qes';

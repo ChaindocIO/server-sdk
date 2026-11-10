@@ -2,6 +2,7 @@
  * Signatures Module
  */
 
+import { Qes } from './qes';
 import { seg } from '../utils/path';
 import { ChaindocError } from '../client';
 import { ChaindocSigningSetupError, ERROR_KEYS } from '../errors';
@@ -30,7 +31,12 @@ import { normalizeEmail, withNormalizedEmail } from '../utils/normalize-email';
 import { assertValidEmail } from '../utils/validate-email';
 
 export class Signatures {
-  constructor(private client: HttpClient) {}
+  /** Qualified electronic signature: promise, prepare, finalize. */
+  readonly qes: Qes;
+
+  constructor(private client: HttpClient) {
+    this.qes = new Qes(client);
+  }
 
   /**
    * Create a signature request

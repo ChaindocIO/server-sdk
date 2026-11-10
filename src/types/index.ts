@@ -963,16 +963,18 @@ export interface HealthCheckResponse {
 // ============================================================================
 
 /**
- * Webhook event types emitted by the Chaindoc API.
+ * Webhook event types emitted by the Chaindoc API (the contract's list of 22).
  *
- * The retired development-only approval route events were never published in this SDK.
- * Independent contract and signature events, including amendment signing, remain available.
+ * There are no `workflow.*` events (the approval-workflow routes are gone) and no escrow events.
+ * Events go only to keys that can read the object, and only on a Business plan or above.
  */
 export type WebhookEventType =
   | "additional_agreement.signed"
   | "document.created"
   | "document.verified"
   | "document.signed"
+  | "document.conversion.completed"
+  | "document.conversion.failed"
   | "signature.request.created"
   | "signature.request.completed"
   | "signature.request.rejected"
@@ -1018,6 +1020,27 @@ export interface WebhookEnvelope<T = Record<string, unknown>> {
  */
 export interface WebhookEventWorkspace {
   uuid: string | null;
+}
+
+/** Payload of `document.conversion.completed`: the document (or next version) is made, as a draft. */
+export interface DocumentConversionCompletedData {
+  conversionId: string;
+  documentId: string;
+  versionId: string;
+  kind: 'new' | 'version';
+  /** `ready_for_review` or `needs_review`. */
+  review: string;
+  workspace?: WebhookEventWorkspace;
+}
+
+/** Payload of `document.conversion.failed`: nothing was made. */
+export interface DocumentConversionFailedData {
+  conversionId: string;
+  documentId?: string;
+  kind: 'new' | 'version';
+  /** The converter's code, or `AI_LIMIT_REACHED`, `STORAGE_LIMIT_REACHED`, `DOCUMENT_FILE_REFUSED`... */
+  failure: { code: string };
+  workspace?: WebhookEventWorkspace;
 }
 
 /**
@@ -2226,3 +2249,71 @@ export type TransactionWebhookEventType = Extract<
   WebhookEventType,
   'transaction.created' | 'transaction.updated' | 'transaction.edited' | 'transaction.removed'
 >;
+
+// ============================================================================
+// QES (qualified electronic signature): promise -> prepare -> finalize
+// ============================================================================
+
+/**
+ * Phase 0: record the signer's promise - consent, field values and appearance, no crypto. It is the
+ * integration key's act, attributed to the key, and commits the request to the qualified lane. A contract
+ * counterparty is refused (`CONTRAGENT_QES_REQUIRES_SIGNER_SESSION`): their consent comes from their own
+ * embedded session.
+ */
+export interface QesPromiseParams {
+  /** Filled placed-field values keyed by field placement id (required signer fields: `SIGNING_FIELDS_EMPTY`). */
+  fieldValues?: Record<string, string | number | boolean>;
+  meta?: MetaTag[];
+  /** Hash of a saved signature whose image becomes the appearance; omitted - no appearance (the device's own signature is the visible artifact). */
+  signatureHash?: string;
+}
+
+export interface QesPromiseResponse {
+  lane: 'qes';
+  requestId: string;
+  signerUuid: string;
+}
+
+/** Phase 1: the signer's PUBLIC certificate material. A private key is never accepted. */
+export interface QesPrepareParams {
+  /** PEM of the signer's end-entity (qualified) certificate. */
+  signerCertPem: string;
+  /** PEM of the issuer chain (X.509 blocks only). */
+  chainPem?: string;
+}
+
+export interface QesPrepareResponse {
+  /** Base64 DSS ToBeSigned bytes for the device to sign. */
+  dataToSignB64: string;
+  digestAlgorithm: 'SHA256';
+  /** Opaque signing-session id to hand back to `finalize`. */
+  sessionId: string;
+  signatureAlgorithm: 'RSA_SHA256' | 'ECDSA_SHA256';
+}
+
+/** Phase 2: the signature value the device computed over the ToBeSigned bytes. */
+export interface QesFinalizeParams {
+  sessionId: string;
+  /** Standard base64 signature value. */
+  signatureValueB64: string;
+}
+
+export interface QesSignerFacts {
+  certificate: { issuer: string | null; serial: string | null; subject: string | null };
+  /** `PAdES-BES` / `PAdES-LT` / `PAdES-LTA`. */
+  containerProfile: string | null;
+  legalClass: string;
+  /** `true` qualified, `false` not qualified, `null` no verdict was obtained (not a synonym for `false`). */
+  qualifiedCertificate: boolean | null;
+  validatorLevel: string | null;
+}
+
+export interface QesFinalizeResponse {
+  hasContributed: boolean;
+  requiredSignatureKind: 'internal' | 'qes' | null;
+  signatureKind: 'internal' | 'qes';
+  /** Status of the signature request after this signature. */
+  status: string;
+  /** Present only when the lane is `qes` and the request is completed. */
+  qes?: QesSignerFacts;
+}
