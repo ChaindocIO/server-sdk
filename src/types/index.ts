@@ -1603,7 +1603,10 @@ export interface SigningLaneByParty {
 export interface SigningLaneParams {
   /** Both sides; omitted — the platform's signature. */
   signingLane?: SigningLane;
-  /** Per side. Sent with `signingLane`, the two must agree. */
+  /**
+   * Per side. Sent with `signingLane`, the two must agree. ⚠️ Two different methods (one side `qes`, the other `internal`)
+   * are accepted, but such a contract is not completed today: send both sides on the same method.
+   */
   signingLaneByParty?: SigningLaneByParty;
 }
 

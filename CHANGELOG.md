@@ -113,7 +113,8 @@ changes is in [MIGRATION.md](MIGRATION.md) («Upgrading from 3.0.0»).
 - Build: dropped three dead `define`s (`CHAINDOC_API_*`) from `tsup.config.ts`.
 - QES: how to ask for it (contracts and amendments by `signingLane`; a plain request leaves the choice to the signer in the
   signing window), what the signer needs (a key file or a smart card with Web eID), and what the result means — the
-  method is not the legal verdict, `qes.legalClass` is. `signatureKind: 'qualified'` in the embed's `SUCCESS` names the
+  method is not the legal verdict, `qes.legalClass` is. A contract whose sides are sent on different methods is not
+  completed today; send both on the same one. `signatureKind: 'qualified'` in the embed's `SUCCESS` names the
   method. Removed the claim that the embed cannot make a qualified signature.
 - `hasSigned` / `signedCount`: a signer who agreed to sign with their own certificate counts once their device signs, not
   at the agreement.

@@ -305,10 +305,12 @@ the PDF). It exists on the public API (`/signatures/qes/{requestId}/...`) and in
 (`/embedded/signatures/qes/{requestId}/...`). The embedded signing window runs the whole flow for you (point 11).
 
 **How you ask for it.**
-- A contract or an amendment: `signingLane: 'qes'` (both sides) or `signingLaneByParty: { business, contragent }` on
-  `contracts.send` / `agreements.initiateSigning`. The counterparty then signs only with their own certificate. A contract
-  whose business side signs by delegation (`signingPolicy.business: 'delegated'`) takes no `qes` on any side:
-  `400 QES_DELEGATED_AUTO_SIGN_REFUSED`.
+- A contract or an amendment: `signingLane: 'qes'` on `contracts.send` / `agreements.initiateSigning`. Both sides then sign
+  only with their own certificate, the business side too (in the app, or in the signing window with
+  `signingPolicy.business: 'embedded'`). A contract whose business side signs by delegation
+  (`signingPolicy.business: 'delegated'`) takes no `qes` on any side: `400 QES_DELEGATED_AUTO_SIGN_REFUSED`.
+  ⚠️ `signingLaneByParty` with two different methods (one side `qes`, the other `internal`) is accepted, but such a contract
+  is not completed today: once both sides agree, the signatures are never made. Send both sides on the same method.
 - A plain signature request has no such option. The signing window offers each signer the choice: «Simple signature» or
   «Qualified signature».
 
@@ -330,7 +332,7 @@ to sign and the signature value.
 **SDK 3.**
 
 ```typescript
-await chaindoc.contracts.send(contractId, { signingLaneByParty: { business: 'internal', contragent: 'qes' } });
+await chaindoc.contracts.send(contractId, { signingLane: 'qes' });
 
 // your own device flow:
 await chaindoc.signatures.qes.promise(requestId, { fieldValues });
