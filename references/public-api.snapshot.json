@@ -1867,6 +1867,33 @@
         ],
         "type": "object"
       },
+      "EmbeddedWindowIdentityCheckDto": {
+        "properties": {
+          "rejectType": {
+            "description": "With `failed` only: `retry` — the provider asks the person to resubmit (its widget says so, and they can still pass); `final` — refused for good: this person cannot pass the check, so the document cannot be signed here. `null` otherwise.",
+            "enum": [
+              "retry",
+              "final"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "state": {
+            "description": "`verified` — the check is passed; `pending` — not completed yet; `failed` — the provider answered RED (see `rejectType`).",
+            "enum": [
+              "verified",
+              "pending",
+              "failed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "rejectType"
+        ],
+        "type": "object"
+      },
       "EmbeddedWindowOthersSignDto": {
         "properties": {
           "workspace": {
@@ -1923,6 +1950,14 @@
       },
       "EmbeddedWindowRequirementDto": {
         "properties": {
+          "check": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EmbeddedWindowIdentityCheckDto"
+              }
+            ],
+            "description": "The `identity` row only: where the identity check stands. `state` stays `pending` for every check not passed."
+          },
           "kind": {
             "enum": [
               "name",
@@ -6738,6 +6773,7 @@
         "type": "object"
       },
       "PublicWebhookEnvelopeDto": {
+        "description": "The signed envelope Chaindoc POSTs to an integration's webhook endpoint. The endpoint must be a public address: a loopback, private, link-local, unique-local or reserved address, or a name that resolves to one, is refused when it is saved (`400`, `errorKey: WEBHOOK_URL_NOT_PUBLIC`), and every delivery resolves and checks the address again — a delivery to an address that is not public is not sent, and the delivery log says why. Redirects are not followed: a `3xx` answer is a failed delivery, so register the final address.",
         "properties": {
           "createdAt": {
             "description": "ISO 8601 delivery timestamp used for signature verification.",
@@ -12497,7 +12533,7 @@
             "description": "Embedded session status retrieved successfully"
           },
           "404": {
-            "description": "Session not found"
+            "description": "Session not found (`errorKey: SESSION_NOT_FOUND`), also for an id that is not a session id"
           }
         },
         "summary": "Get embedded session status without authentication",
@@ -12562,10 +12598,13 @@
             "description": "OTP verified successfully. JWT token returned."
           },
           "400": {
-            "description": "Invalid OTP code or session expired"
+            "description": "Refused, named by `errorKey`: `INVALID_OTP` (wrong code; re-enterable), `OTP_EXPIRED` (needs a new code), `EMAIL_MISMATCH`, `SESSION_EXPIRED`, `SESSION_ALREADY_CONFIRMED`, `SESSION_REVOKED`, `SESSION_COMPLETED` (the link no longer opens: issue a new session)"
+          },
+          "401": {
+            "description": "The session was issued to a different account than the one that holds its address now (`errorKey: EMBEDDED_SESSION_IDENTITY_STALE`)"
           },
           "404": {
-            "description": "Session not found"
+            "description": "Session not found (`errorKey: SESSION_NOT_FOUND`), also for an id that is not a session id"
           }
         },
         "summary": "Verify OTP and activate embedded session",
@@ -17266,7 +17305,7 @@
     },
     "/api/v1/signatures/requests/{requestId}/status": {
       "get": {
-        "description": "Requires secret key (sk_). Returns status of signature request including signer details: each signer's `role` (the key of the text role they were bound to, `null` when none). A declined request reads `status: cancelled` like a cancelled one and is told apart by `declinedAt` (`null` unless declined), with `declinedBy`, `declineComment` and `declinedVia` (`document` or `contract`), as the list `GET /signatures/requests` names them. `status` is decided by the database clock: a request whose deadline has passed reads `expired` before the sweep writes it.",
+        "description": "Requires secret key (sk_). Returns status of signature request including signer details: each signer's `role` (the key of the text role they were bound to, `null` when none). A declined request reads `status: cancelled` like a cancelled one and is told apart by `declinedAt` (`null` unless declined), with `declinedBy`, `declineComment` and `declinedVia` (`document` or `contract`), as the list `GET /signatures/requests` names them. `status` is decided by the database clock: a request whose deadline has passed reads `expired` before the sweep writes it. Where the signer's row asks for identity verification (the request's `isKycRequired`), the signer carries `kyc`: `verified` — the check is passed; `pending` — not completed yet, or the provider asked them to resubmit (they can still pass); `rejected` — refused for good: this person cannot pass the check, so they will not sign this request. Rows that ask for no check carry no `kyc`.",
         "operationId": "PublicApiController_getSignatureRequestStatus",
         "parameters": [
           {

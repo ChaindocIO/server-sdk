@@ -28,6 +28,9 @@ changes is in [MIGRATION.md](MIGRATION.md) («Upgrading from 3.0.0»).
   key's page — but it is the word your team will see.
 - Signature requests: `signers[].role`; `declinedAt`, `declinedBy`, `declineComment`, `declinedVia` on `getRequestStatus`
   and on list items (a decline reads `status: 'cancelled'`); `createdAt`, `completedAt` on list items.
+- `signers[].kyc` on `getRequestStatus` (`SignerKycState`: `verified` | `pending` | `rejected`, the words also as the
+  `SIGNER_KYC_STATES` constant), where the request asks for identity verification: `rejected` is a refusal for good — that
+  signer will not sign. Absent on a request without the check. `references/public-api.snapshot.json` synced with the API.
 - `DocumentConversionProgress` / `DocumentConversionStage`; `DocumentContentVersion`.
 - `BusinessSignResponse.completionPending`.
 - Webhooks: `invoice.ksef_accepted` (the 23rd event; also in `InvoiceWebhookEventType`); payload types

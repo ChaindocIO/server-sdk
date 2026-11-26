@@ -555,12 +555,18 @@ interface SignatureRequestStatus {
   isCompleted: boolean;
   dueDate: string;
   signers: Signer[]; // each with `role: string | null` — the text's role it was bound to
+  // and, where the request asks for identity verification, `kyc: "verified" | "pending" | "rejected"`
   declinedAt?: string | null; // null unless declined
   declinedBy?: { email?: string; username?: string };
   declineComment?: string;
   declinedVia?: "document" | "contract";
 }
 ```
+
+On a request with `isKycRequired`, each signer carries `kyc`: `verified` (passed), `pending` (not completed yet, or the
+provider asked them to resubmit — they can still pass) or `rejected` (refused for good: they cannot pass the check, so
+they will not sign this request — cancel it or send it to someone else). A request without the check carries no `kyc`.
+In the signing window such a signer sees a final screen, and your page hears `ERROR` with `code: "KYC_REJECTED"` once.
 
 The list (`getMyRequests`) carries the same `role` and decline fields on each item, plus `createdAt` and `completedAt`
 (the last signature; `null` until completed). `remind` on a request that is not pending answers

@@ -815,8 +815,21 @@ export interface Signer {
   signatureHash?: string;
   signedAt?: string;
   hasSigned: boolean;
+  /**
+   * Where this signer's identity check stands, on `getRequestStatus` and only where their row asks for one (the request's
+   * `isKycRequired`): `verified` — passed; `pending` — not completed yet, or the provider asked them to resubmit (they can
+   * still pass); `rejected` — refused for good: they cannot pass the check, so they will not sign this request. Absent on a
+   * request that asks for no check, and from answers older than the field.
+   */
+  kyc?: SignerKycState;
   signer?: SignerUser | null;
 }
+
+/** The words a signer's identity check is said in on `getRequestStatus` (see {@link Signer.kyc}). */
+export const SIGNER_KYC_STATES = ["verified", "pending", "rejected"] as const;
+
+/** A signer's identity check on `getRequestStatus` (see {@link Signer.kyc}). */
+export type SignerKycState = (typeof SIGNER_KYC_STATES)[number];
 
 /** Through what a signer declined: the document's signing window, or a contract's (or amendment's). */
 export type SignatureRequestDeclinedVia = "document" | "contract";

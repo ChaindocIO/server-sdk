@@ -378,6 +378,10 @@ characters on a document, 1000 on a contract), as the Chaindoc app does. A decli
 `signatures.getRequestStatus` reads `status: 'cancelled'` with `declinedAt` set and `declinedBy`, `declineComment`,
 `declinedVia` (`document` or `contract`); a cancel has `declinedAt: null`. Each signer carries its `role`.
 
+**Identity verification.** On a request with `isKycRequired`, `signatures.getRequestStatus` gives each signer `kyc`:
+`verified`, `pending` (not completed, or asked to resubmit) or `rejected` — refused for good, so this person will not sign.
+The signing window shows them a final screen and your page hears `ERROR` with `code: "KYC_REJECTED"` (embed SDK).
+
 ### Templates
 
 Templates use the new content format (`{ version: 3, mode: 'template', doc }`; `1` and `2` are accepted). Content goes into a working
