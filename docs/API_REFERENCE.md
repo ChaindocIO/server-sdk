@@ -569,6 +569,22 @@ they will not sign this request — cancel it or send it to someone else; `remin
 without the check carries no `kyc`.
 In the signing window such a signer sees a final screen, and your page hears `ERROR` with `code: "KYC_REJECTED"` once.
 
+`hasSigned` and `signedCount` count a signer who has nothing left to do: they signed, or they agreed on the
+platform-signature lane (that signature is made when the last signer acts). A signer who agreed to sign with their own
+certificate is not counted until their device signs. Each signer on this answer also carries how they sign:
+`signatureKind` (`internal` — the platform's signature, `qes` — their own certificate), `hasContributed` (they agreed),
+`requiredSignatureKind` (`null` — nothing required), and, once they signed with their own certificate, `qes`:
+
+```typescript
+qes?: {
+  certificate: { subject: string | null; issuer: string | null; serial: string | null };
+  qualifiedCertificate: boolean | null; // true only when the validator confirmed a qualified certificate
+  legalClass: string;                   // e.g. "Electronic Signature (qualification not established)"
+  containerProfile: string | null;      // e.g. "PAdES-BES"
+  validatorLevel: string | null;
+}
+```
+
 The list (`getMyRequests`) carries the same `role` and decline fields on each item, plus `createdAt` and `completedAt`
 (the last signature; `null` until completed). `remind` on a request that is not pending answers
 `400 SIGNATURE_REQUEST_NOT_PENDING` (`status`).

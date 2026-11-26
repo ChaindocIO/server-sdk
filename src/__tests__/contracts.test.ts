@@ -112,6 +112,23 @@ describe('Contracts module', () => {
     });
   });
 
+  it('sends the signing method per side, as typed', async () => {
+    const client = { get: vi.fn(), post: vi.fn().mockResolvedValue({}) };
+    const contracts = new Contracts(client as any);
+
+    await contracts.send('contract-uuid', { signingLaneByParty: { business: 'internal', contragent: 'qes' } });
+    await contracts.agreements.initiateSigning('contract-uuid', 'agreement-uuid', { signingLane: 'qes' });
+
+    expect(client.post).toHaveBeenNthCalledWith(1, '/api/v1/contracts/contract-uuid/send', {
+      signingLaneByParty: { business: 'internal', contragent: 'qes' },
+    });
+    expect(client.post).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/contracts/contract-uuid/agreements/agreement-uuid/initiate-signing',
+      { signingLane: 'qes' },
+    );
+  });
+
   it('PATCHes update with normalized contragent email', async () => {
     const client = {
       get: vi.fn(),

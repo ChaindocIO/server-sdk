@@ -195,6 +195,12 @@ export const ERROR_KEYS = {
   /** 409 · the signer's account has no name, and a signature needs one. */
   NAME_REQUIRED_FOR_SIGNING: 'NAME_REQUIRED_FOR_SIGNING',
   CONTRAGENT_QES_REQUIRES_SIGNER_SESSION: 'CONTRAGENT_QES_REQUIRES_SIGNER_SESSION',
+  /**
+   * 400 · `contracts.send` / `agreements.initiateSigning`: a qualified signature (`qes`) was asked of a side of a contract whose
+   * business side signs by delegation (`signingPolicy.business: 'delegated'`). A delegated contract carries no qualified
+   * signature on either side. Ask for none, or let the business side sign in person.
+   */
+  QES_DELEGATED_AUTO_SIGN_REFUSED: 'QES_DELEGATED_AUTO_SIGN_REFUSED',
   ACCOUNT_OPTION_UNAVAILABLE: 'ACCOUNT_OPTION_UNAVAILABLE',
   // webhook endpoint — set on the API key's page in the app (Developers), not through an SDK call
   /**

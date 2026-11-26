@@ -814,7 +814,24 @@ export interface Signer {
   role?: string | null;
   signatureHash?: string;
   signedAt?: string;
+  /**
+   * `true` once this signer has nothing left to do: they signed, or they agreed on the platform-signature lane (that
+   * signature is made when the last signer acts). A signer who agreed to sign with their own certificate stays `false`
+   * until their device signs; `hasContributed` says they agreed.
+   */
   hasSigned: boolean;
+  /** `getRequestStatus`: how this signer signs — `internal` (the platform's signature) or `qes` (their own certificate). */
+  signatureKind?: SigningLane;
+  /** `getRequestStatus`: the signer agreed to sign; on the `qes` lane their device signature comes after. */
+  hasContributed?: boolean;
+  /** `getRequestStatus`: the method required of this signer; `null` when none was required. */
+  requiredSignatureKind?: SigningLane | null;
+  /**
+   * `getRequestStatus`, once the signer signed with their own certificate: the certificate and the validator's verdict.
+   * `qualifiedCertificate` is `true` only when the validator confirmed a qualified certificate; `legalClass` says the result
+   * in words (for example `Electronic Signature (qualification not established)`).
+   */
+  qes?: QesSignerFacts;
   /**
    * Where this signer's identity check stands, on `getRequestStatus` and only where their row asks for one (the request's
    * `isKycRequired`): `verified` — passed; `pending` — not completed yet, or the provider asked them to resubmit (they can
@@ -1566,7 +1583,31 @@ export interface PaymentSetupParams {
 }
 
 /** Parameters for sending a contract into signing */
-export interface ContractSendParams {
+/** How a signer signs: `internal` — the platform's signature; `qes` — the signer's own certificate. */
+export type SigningLane = 'internal' | 'qes';
+
+/** The signing method per side of a contract. A side left out takes `signingLane`. */
+export interface SigningLaneByParty {
+  business?: SigningLane;
+  contragent?: SigningLane;
+}
+
+/**
+ * The signing method a contract or an amendment is sent on.
+ *
+ * `qes`: the signer signs with their own certificate — a key file (`.p12`/`.pfx`) or a smart card through the Web eID
+ * extension — in the signing window. Whether the result is a legally qualified signature is the validator's verdict on that
+ * certificate (`Signer.qes`), not this option. A contract whose business side signs by delegation
+ * (`signingPolicy.business: 'delegated'`) takes no `qes` on any side: `QES_DELEGATED_AUTO_SIGN_REFUSED`.
+ */
+export interface SigningLaneParams {
+  /** Both sides; omitted — the platform's signature. */
+  signingLane?: SigningLane;
+  /** Per side. Sent with `signingLane`, the two must agree. */
+  signingLaneByParty?: SigningLaneByParty;
+}
+
+export interface ContractSendParams extends SigningLaneParams {
   messageToSigners?: string;
   deadline?: Date;
   isKycRequired?: boolean;
@@ -2036,7 +2077,7 @@ export interface CreateAgreementParams {
 }
 
 /** Parameters for sending an amendment into signing. */
-export interface InitiateAgreementSigningParams {
+export interface InitiateAgreementSigningParams extends SigningLaneParams {
   messageToSigners?: string;
   deadline?: Date;
   isKycRequired?: boolean;

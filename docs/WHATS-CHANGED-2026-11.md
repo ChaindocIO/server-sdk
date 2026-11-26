@@ -297,24 +297,50 @@ second request for a cancelled one.
 
 ## 7. QES (qualified electronic signature)
 
-**What it is.** A signer can sign with a qualified signature made on their own device. The flow is three calls: promise, prepare,
-finalize. It exists on the public API (`/signatures/qes/{requestId}/...`) and inside an embedded session
-(`/embedded/signatures/qes/{requestId}/...`). The embedded signing screen runs the embedded flow for you (point 11). When a
-document needs a qualified signature the embed cannot make, the iframe reports `SIGNING_METHOD_BELOW_REQUIREMENT`.
-The access answer carries `qesEligibility`.
+**What it is.** A signer can sign with their own certificate instead of the platform's signature: a key file (`.p12` /
+`.pfx`, opened with its password in the browser) or a smart card through the Web eID browser extension. The private key
+never leaves the signer's browser or card. The flow is three calls: promise (the signer agrees, fills their fields and may
+pick a signature image), prepare (the server returns the bytes to sign), finalize (the device's signature is embedded in
+the PDF). It exists on the public API (`/signatures/qes/{requestId}/...`) and inside an embedded session
+(`/embedded/signatures/qes/{requestId}/...`). The embedded signing window runs the whole flow for you (point 11).
 
-**What you do.** Use the QES calls only if you build your own signing device flow. Private key material never goes to the SDK:
-it refuses it locally and you only send `signerCertPem`, the data to sign and the signature value.
+**How you ask for it.**
+- A contract or an amendment: `signingLane: 'qes'` (both sides) or `signingLaneByParty: { business, contragent }` on
+  `contracts.send` / `agreements.initiateSigning`. The counterparty then signs only with their own certificate. A contract
+  whose business side signs by delegation (`signingPolicy.business: 'delegated'`) takes no `qes` on any side:
+  `400 QES_DELEGATED_AUTO_SIGN_REFUSED`.
+- A plain signature request has no such option. The signing window offers each signer the choice: «Simple signature» or
+  «Qualified signature».
+
+**What the result means.** Whether a signature is legally qualified is the validator's verdict on the signer's
+certificate, not the method. After the device signs, `getRequestStatus` carries the signer's `signatureKind: 'qes'` and
+`qes` facts: the certificate, `qualifiedCertificate` (`true` only when the validator confirmed a qualified certificate)
+and `legalClass` in words. A certificate the validator cannot confirm as qualified (a test or self-issued one, or one it
+cannot anchor to a trust list) still signs: the signature is valid and is stated as `Electronic Signature (qualification
+not established)` — in `qes.legalClass`, on the certificate of completion and in the app. A signature value that does not
+verify against the certificate is refused with `400`.
+
+**Progress.** A signer who agreed on the `qes` lane is not counted in `signedCount` (and `hasSigned` is `false`) until
+their device signs: the signature is still theirs to make. `hasContributed` says they agreed.
+
+**What you do.** Nothing, if your signers use the embedded window. Use the QES calls only if you build your own signing
+device flow. Private key material never goes to the SDK: it refuses it locally and you only send `signerCertPem`, the data
+to sign and the signature value.
 
 **SDK 3.**
 
 ```typescript
+await chaindoc.contracts.send(contractId, { signingLaneByParty: { business: 'internal', contragent: 'qes' } });
+
+// your own device flow:
 await chaindoc.signatures.qes.promise(requestId, { fieldValues });
 const { dataToSignB64, sessionId } = await chaindoc.signatures.qes.prepare(requestId, { signerCertPem });
 await chaindoc.signatures.qes.finalize(requestId, { sessionId, signatureValueB64 });
 ```
 
 `fieldValues` is how a signer's own fields are sent with the signature; a required one left empty is `SIGNING_FIELDS_EMPTY`.
+On the public API (your key acting for its own person) a signer without a name is refused `409 NAME_REQUIRED_FOR_SIGNING`;
+the embedded window asks no name, the e-mail is the identity there.
 
 **MCP.** None. MCP has no QES tools in 0.3.0 (it is on the roadmap).
 
@@ -473,6 +499,8 @@ backend source and, where marked in the OpenAPI, in `openapi/public-api.json`; t
   `contractSigningRequestId`, the `signingRequestId` of `agreements.initiateSigning`). The window says it is an amendment
   of the named contract, as the app does. Before, the session was refused `400` with no `errorKey`.
 - **QES** on the signer's device and **fields** (`fieldValues`) are handled by the embed; typed refusals are shown to the signer.
+  The window offers «Qualified signature» beside «Simple signature» on a plain request, and only the qualified one to a signer
+  of a contract sent with `qes` for their side; the signer opens a key file or a smart card (point 7).
 - **Before you sign** lists «Payment method» only on a contract with payment terms (as the app does); a contract with none
   says nothing about paying.
 - **Identity check refused for good.** The signer sees a final screen and your page hears `ERROR` `KYC_REJECTED` once. The
@@ -497,7 +525,9 @@ Every message is `{ source: "chaindoc-embed", type, data? }`.
 | `RESEND_OTP` | `{ email, sentAt }` | `onResendOtp` | |
 
 - `result.kind`: `document_signature` or `contract_signature`.
-- `signatureKind`: `simple` or `qualified`.
+- `signatureKind`: `simple` (the platform's signature) or `qualified` (the signer's own certificate, point 7). `qualified`
+  names the method, not a legal verdict: whether the signature is legally qualified is `qes.legalClass` on
+  `getRequestStatus`.
 - `DECLINED` is not a success: there is no `SUCCESS` after it.
 - New `ERROR` codes: `NOT_YOUR_TURN`, `ACCOUNT_READ_ONLY`, `KYC_WAITS_FOR_A_UNIT`, `SIGNING_FIELDS_EMPTY`
   (`details.fields[]`; read with `getSigningFieldProblems(error)`), `SIGNING_METHOD_BELOW_REQUIREMENT`, `INTEGRATIONS_NOT_IN_PLAN`,

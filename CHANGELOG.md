@@ -28,6 +28,11 @@ changes is in [MIGRATION.md](MIGRATION.md) («Upgrading from 3.0.0»).
   key's page — but it is the word your team will see.
 - Signature requests: `signers[].role`; `declinedAt`, `declinedBy`, `declineComment`, `declinedVia` on `getRequestStatus`
   and on list items (a decline reads `status: 'cancelled'`); `createdAt`, `completedAt` on list items.
+- Qualified signatures: `signingLane` / `signingLaneByParty` on `contracts.send` and `agreements.initiateSigning` (types
+  `SigningLane`, `SigningLaneByParty`, `SigningLaneParams`); on `getRequestStatus` each signer's `signatureKind`,
+  `hasContributed`, `requiredSignatureKind` and, after a signature with the signer's own certificate, `qes` (certificate,
+  `qualifiedCertificate`, `legalClass`). `QES_DELEGATED_AUTO_SIGN_REFUSED` (`ERROR_KEYS`): `qes` asked of a contract whose
+  business side signs by delegation.
 - `signers[].kyc` on `getRequestStatus` (`SignerKycState`: `verified` | `pending` | `rejected`, the words also as the
   `SIGNER_KYC_STATES` constant), where the request asks for identity verification: `rejected` is a refusal for good — that
   signer will not sign. Absent on a request without the check. `references/public-api.snapshot.json` synced with the API.
@@ -106,6 +111,12 @@ changes is in [MIGRATION.md](MIGRATION.md) («Upgrading from 3.0.0»).
 - Webhook endpoints: a public address only, checked again on every delivery; redirects are not followed (a `3xx` is a
   failed delivery).
 - Build: dropped three dead `define`s (`CHAINDOC_API_*`) from `tsup.config.ts`.
+- QES: how to ask for it (contracts and amendments by `signingLane`; a plain request leaves the choice to the signer in the
+  signing window), what the signer needs (a key file or a smart card with Web eID), and what the result means — the
+  method is not the legal verdict, `qes.legalClass` is. `signatureKind: 'qualified'` in the embed's `SUCCESS` names the
+  method. Removed the claim that the embed cannot make a qualified signature.
+- `hasSigned` / `signedCount`: a signer who agreed to sign with their own certificate counts once their device signs, not
+  at the agreement.
 
 ## [3.0.0] - 2026-11-10
 
