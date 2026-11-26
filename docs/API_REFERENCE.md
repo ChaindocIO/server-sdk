@@ -863,7 +863,7 @@ try {
 
 `ERROR_KEYS` lists every `errorKey` the public API and `embedded.createSession` answer today; branch with
 `hasErrorKey(error, 'KEY')`. A body or query that fails validation is `400 VALIDATION_FAILED` (`message` is the list of
-broken constraints). A key the server adds later still arrives as a `string`.
+broken constraints: each entry is `property`, `value`, `constraints` and `children` for a nested object). A key the server adds later still arrives as a `string`.
 
 ### Common Error Codes
 

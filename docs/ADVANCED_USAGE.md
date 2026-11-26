@@ -650,23 +650,29 @@ is `SignatureRequestRejectedData`, and so on (`DocumentCreatedData`, `DocumentVe
 - `signature.request.rejected` with `rejectedVia: 'contract'` is a counterparty's refusal of a contract (or an amendment):
   it also carries `contractId`, `signingRequestId` and, for an amendment, `agreementId`.
 - `invoice.ksef_accepted` (KSeF, Poland) carries `invoice.sent`'s payload plus `ksef: { number, acceptedAt }`.
-- `contract.status_changed` (`ContractStatusChangedData`) is sent where a contract's status changes, whichever way it
-  changed — the API, the Chaindoc app, a scheduled job — when the change has no event of its own:
+- `contract.status_changed` (`ContractStatusChangedData`) is sent once per change, where a contract's status changes,
+  whichever way it changed — the API, the Chaindoc app, a template, a scheduled job — when the change has no event of its
+  own:
 
   | `status` | `previousStatus` | When | Also carries |
   | --- | --- | --- | --- |
-  | `pending_signature` | `draft` | `contracts.send` (and a contract created from a template and sent) | `signingRequestId` |
+  | `pending_signature` | `draft` | the contract is sent for signing: `contracts.send`, the app, a contract created from a template | `signingRequestId` (and `templateId`, `templateVersionNumber` from a template) |
+  | `draft` | `pending_signature` | that signing request is cancelled (`contracts.cancelSigningRequest` or the app), declined by its recipient, or expires — the contract can be edited and sent again | `signingRequestId` |
+  | `pending_amendment` | `active` | an amendment is sent for signing | `signingRequestId`, `additionalAgreementId` |
+  | `active` | `pending_amendment` | the amendment's request is cancelled, declined, rejected or expires (an amendment signed is `additional_agreement.signed`) | `signingRequestId`, `additionalAgreementId` |
   | `termination_pending` | `active` | either side asks to terminate (`contracts.terminate`, or in the app) | `terminationRequestId` |
   | `active` | `termination_pending` | that request is rejected by the other side, or withdrawn by the side that asked | `terminationRequestId` |
   | `rejected` | `pending_signature` or `active` | the counterparty refuses the contract | `signingRequestId` (a refused request) |
   | `expired` | `active` | the contract reaches its end date | — |
+  | `active` | `draft` | a draft is recorded in the app as already signed outside Chaindoc | `signedOutsideChaindoc: true` |
 
 - `contract.terminated` (`ContractTerminatedData`) is sent **once**, when the contract's status becomes `terminated`: on the
   termination request's effective date, after the notice period — for a mutual-approval contract only once the
   counterparty has approved. Asking to terminate is `contract.status_changed`, not this event. It carries `contractId`,
   `status: 'terminated'`, `previousStatus` and `terminationRequestId`.
-- Activation on signing is `contract.signed`; a deleted draft is `contract.cancelled`. Every contract event also carries
-  `side` and `workspace.uuid`, once per side of the contract that is your workspace.
+- Activation on signing is `contract.signed`, an amendment signed is `additional_agreement.signed`; a deleted draft is
+  `contract.cancelled`. Every contract event also carries `side` and `workspace.uuid`, once per side of the contract that
+  is your workspace.
 
 ```typescript
 import type { WebhookEventDataMap } from "@chaindoc_io/server-sdk";

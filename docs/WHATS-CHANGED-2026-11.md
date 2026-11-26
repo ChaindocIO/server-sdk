@@ -376,11 +376,15 @@ File intakes are not in MCP.
 stays) and carries `documentId`. `signature.request.rejected` with `rejectedVia: 'contract'` (a counterparty refused a
 contract or an amendment) carries `contractId`, `signingRequestId` and, for an amendment, `agreementId`.
 
-- **Contract status events fire where the status changes**, whichever way it changed (the API, the app, a scheduled job).
-  `contract.status_changed` carries `contractId`, `status` and `previousStatus`: `termination_pending` when either side
-  asks to terminate, `active` again when that request is rejected or withdrawn, `rejected`, `expired`, and
-  `pending_signature` on `send`. `contract.terminated` is sent once, when the contract has actually ended (the
-  termination's effective date) — not when a termination is asked, as 3.0.0's API did.
+- **Contract status events fire where the status changes**, once per change, whichever way it changed (the API, the app,
+  a template, a scheduled job). `contract.status_changed` carries `contractId`, `status` and `previousStatus`:
+  `pending_signature` when the contract is sent (from the API or the app), `draft` again when that signing request is
+  cancelled, declined or expires, `pending_amendment` when an amendment is sent and `active` again when its request ends
+  unsigned, `termination_pending` when either side asks to terminate, `active` again when that request is rejected or
+  withdrawn, `rejected`, `expired`, and `active` for a draft recorded as signed outside Chaindoc
+  (`signedOutsideChaindoc: true`). `contract.terminated` is sent once, when the contract has actually ended (the
+  termination's effective date) — not when a termination is asked, as 3.0.0's API did. An amendment signed is
+  `additional_agreement.signed`, not a `status_changed`.
 
 **Delivery.** A delivery is tried 3 times in all (at once, +1 minute, +5 minutes); anything but a `2xx` within 30 seconds
 is a failure, and every attempt carries the same delivery `id`. After 50 deliveries in a row that failed every attempt
@@ -428,7 +432,7 @@ envelope has `errorKey` and a `hint`.
 | `TEMPLATE_VALUES_REFUSED` / `TEMPLATE_VALUES_MISSING` | A value its field cannot hold / a required value empty | Correct the `variables` |
 | `INVOICE_MONEY_OR_CREDIT_NOTE` | Cancel of an invoice that money or a credit note has reached | Create a credit note |
 | `STRIPE_NOT_READY` (and other `STRIPE_*`) | The seller's Stripe is not ready for a charge | The seller finishes Stripe setup; do not retry the charge blindly |
-| `VALIDATION_FAILED` (400) | The body or the query failed validation (`message` lists the broken constraints) — for example a document `status` other than `'draft'` or `'published'` | Fix the input |
+| `VALIDATION_FAILED` (400) | The body or the query failed validation (`message` lists the broken constraints: each entry `property`, `value`, `constraints`, `children` — not the request body back) — for example a document `status` other than `'draft'` or `'published'` | Fix the input |
 | `DOCUMENT_NOT_A_FILE` (422) | `convert` (or a next version from a file) on a document that is already a text | Edit it as text |
 | `DOCUMENT_EDIT_REFUSED` (403) | The document takes no new version now (on signing, signed, in a contract) | Make a new document |
 | `KYC_NOT_VERIFIED` (400) | A signer of a request with `isKycRequired` has not verified; on a contract `send`, the workspace Owner | The person verifies in the app |

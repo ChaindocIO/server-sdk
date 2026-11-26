@@ -494,7 +494,7 @@ if (!verification.valid) {
 switch (verification.envelope?.type) {
   case "document.conversion.completed":
   case "document.conversion.failed":
-  case "contract.status_changed": // termination_pending, active again, rejected, expired — see below
+  case "contract.status_changed": // sent, back to draft, amendment, termination asked, rejected, expired — see below
   case "contract.terminated": // once, when the contract has ended
   case "contract.signed":
   case "additional_agreement.signed":
@@ -517,12 +517,14 @@ deliveries in a row Chaindoc stops sending until it is resumed in the app, and t
 delivered after the resume — see
 [Advanced Usage](docs/ADVANCED_USAGE.md#delivery-retries-and-a-webhook-that-is-turned-off).
 
-`contract.status_changed` is sent whenever a contract's status changes without an event of its own — however it changed
-(the API, the Chaindoc app, a scheduled job): `termination_pending` when either side asks to terminate, `active` again
-when that request is rejected or withdrawn, `rejected`, `expired`, and `pending_signature` on `contracts.send`.
-`contract.terminated` is sent once, when the contract has actually ended (the termination's effective date). Both carry
-`contractId`, `status`, `previousStatus` (and `terminationRequestId` / `signingRequestId` where an act names it) —
-`ContractStatusChangedData`, `ContractTerminatedData`.
+`contract.status_changed` is sent once whenever a contract's status changes without an event of its own — however it
+changed (the API, the Chaindoc app, a template, a scheduled job): `pending_signature` when it is sent, `draft` again when
+that signing request is cancelled, declined or expires, `pending_amendment` when an amendment is sent and `active` again
+when the amendment's request ends unsigned, `termination_pending` when either side asks to terminate, `active` again when
+that request is rejected or withdrawn, `rejected`, `expired`. `contract.terminated` is sent once, when the contract has
+actually ended (the termination's effective date). Both carry `contractId`, `status`, `previousStatus` (and
+`signingRequestId` / `additionalAgreementId` / `terminationRequestId` where an act names it) — `ContractStatusChangedData`,
+`ContractTerminatedData`.
 
 ## Error Handling
 

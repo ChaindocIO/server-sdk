@@ -1229,17 +1229,24 @@ export interface SignatureRequestRejectedData {
 }
 
 /**
- * Payload of `contract.status_changed`: a contract's status changed, and the change has no event of its own. Sent where
- * the status changes, whichever way it changed (the API, the Chaindoc app, a scheduled job):
+ * Payload of `contract.status_changed`: a contract's status changed, and the change has no event of its own. Sent once per
+ * change, where the status changes, whichever way it changed (the API, the Chaindoc app, a template, a scheduled job):
  *
- * - `pending_signature` — the contract was sent for signing through the API (`previousStatus: 'draft'`);
+ * - `pending_signature` from `draft` — the contract was sent for signing (`contracts.send`, the app, a template);
+ * - `draft` from `pending_signature` — its signing request was cancelled, declined by the recipient, or expired: the
+ *   contract can be edited and sent again;
+ * - `pending_amendment` from `active` — an amendment was sent for signing (`additionalAgreementId` names it);
+ * - `active` from `pending_amendment` — the amendment's request was cancelled, declined, rejected or expired (an amendment
+ *   signed is `additional_agreement.signed` instead);
  * - `termination_pending` — a termination was asked (by either side, in the API or the app);
- * - `active` — that termination request was rejected by the other side or withdrawn by the side that asked;
+ * - `active` from `termination_pending` — that request was rejected by the other side or withdrawn by the side that asked;
  * - `rejected` — the counterparty refused the contract;
- * - `expired` — the contract reached its end date.
+ * - `expired` — the contract reached its end date;
+ * - `active` from `draft` with `signedOutsideChaindoc: true` — a draft recorded in the app as already signed elsewhere.
  *
- * Activation on signing is `contract.signed`, the end of a termination is `contract.terminated`, a deleted draft is
- * `contract.cancelled`. No order is promised between events: read `status` and `previousStatus`, or `contracts.getStatus`.
+ * Activation on signing is `contract.signed`, an amendment signed is `additional_agreement.signed`, the end of a
+ * termination is `contract.terminated`, a deleted draft is `contract.cancelled`. No order is promised between events:
+ * read `status` and `previousStatus`, or `contracts.getStatus`.
  */
 export interface ContractStatusChangedData {
   contractId: string;
@@ -1247,8 +1254,12 @@ export interface ContractStatusChangedData {
   previousStatus: ContractStatus;
   /** The termination request, for `termination_pending` and for the return to `active`. */
   terminationRequestId?: string;
-  /** The signing request, on `pending_signature` and `rejected`. */
+  /** The signing request the change came from: the one sent, ended, or refused. */
   signingRequestId?: string;
+  /** The amendment, on `pending_amendment` and on the return from it to `active`. */
+  additionalAgreementId?: string;
+  /** `true` on `draft → active` when the draft was recorded as signed outside Chaindoc (no `contract.signed` follows). */
+  signedOutsideChaindoc?: boolean;
   /** Which side of the contract the receiving workspace is. */
   side?: "business" | "contragent";
   workspace?: WebhookEventWorkspace;

@@ -134,6 +134,9 @@ export class Contracts {
    * - `400 KYC_NOT_VERIFIED` — `isKycRequired` with `signingPolicy.business: 'delegated'`, and the workspace Owner (who
    *   signs the business side at once) has not passed identity verification;
    * - `400 CONTRACT_NOT_A_DRAFT` — it was already sent, cancelled or finished.
+   *
+   * The contract becomes `pending_signature`: webhook `contract.status_changed` (`draft → pending_signature`), once — the
+   * same event a send from the Chaindoc app gives.
    */
   async send(contractId: string, params?: ContractSendParams): Promise<ContractSendResponse> {
     return this.client.post<ContractSendResponse>(`/api/v1/contracts/${seg(contractId)}/send`, {
@@ -334,6 +337,8 @@ export class Contracts {
    * request cannot be withdrawn (the Chaindoc app refuses its sender the same way). It ends when the counterparty signs
    * or declines, or when its deadline passes (the contract goes back to `draft`); `resendSigningRequest` reminds the
    * counterparty meanwhile. `400 SIGNING_REQUEST_NOT_PENDING` once it ended (signed, declined, cancelled, expired).
+   * A cancelled request puts the contract back to `draft` (an amendment's, back to `active`): webhook
+   * `contract.status_changed`.
    */
   async cancelSigningRequest(
     contractId: string,

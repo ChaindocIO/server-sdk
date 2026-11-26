@@ -38,7 +38,8 @@ changes is in [MIGRATION.md](MIGRATION.md) («Upgrading from 3.0.0»).
   `SignatureRequestCompletedData`, `SignatureRequestRejectedData` (with `contractId`, `signingRequestId`, `agreementId`),
   `WebhookEventSigner`, `WebhookEventDataMap`.
 - Webhook payload types `ContractStatusChangedData` and `ContractTerminatedData` (in `WebhookEventDataMap`): `contractId`,
-  `status`, `previousStatus`, and `terminationRequestId` / `signingRequestId` where an act names it.
+  `status`, `previousStatus`, and `terminationRequestId` / `signingRequestId` / `additionalAgreementId` where an act names
+  it; `signedOutsideChaindoc` on a draft recorded as signed elsewhere.
 
 ### Changed
 
@@ -47,6 +48,15 @@ changes is in [MIGRATION.md](MIGRATION.md) («Upgrading from 3.0.0»).
   termination rejected or withdrawn (back to `active`), a refused contract (`rejected`) and an expired one (`expired`),
   and always carries `previousStatus`. `contract.terminated` comes once, when the contract has actually ended (the
   termination's effective date) — 3.0.0's `contracts.terminate` sent it at once, with `status: 'termination_pending'`.
+- **Server: every other change of a contract's status is told too, once.** `contract.status_changed` now also comes when a
+  contract is sent from the Chaindoc app (`draft → pending_signature`; before, only `contracts.send` and a contract made from
+  a template told it, each from its own route), when its signing request is cancelled, declined or expires (`pending_signature
+  → draft`), when an amendment is sent (`active → pending_amendment`) and when its request ends unsigned (back to `active`),
+  and for a draft recorded as signed outside Chaindoc (`draft → active`, `signedOutsideChaindoc: true`). A send still gives
+  exactly one event, whichever way it was made.
+- **Server: a validation refusal no longer echoes the request.** Each entry of a `400 VALIDATION_FAILED` `message` was
+  `property`, `value`, `constraints`, `children` — and `target`, the whole object the field sat on (a document's create
+  answered with its entire text). `target` is gone at every depth; the rest is unchanged.
 - **Server: events are kept while Chaindoc has stopped sending to an endpoint** (after 50 failed deliveries in a row) and
   delivered after *Resume sending*. Before, only `contract.signed`, `invoice.*` and `transaction.*` were.
 - `CONTRACTS_LIMIT_REACHED`, `OPEN_SIGN_REQUESTS_LIMIT_REACHED`, `SIGNATURE_CREDITS_EXHAUSTED`, `KYC_CREDITS_EXHAUSTED`,
