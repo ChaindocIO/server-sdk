@@ -565,7 +565,8 @@ interface SignatureRequestStatus {
 
 On a request with `isKycRequired`, each signer carries `kyc`: `verified` (passed), `pending` (not completed yet, or the
 provider asked them to resubmit — they can still pass) or `rejected` (refused for good: they cannot pass the check, so
-they will not sign this request — cancel it or send it to someone else). A request without the check carries no `kyc`.
+they will not sign this request — cancel it or send it to someone else; `remind` lists them in `skipped`). A request
+without the check carries no `kyc`.
 In the signing window such a signer sees a final screen, and your page hears `ERROR` with `code: "KYC_REJECTED"` once.
 
 The list (`getMyRequests`) carries the same `role` and decline fields on each item, plus `createdAt` and `completedAt`

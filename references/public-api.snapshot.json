@@ -17193,7 +17193,7 @@
     },
     "/api/v1/signatures/requests/{requestId}/remind": {
       "post": {
-        "description": "Requires secret key (sk_). Sends a reminder email to pending signers on the request. When body.signerEmails is omitted, every pending signer is reminded; otherwise only the listed emails. Backend enforces a 12-hour per-signer cooldown; rate-limited signers are returned in the skipped array.",
+        "description": "Requires secret key (sk_). Sends a reminder email to pending signers on the request. When body.signerEmails is omitted, every pending signer is reminded; otherwise only the listed emails. Backend enforces a 12-hour per-signer cooldown; rate-limited signers are returned in the skipped array. A signer refused identity verification for good (`kyc: rejected` on the request status) is not reminded either: they are in `skipped` too.",
         "operationId": "PublicApiController_remindSignatureRequest",
         "parameters": [
           {
