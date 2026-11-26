@@ -503,7 +503,8 @@ switch (verification.envelope?.type) {
 ```
 
 The event union has 23 types (`invoice.ksef_accepted` among them); `WebhookEventDataMap` types the payloads of the
-document and signature events. A delivery is tried 3 times (at once, +1 min, +5 min) with the same `id`; after 50 failed
+document and signature events. The endpoint must be a public address (`WEBHOOK_URL_NOT_PUBLIC` otherwise), and a redirect
+from it is not followed. A delivery is tried 3 times (at once, +1 min, +5 min) with the same `id`; after 50 failed
 deliveries in a row the webhook is turned off until it is resumed in the app — see
 [Advanced Usage](docs/ADVANCED_USAGE.md#delivery-retries-and-a-webhook-that-is-turned-off).
 

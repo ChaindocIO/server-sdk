@@ -23,6 +23,9 @@ changes is in [MIGRATION.md](MIGRATION.md) («Upgrading from 3.0.0»).
   `SIGNATURE_CREDITS_EXHAUSTED`, `KYC_CREDITS_EXHAUSTED`, `DOCUMENT_SHARE_LIMIT_REACHED`), the document-writing,
   signing-edit, invoice and PDF-check refusals. No known key was retired.
 - `ChaindocRefusalBody` and `SetupBlocker`: the facts that ride with a key (`status`, `blockers`, `convert`, `state`).
+- `WEBHOOK_URL_NOT_PUBLIC` (`ERROR_KEYS`): the app refuses to save a webhook address that is not public (loopback,
+  private, link-local, reserved, or a name resolving to one). Not answered by an SDK call — the endpoint is set on the API
+  key's page — but it is the word your team will see.
 - Signature requests: `signers[].role`; `declinedAt`, `declinedBy`, `declineComment`, `declinedVia` on `getRequestStatus`
   and on list items (a decline reads `status: 'cancelled'`); `createdAt`, `completedAt` on list items.
 - `DocumentConversionProgress` / `DocumentConversionStage`; `DocumentContentVersion`.
@@ -59,6 +62,8 @@ changes is in [MIGRATION.md](MIGRATION.md) («Upgrading from 3.0.0»).
 - `documents.get().sendable` and `conversions.get` (progress, review) say what they mean.
 - Webhook delivery as the server runs it: 3 attempts (at once, +1 min, +5 min), the same delivery `id`, turned off after
   50 failed deliveries in a row and resumed in the app; which events wait while it is off.
+- Webhook endpoints: a public address only, checked again on every delivery; redirects are not followed (a `3xx` is a
+  failed delivery).
 - Build: dropped three dead `define`s (`CHAINDOC_API_*`) from `tsup.config.ts`.
 
 ## [3.0.0] - 2026-11-10

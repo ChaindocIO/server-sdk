@@ -619,6 +619,12 @@ Recommended payment webhook flow:
 
 This is what the server does today:
 
+- The endpoint must be a **public address**. A loopback, private, link-local, unique-local or reserved address — `localhost`,
+  `127.0.0.1`, `10.x`, `192.168.x`, `169.254.169.254`, `[::1]`, `[::ffff:127.0.0.1]`, a decimal or hex form of one, or a
+  name that resolves to one — is refused when it is saved (`400`, `errorKey: WEBHOOK_URL_NOT_PUBLIC`), and **every
+  delivery resolves and checks the address again**: one that is not public is not sent, and the delivery log says so.
+- **Redirects are not followed.** A `3xx` answer is a failed delivery (it is retried like any other failure); register
+  the address that answers `2xx` itself.
 - A delivery is **tried 3 times in all**: at once, then 1 minute later, then 5 minutes after that. Anything but a `2xx`
   answer within 30 seconds counts as a failure. Every attempt carries the **same delivery `id`** (`envelope.id`), so
   make your handler idempotent on it.

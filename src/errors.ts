@@ -196,6 +196,14 @@ export const ERROR_KEYS = {
   NAME_REQUIRED_FOR_SIGNING: 'NAME_REQUIRED_FOR_SIGNING',
   CONTRAGENT_QES_REQUIRES_SIGNER_SESSION: 'CONTRAGENT_QES_REQUIRES_SIGNER_SESSION',
   ACCOUNT_OPTION_UNAVAILABLE: 'ACCOUNT_OPTION_UNAVAILABLE',
+  // webhook endpoint — set on the API key's page in the app (Developers), not through an SDK call
+  /**
+   * 400 · the webhook address is not public: a loopback, private, link-local, unique-local or reserved address (or a
+   * disguise of one, `localhost`, or a name that resolves to one). Chaindoc posts webhooks only to public addresses and
+   * checks the address again on every delivery; a delivery to one that is not public is not sent. Redirects are not
+   * followed either: a `3xx` answer is a failed delivery, so register the final address.
+   */
+  WEBHOOK_URL_NOT_PUBLIC: 'WEBHOOK_URL_NOT_PUBLIC',
   // embedded sessions (`embedded.createSession`)
   /** 400 · the request the session names is closed (signed, declined, cancelled, expired); `status` says which. No session, no OTP. */
   EMBEDDED_SIGNING_REQUEST_CLOSED: 'EMBEDDED_SIGNING_REQUEST_CLOSED',
