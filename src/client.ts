@@ -89,8 +89,10 @@ export class HttpClient {
     this.baseUrl = config.baseUrl ?? ENVIRONMENT_URLS[environment];
     this.secretKey = config.secretKey;
     this.timeout = config.timeout ?? DEFAULT_TIMEOUT;
+    // No Content-Type here: it is said only when a JSON body is sent. A DELETE (or a body-less POST) that declared
+    // `application/json` with an empty body was refused `400` by the API's JSON parser before any route ran
+    // ("Body cannot be empty when content-type is set to 'application/json'"), so every `delete*` method failed.
     this.defaultHeaders = {
-      "Content-Type": "application/json",
       Authorization: `Bearer ${this.secretKey}`,
       ...config.headers,
     };
@@ -174,15 +176,15 @@ export class HttpClient {
       );
 
       try {
+        const jsonBody = options.rawBody === undefined && options.body ? JSON.stringify(options.body) : undefined;
         const response = await fetch(url, {
           method: options.method ?? "GET",
           headers: {
+            ...(jsonBody !== undefined ? { "Content-Type": "application/json" } : {}),
             ...this.defaultHeaders,
             ...options.headers,
           },
-          body: options.rawBody !== undefined
-            ? options.rawBody
-            : options.body ? JSON.stringify(options.body) : undefined,
+          body: options.rawBody !== undefined ? options.rawBody : jsonBody,
           signal: controller.signal,
         });
 
@@ -416,8 +418,8 @@ export class HttpClient {
         const response = await fetch(url, {
           method,
           headers: {
-            ...this.defaultHeaders,
             ...(hasBody ? { "Content-Type": "application/json" } : {}),
+            ...this.defaultHeaders,
             ...options?.headers,
           },
           body: hasBody ? JSON.stringify(options?.body) : undefined,
