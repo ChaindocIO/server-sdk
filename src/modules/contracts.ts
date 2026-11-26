@@ -152,9 +152,9 @@ export class Contracts {
 
   /**
    * Terminate contract
-   * Initiates termination for an ACTIVE contract.
-   * For ONE_SIDE: terminates immediately.
-   * For MUTUAL_APPROVAL: creates termination request pending counterparty approval.
+   * Asks to terminate an ACTIVE contract: it becomes `termination_pending` (webhook `contract.status_changed`).
+   * It is terminated on the request's effective date, at least the notice period ahead — for ONE_SIDE without the other
+   * side, for MUTUAL_APPROVAL once the counterparty approves — and `contract.terminated` is sent then, once.
    */
   async terminate(contractId: string, params?: TerminateContractParams): Promise<ContractActionResponse> {
     return this.client.post<ContractActionResponse>(
@@ -329,9 +329,11 @@ export class Contracts {
 
   /**
    * Cancel a pending signing request.
-   * Refused `400 SIGNING_REQUEST_HAS_A_SIGNATURE` once anybody signed it — and a contract sent with
-   * `signingPolicy.business: 'delegated'` has the business side's signature from the moment of `send` — and
-   * `400 SIGNING_REQUEST_NOT_PENDING` once it ended (signed, declined, cancelled, expired).
+   * Refused `400 SIGNING_REQUEST_HAS_A_SIGNATURE` once any side has signed it, and a contract sent with
+   * `signingPolicy.business: 'delegated'` has the business side's signature from the moment of `send` — so such a
+   * request cannot be withdrawn (the Chaindoc app refuses its sender the same way). It ends when the counterparty signs
+   * or declines, or when its deadline passes (the contract goes back to `draft`); `resendSigningRequest` reminds the
+   * counterparty meanwhile. `400 SIGNING_REQUEST_NOT_PENDING` once it ended (signed, declined, cancelled, expired).
    */
   async cancelSigningRequest(
     contractId: string,

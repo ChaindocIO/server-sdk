@@ -1228,7 +1228,52 @@ export interface SignatureRequestRejectedData {
   workspace?: WebhookEventWorkspace;
 }
 
-/** The payload type of each document and signature event, for narrowing on `envelope.type`. */
+/**
+ * Payload of `contract.status_changed`: a contract's status changed, and the change has no event of its own. Sent where
+ * the status changes, whichever way it changed (the API, the Chaindoc app, a scheduled job):
+ *
+ * - `pending_signature` — the contract was sent for signing through the API (`previousStatus: 'draft'`);
+ * - `termination_pending` — a termination was asked (by either side, in the API or the app);
+ * - `active` — that termination request was rejected by the other side or withdrawn by the side that asked;
+ * - `rejected` — the counterparty refused the contract;
+ * - `expired` — the contract reached its end date.
+ *
+ * Activation on signing is `contract.signed`, the end of a termination is `contract.terminated`, a deleted draft is
+ * `contract.cancelled`. No order is promised between events: read `status` and `previousStatus`, or `contracts.getStatus`.
+ */
+export interface ContractStatusChangedData {
+  contractId: string;
+  status: ContractStatus;
+  previousStatus: ContractStatus;
+  /** The termination request, for `termination_pending` and for the return to `active`. */
+  terminationRequestId?: string;
+  /** The signing request, on `pending_signature` and `rejected`. */
+  signingRequestId?: string;
+  /** Which side of the contract the receiving workspace is. */
+  side?: "business" | "contragent";
+  workspace?: WebhookEventWorkspace;
+  /** A contract made from a template keeps these on its `pending_signature` event; `currentStatus` equals `status`. */
+  templateId?: string;
+  templateVersionNumber?: number;
+  currentStatus?: ContractStatus;
+}
+
+/**
+ * Payload of `contract.terminated`: the contract's status became `terminated` — on the termination request's effective
+ * date, once the notice period has run (and, under mutual approval, the counterparty has approved). Sent once per
+ * contract. Asking for a termination is `contract.status_changed` with `termination_pending`, not this event.
+ */
+export interface ContractTerminatedData {
+  contractId: string;
+  status: "terminated";
+  /** Normally `termination_pending`. */
+  previousStatus: ContractStatus;
+  terminationRequestId: string;
+  side?: "business" | "contragent";
+  workspace?: WebhookEventWorkspace;
+}
+
+/** The payload type of each typed event, for narrowing on `envelope.type`. */
 export interface WebhookEventDataMap {
   "document.created": DocumentCreatedData;
   "document.verified": DocumentVerifiedData;
@@ -1238,6 +1283,8 @@ export interface WebhookEventDataMap {
   "signature.request.created": SignatureRequestCreatedData;
   "signature.request.completed": SignatureRequestCompletedData;
   "signature.request.rejected": SignatureRequestRejectedData;
+  "contract.status_changed": ContractStatusChangedData;
+  "contract.terminated": ContractTerminatedData;
 }
 
 /**

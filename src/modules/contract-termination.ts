@@ -52,7 +52,7 @@ export class ContractTermination {
 
   /**
    * Approve a pending mutual-approval termination request.
-   * Once both sides approve, the contract is terminated.
+   * Once both sides approve, the contract is terminated on the request's effective date (webhook `contract.terminated`).
    */
   async approve(
     contractId: string,
@@ -64,7 +64,10 @@ export class ContractTermination {
     );
   }
 
-  /** Reject a pending mutual-approval termination request with a required reason. */
+  /**
+   * Reject a pending mutual-approval termination request with a required reason.
+   * The contract is `active` again (webhook `contract.status_changed`).
+   */
   async reject(
     contractId: string,
     params: RejectTerminationParams
@@ -77,7 +80,7 @@ export class ContractTermination {
 
   /**
    * Cancel a still-pending termination request.
-   * Only the original initiator side can cancel.
+   * Only the original initiator side can cancel. The contract is `active` again (webhook `contract.status_changed`).
    */
   async cancel(contractId: string): Promise<ContractActionResponse> {
     return this.client.delete<ContractActionResponse>(

@@ -279,7 +279,9 @@ await chaindoc.contragents.list(); await chaindoc.taxTreatments.list(); await ch
   created and the contract stays a draft. With `isKycRequired` and `signingPolicy.business: 'delegated'`, the workspace
   Owner signs the business side at once and must have passed identity verification: otherwise `400 KYC_NOT_VERIFIED`.
 - A contract sent with `business: 'delegated'` has a signature from the moment of `send`: `cancelSigningRequest` then
-  answers `400 SIGNING_REQUEST_HAS_A_SIGNATURE`; a request that ended answers `400 SIGNING_REQUEST_NOT_PENDING`.
+  answers `400 SIGNING_REQUEST_HAS_A_SIGNATURE` — a request any side has signed is not withdrawn, in the API or in the app.
+  It ends when the counterparty signs or declines, or at its `deadline` (the contract goes back to `draft`);
+  `resendSigningRequest` reminds the counterparty meanwhile. A request that ended answers `400 SIGNING_REQUEST_NOT_PENDING`.
 - `businessSign` answers `completionPending: true` when the signature is recorded and the contract is still being
   completed (within minutes; `contract.signed` tells you). A key of a team workspace is refused `403 KEY_WORKSPACE_IS_NOT_A_PERSON`.
 
@@ -374,13 +376,21 @@ File intakes are not in MCP.
 stays) and carries `documentId`. `signature.request.rejected` with `rejectedVia: 'contract'` (a counterparty refused a
 contract or an amendment) carries `contractId`, `signingRequestId` and, for an amendment, `agreementId`.
 
+- **Contract status events fire where the status changes**, whichever way it changed (the API, the app, a scheduled job).
+  `contract.status_changed` carries `contractId`, `status` and `previousStatus`: `termination_pending` when either side
+  asks to terminate, `active` again when that request is rejected or withdrawn, `rejected`, `expired`, and
+  `pending_signature` on `send`. `contract.terminated` is sent once, when the contract has actually ended (the
+  termination's effective date) — not when a termination is asked, as 3.0.0's API did.
+
 **Delivery.** A delivery is tried 3 times in all (at once, +1 minute, +5 minutes); anything but a `2xx` within 30 seconds
-is a failure, and every attempt carries the same delivery `id`. After 50 deliveries in a row that failed every attempt the
-webhook is turned off; a person resumes it in the app. While it is off, `contract.signed`, `invoice.*` and
-`transaction.*` wait and go out after it is resumed; other events of that period are not delivered.
+is a failure, and every attempt carries the same delivery `id`. After 50 deliveries in a row that failed every attempt
+Chaindoc stops sending; a person resumes it in the app. Every event of the stop is kept and delivered after the resume
+(not while the owner has paused sending).
 
 **What you do.** Re-subscribe to the new events; make your handler idempotent on the delivery `id` (retries reuse it); expect
-more than one delivery per contract change.
+more than one delivery per contract change. If you treated `contract.terminated` as «termination asked», listen for
+`contract.status_changed` with `termination_pending` instead; after a resume, expect late events and trust the object's
+status over the order of events.
 
 **SDK 3.** `Chaindoc.webhooks.verify(...)`; the event union has the 23 types (since `Unreleased`; 3.0.0 had 22), and
 `WebhookEventDataMap` types the document and signature payloads.

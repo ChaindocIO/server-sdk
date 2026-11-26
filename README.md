@@ -367,7 +367,9 @@ Chaindoc app's Send does. They refuse before anything is created (the contract o
 | `400 KYC_NOT_VERIFIED` | `isKycRequired` with `signingPolicy.business: 'delegated'`, and the workspace Owner, who signs the business side at once, has not passed identity verification | the Owner verifies in the app first |
 
 With `signingPolicy.business: 'delegated'` the business side is signed at `send`, so `contracts.cancelSigningRequest`
-then answers `400 SIGNING_REQUEST_HAS_A_SIGNATURE`.
+then answers `400 SIGNING_REQUEST_HAS_A_SIGNATURE`: a request any side has signed is not withdrawn, in the API or in the
+Chaindoc app. It ends when the counterparty signs or declines, or when its deadline passes (the contract goes back to
+`draft`); meanwhile `contracts.resendSigningRequest` reminds the counterparty. Set the `deadline` at `send` accordingly.
 
 `embedded.createSession` gives no session for something there is nothing to sign in: `400 EMBEDDED_SIGNING_REQUEST_CLOSED`
 (`status`) for a request that is signed, declined, cancelled or expired, `400 EMBEDDED_CONTRACT_NOT_SIGNABLE` for a
@@ -492,6 +494,8 @@ if (!verification.valid) {
 switch (verification.envelope?.type) {
   case "document.conversion.completed":
   case "document.conversion.failed":
+  case "contract.status_changed": // termination_pending, active again, rejected, expired — see below
+  case "contract.terminated": // once, when the contract has ended
   case "contract.signed":
   case "additional_agreement.signed":
   case "invoice.created":
@@ -509,8 +513,16 @@ switch (verification.envelope?.type) {
 The event union has 23 types (`invoice.ksef_accepted` among them); `WebhookEventDataMap` types the payloads of the
 document and signature events. The endpoint must be a public address (`WEBHOOK_URL_NOT_PUBLIC` otherwise), and a redirect
 from it is not followed. A delivery is tried 3 times (at once, +1 min, +5 min) with the same `id`; after 50 failed
-deliveries in a row the webhook is turned off until it is resumed in the app — see
+deliveries in a row Chaindoc stops sending until it is resumed in the app, and the events of that time are kept and
+delivered after the resume — see
 [Advanced Usage](docs/ADVANCED_USAGE.md#delivery-retries-and-a-webhook-that-is-turned-off).
+
+`contract.status_changed` is sent whenever a contract's status changes without an event of its own — however it changed
+(the API, the Chaindoc app, a scheduled job): `termination_pending` when either side asks to terminate, `active` again
+when that request is rejected or withdrawn, `rejected`, `expired`, and `pending_signature` on `contracts.send`.
+`contract.terminated` is sent once, when the contract has actually ended (the termination's effective date). Both carry
+`contractId`, `status`, `previousStatus` (and `terminationRequestId` / `signingRequestId` where an act names it) —
+`ContractStatusChangedData`, `ContractTerminatedData`.
 
 ## Error Handling
 

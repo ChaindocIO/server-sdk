@@ -628,11 +628,15 @@ This is what the server does today:
 - A delivery is **tried 3 times in all**: at once, then 1 minute later, then 5 minutes after that. Anything but a `2xx`
   answer within 30 seconds counts as a failure. Every attempt carries the **same delivery `id`** (`envelope.id`), so
   make your handler idempotent on it.
-- After **50 deliveries in a row that failed every attempt**, the webhook is **turned off**. The Chaindoc app shows it on
-  the API key's page; a person fixes the endpoint and presses *Resume sending*. Nothing turns it back on by itself.
-- While it is off, `contract.signed`, `invoice.*` and `transaction.*` wait (they are written to a delivery outbox with the
-  change itself) and go out once it is resumed. **Other events of that period are not delivered**: after resuming, read
-  the documents, requests and contracts you track from the API.
+- After **50 deliveries in a row that failed every attempt**, Chaindoc **stops sending** to the endpoint. The Chaindoc
+  app shows it on the API key's page; a person fixes the endpoint and presses *Resume sending*. Nothing turns it back on
+  by itself.
+- **While it is stopped, every event is kept** and delivered once sending is resumed, each with its own delivery `id` and
+  the usual 3 attempts. They start within a minute of the resume, the oldest first, and may take several minutes to
+  drain; they arrive as late as the stop lasted, and order is not promised — trust the object's state over the order of
+  events.
+  Nothing is kept while the key's owner has **paused** sending (*Send events* off), and nothing for a deactivated key.
+  There is no age limit on what is kept.
 
 ### Payload types
 
@@ -646,6 +650,23 @@ is `SignatureRequestRejectedData`, and so on (`DocumentCreatedData`, `DocumentVe
 - `signature.request.rejected` with `rejectedVia: 'contract'` is a counterparty's refusal of a contract (or an amendment):
   it also carries `contractId`, `signingRequestId` and, for an amendment, `agreementId`.
 - `invoice.ksef_accepted` (KSeF, Poland) carries `invoice.sent`'s payload plus `ksef: { number, acceptedAt }`.
+- `contract.status_changed` (`ContractStatusChangedData`) is sent where a contract's status changes, whichever way it
+  changed — the API, the Chaindoc app, a scheduled job — when the change has no event of its own:
+
+  | `status` | `previousStatus` | When | Also carries |
+  | --- | --- | --- | --- |
+  | `pending_signature` | `draft` | `contracts.send` (and a contract created from a template and sent) | `signingRequestId` |
+  | `termination_pending` | `active` | either side asks to terminate (`contracts.terminate`, or in the app) | `terminationRequestId` |
+  | `active` | `termination_pending` | that request is rejected by the other side, or withdrawn by the side that asked | `terminationRequestId` |
+  | `rejected` | `pending_signature` or `active` | the counterparty refuses the contract | `signingRequestId` (a refused request) |
+  | `expired` | `active` | the contract reaches its end date | — |
+
+- `contract.terminated` (`ContractTerminatedData`) is sent **once**, when the contract's status becomes `terminated`: on the
+  termination request's effective date, after the notice period — for a mutual-approval contract only once the
+  counterparty has approved. Asking to terminate is `contract.status_changed`, not this event. It carries `contractId`,
+  `status: 'terminated'`, `previousStatus` and `terminationRequestId`.
+- Activation on signing is `contract.signed`; a deleted draft is `contract.cancelled`. Every contract event also carries
+  `side` and `workspace.uuid`, once per side of the contract that is your workspace.
 
 ```typescript
 import type { WebhookEventDataMap } from "@chaindoc_io/server-sdk";

@@ -37,9 +37,18 @@ changes is in [MIGRATION.md](MIGRATION.md) («Upgrading from 3.0.0»).
   `DocumentCreatedData`, `DocumentVerifiedData`, `DocumentSignedData`, `SignatureRequestCreatedData`,
   `SignatureRequestCompletedData`, `SignatureRequestRejectedData` (with `contractId`, `signingRequestId`, `agreementId`),
   `WebhookEventSigner`, `WebhookEventDataMap`.
+- Webhook payload types `ContractStatusChangedData` and `ContractTerminatedData` (in `WebhookEventDataMap`): `contractId`,
+  `status`, `previousStatus`, and `terminationRequestId` / `signingRequestId` where an act names it.
 
 ### Changed
 
+- **Server: contract status events fire where the status changes**, whichever way it changed (the API, the Chaindoc app,
+  a scheduled job). `contract.status_changed` now also comes for a termination asked (`termination_pending`), a
+  termination rejected or withdrawn (back to `active`), a refused contract (`rejected`) and an expired one (`expired`),
+  and always carries `previousStatus`. `contract.terminated` comes once, when the contract has actually ended (the
+  termination's effective date) — 3.0.0's `contracts.terminate` sent it at once, with `status: 'termination_pending'`.
+- **Server: events are kept while Chaindoc has stopped sending to an endpoint** (after 50 failed deliveries in a row) and
+  delivered after *Resume sending*. Before, only `contract.signed`, `invoice.*` and `transaction.*` were.
 - `CONTRACTS_LIMIT_REACHED`, `OPEN_SIGN_REQUESTS_LIMIT_REACHED`, `SIGNATURE_CREDITS_EXHAUSTED`, `KYC_CREDITS_EXHAUSTED`,
   `DOCUMENT_SHARE_LIMIT_REACHED` now arrive as `ChaindocLimitError` (still `instanceof ChaindocError`).
 
@@ -64,7 +73,12 @@ changes is in [MIGRATION.md](MIGRATION.md) («Upgrading from 3.0.0»).
 - The signing window always asks the signer for a reason to decline.
 - `documents.get().sendable` and `conversions.get` (progress, review) say what they mean.
 - Webhook delivery as the server runs it: 3 attempts (at once, +1 min, +5 min), the same delivery `id`, turned off after
-  50 failed deliveries in a row and resumed in the app; which events wait while it is off.
+  50 failed deliveries in a row and resumed in the app; every event of the stop is kept and delivered after the resume.
+- When `contract.status_changed` and `contract.terminated` fire, with their fields; `contracts.terminate` and the
+  termination methods say which event follows.
+- `contracts.cancelSigningRequest`: refused once any side has signed, including the business side signed at `send` under
+  `signingPolicy.business: 'delegated'`; what ends such a request instead (the counterparty, the deadline) and
+  `resendSigningRequest` meanwhile.
 - Webhook endpoints: a public address only, checked again on every delivery; redirects are not followed (a `3xx` is a
   failed delivery).
 - Build: dropped three dead `define`s (`CHAINDOC_API_*`) from `tsup.config.ts`.

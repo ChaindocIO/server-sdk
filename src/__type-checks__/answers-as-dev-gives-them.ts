@@ -131,3 +131,22 @@ export const created: WebhookEventDataMap["signature.request.created"] = {
   deadline: "2026-12-01T00:00:00.000Z",
   workspace: { uuid: "w" },
 };
+
+// `contract.status_changed` on a termination asked, and `contract.terminated` when the contract has ended — as the server
+// sends them to a key of the business side.
+export const terminationAsked: WebhookEventDataMap["contract.status_changed"] = {
+  contractId: "3f2b8c1e-5d4a-4e7b-9c1d-2a6f8e0b7c45",
+  status: "termination_pending",
+  previousStatus: "active",
+  terminationRequestId: "9a7e4d21-0b3c-4f58-8e6a-1c2d3b4a5f60",
+  side: "business",
+  workspace: { uuid: "w" },
+};
+export const terminated: WebhookEventDataMap["contract.terminated"] = {
+  contractId: "3f2b8c1e-5d4a-4e7b-9c1d-2a6f8e0b7c45",
+  status: "terminated",
+  previousStatus: "termination_pending",
+  terminationRequestId: "9a7e4d21-0b3c-4f58-8e6a-1c2d3b4a5f60",
+  side: "business",
+  workspace: { uuid: "w" },
+};
