@@ -310,7 +310,7 @@ export interface CreateTemplateParams {
   name: string;
   description?: string;
   category: TemplateCategory;
-  /** The engine's template content: `{ version: 2, mode: 'template', doc }`. Unreadable content is 422 `TEMPLATE_CONTENT_REFUSED`. */
+  /** The engine's template content: `{ version: 3, mode: 'template', doc }`. Unreadable content is 422 `TEMPLATE_CONTENT_REFUSED`. */
   content: DocumentContent;
   /** Optional hints; variables and signer slots are read off the content. */
   variablesSchema?: TemplateVariableInput[];

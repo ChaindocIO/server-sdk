@@ -17,6 +17,13 @@ version bumps in their repositories; check npm for what is actually published be
 **Before anything else**, one change breaks existing integrations: point 3 (files are converted, coordinates are
 refused). Read it first.
 
+> **Updated after 3.0.0 (SDK `Unreleased`).** The server changed what some calls answer since this page was written;
+> the points below say it as the server answers today: content is version 3 (points 3, 4); `sendable` follows the send's
+> own rule (point 3); a contract or amendment is sent only on a text with the sides' signature chips (point 6); 23
+> webhook events, the delivery schedule and the payload names (point 9); more refusal codes (point 10); the signing window
+> always asks a reason to decline (point 11). What an SDK 3.0.0 integration must change is in
+> [MIGRATION.md](../MIGRATION.md) («Upgrading from 3.0.0»).
+
 ---
 
 ## 1. Business plan
@@ -133,7 +140,7 @@ await chaindoc.signatures.createRequest({
 A text document directly (no file):
 
 ```typescript
-await chaindoc.documents.create({ name: 'NDA', status: 'draft', content: { version: 2, mode: 'document', doc } });
+await chaindoc.documents.create({ name: 'NDA', status: 'draft', content: { version: 3, mode: 'document', doc } });
 ```
 
 A next version: from text name the version you read; from a file it is converted again.
@@ -157,7 +164,12 @@ const { conversion } = await chaindoc.documents.convert(id);             // an o
 7. Full limits: a full storage is `400 STORAGE_LIMIT_REACHED`, the AI budget `AI_LIMIT_REACHED` / `AI_NOT_IN_PLAN`. Both are
    refused before anything is spent.
 
-`GET /documents/{id}` now also returns `format` (`text` or `file`) and `sendable`.
+`GET /documents/{id}` now also returns `format` (`text` or `file`) and `sendable`: `true` when a signature request can
+be made on the current version now — a text whose roles each hold a signature chip and nothing in its set-up blocks the
+send, with no open or completed request on that version; `false` for a file, a text without roles, and once sent.
+
+The engine's content is **version 3** (`getContent` answers `contentVersion: 3`); `1` and `2` are still accepted on a write.
+Send back what you read; do not branch on `version === 2`.
 
 **SDK 3.** `documents.create({ content })`, `createFromFile`, `createFromStorage`, `update`, `convert`, `getContent`,
 `addSignatureBlock`, `conversions.get`, `conversions.wait`. Removed: `SignatureRequestField` and `fields`, `media`.
@@ -174,7 +186,7 @@ A write that is retried carries an `idempotencyKey` (generated when you give non
 ## 4. Templates
 
 **What it is.** Only the new template format works.
-- A template is edited as a working copy. `content` is `{ version: 2, mode: 'template', doc }`; every update and publish
+- A template is edited as a working copy. `content` is `{ version: 3, mode: 'template', doc }` (1 and 2 are accepted); every update and publish
   names the `revision` you read, and a copy that moved is `409 TEMPLATE_WORKING_COPY_MOVED`.
 - `contentJson` (Tiptap) is refused (`TEMPLATE_FORMAT_RETIRED`). `content` without `revision` is `TEMPLATE_REVISION_REQUIRED`.
   Old-format templates answer `410 TEMPLATE_RETIRED`.
@@ -195,7 +207,7 @@ carry `revision` through update and publish.
 **SDK 3.**
 
 ```typescript
-await chaindoc.templates.create({ name, category, content: { version: 2, mode: 'template', doc } });
+await chaindoc.templates.create({ name, category, content: { version: 3, mode: 'template', doc } });
 const { template } = await chaindoc.templates.get(id);
 await chaindoc.templates.update(id, { content, revision: template.workingCopy!.revision });
 await chaindoc.templates.publish(id, { changelog, revision });
@@ -260,6 +272,16 @@ await chaindoc.contragents.list(); await chaindoc.taxTreatments.list(); await ch
 - `additional_agreement.signed` is a new webhook (point 9).
 - A contract from a template: point 4. A counterparty can be a workspace: `contragentAccount` (point 2). A counterparty can be
   a full billing identity (`contragent`: `legalName`, `vatNumber`, `registrationNumber`, `entityType`) as well as `contragentEmail`.
+- **A contract (and an amendment) is signed where its text places the sides.** `POST /contracts/{id}/send` and
+  `.../agreements/{id}/initiate-signing` read the text's roles `business` and `contragent` and place each side's signature
+  on its chips, as the app's Send does. A side without a chip is `409 SETUP_BLOCKED` (`blockers[]`), another role is
+  `400 SIGNATURE_ROLE_UNKNOWN`, a document that is a file is `422 DOCUMENT_FILE_CONVERTS` (convert it first); nothing is
+  created and the contract stays a draft. With `isKycRequired` and `signingPolicy.business: 'delegated'`, the workspace
+  Owner signs the business side at once and must have passed identity verification: otherwise `400 KYC_NOT_VERIFIED`.
+- A contract sent with `business: 'delegated'` has a signature from the moment of `send`: `cancelSigningRequest` then
+  answers `400 SIGNING_REQUEST_HAS_A_SIGNATURE`; a request that ended answers `400 SIGNING_REQUEST_NOT_PENDING`.
+- `businessSign` answers `completionPending: true` when the signature is recorded and the contract is still being
+  completed (within minutes; `contract.signed` tells you). A key of a team workspace is refused `403 KEY_WORKSPACE_IS_NOT_A_PERSON`.
 
 **What you do.** Do not expect an annex invoice in your lists before the partner signs. Use `resend` instead of creating a
 second request for a cancelled one.
@@ -323,13 +345,16 @@ File intakes are not in MCP.
 
 ## 9. Webhooks
 
-**What it is.** The event list is the contract's 22 events:
+**What it is.** The event list is the contract's 23 events:
 
 `document.created`, `document.verified`, `document.signed`, `document.conversion.completed`, `document.conversion.failed`,
 `signature.request.created`, `signature.request.completed`, `signature.request.rejected`, `contract.created`,
 `contract.status_changed`, `contract.signed`, `additional_agreement.signed`, `contract.cancelled`, `contract.terminated`,
-`invoice.created`, `invoice.sent`, `invoice.paid`, `invoice.cancelled`, `transaction.created`, `transaction.updated`,
-`transaction.edited`, `transaction.removed`.
+`invoice.created`, `invoice.sent`, `invoice.paid`, `invoice.cancelled`, `invoice.ksef_accepted`, `transaction.created`,
+`transaction.updated`, `transaction.edited`, `transaction.removed`.
+
+`invoice.ksef_accepted` (KSeF, Poland): KSeF numbered an invoice of a seller connected to it; `invoice.sent`'s payload plus
+`ksef: { number, acceptedAt }`, once per invoice.
 
 - New: the two `document.conversion.*` events, `additional_agreement.signed`, `transaction.edited`, `transaction.removed`.
 - Gone: all `workflow.*` events. There is no escrow surface.
@@ -345,11 +370,20 @@ File intakes are not in MCP.
 
 `document.conversion.completed` carries `conversionId`, `documentId`, `versionId`, `kind` (`new` or `version`) and `review`
 (`ready_for_review` or `needs_review`). `document.conversion.failed` carries `conversionId`, `kind` and `failure.code`.
+`signature.request.created` names the request `signatureRequestId` (as the other `signature.request.*` events do; `requestId`
+stays) and carries `documentId`. `signature.request.rejected` with `rejectedVia: 'contract'` (a counterparty refused a
+contract or an amendment) carries `contractId`, `signingRequestId` and, for an amendment, `agreementId`.
+
+**Delivery.** A delivery is tried 3 times in all (at once, +1 minute, +5 minutes); anything but a `2xx` within 30 seconds
+is a failure, and every attempt carries the same delivery `id`. After 50 deliveries in a row that failed every attempt the
+webhook is turned off; a person resumes it in the app. While it is off, `contract.signed`, `invoice.*` and
+`transaction.*` wait and go out after it is resumed; other events of that period are not delivered.
 
 **What you do.** Re-subscribe to the new events; make your handler idempotent on the delivery `id` (retries reuse it); expect
 more than one delivery per contract change.
 
-**SDK 3.** `Chaindoc.webhooks.verify(...)`; the event union has the 22 types.
+**SDK 3.** `Chaindoc.webhooks.verify(...)`; the event union has the 23 types (since `Unreleased`; 3.0.0 had 22), and
+`WebhookEventDataMap` types the document and signature payloads.
 
 **MCP.** `chaindoc_webhooks_verify` (HMAC-SHA256, 5-minute replay window; headers `X-Chaindoc-Signature`, `X-Chaindoc-Timestamp`,
 `X-Chaindoc-Event`, `X-Chaindoc-Delivery-Id`).
@@ -384,6 +418,21 @@ envelope has `errorKey` and a `hint`.
 | `TEMPLATE_VALUES_REFUSED` / `TEMPLATE_VALUES_MISSING` | A value its field cannot hold / a required value empty | Correct the `variables` |
 | `INVOICE_MONEY_OR_CREDIT_NOTE` | Cancel of an invoice that money or a credit note has reached | Create a credit note |
 | `STRIPE_NOT_READY` (and other `STRIPE_*`) | The seller's Stripe is not ready for a charge | The seller finishes Stripe setup; do not retry the charge blindly |
+| `VALIDATION_FAILED` (400) | The body or the query failed validation (`message` lists the broken constraints) | Fix the input |
+| `DOCUMENT_NOT_A_FILE` (422) | `convert` (or a next version from a file) on a document that is already a text | Edit it as text |
+| `DOCUMENT_EDIT_REFUSED` (403) | The document takes no new version now (on signing, signed, in a contract) | Make a new document |
+| `KYC_NOT_VERIFIED` (400) | A signer of a request with `isKycRequired` has not verified; on a contract `send`, the workspace Owner | The person verifies in the app |
+| `CONTRACT_NOT_A_DRAFT` (403 `cancel`/`delete`, 400 `send`) | The contract was already sent, cancelled or finished | Read the contract |
+| `SIGNING_REQUEST_HAS_A_SIGNATURE` / `SIGNING_REQUEST_NOT_PENDING` (400) | Cancel of a contract request somebody signed / of one that ended | Read the contract |
+| `SIGNING_REQUEST_EXPIRED` (400) | An act on a contract request after its deadline | Send the contract again |
+| `SIGNATURE_REQUEST_NOT_PENDING` (400, `status`) | `remind` on a request that is not pending | Read the request |
+| `SIGNER_ALREADY_ACTED` (400) | This signer already signed or refused | Nothing to do |
+| `KEY_NAMES_NO_SIGNER` (400) | `signatures.sign`: the key's person is no signer of the request | Sign as the signer, or in the window |
+| `BUSINESS_PROFILE_INCOMPLETE` (403) | An invoice before the business profile holds what an invoice prints | Complete the business profile |
+| `EMBEDDED_SIGNING_REQUEST_CLOSED` / `EMBEDDED_CONTRACT_NOT_SIGNABLE` (400, `status`) | `embedded.createSession` for a request that ended / a contract never sent | Nothing to sign: no session is given |
+
+The SDK's `ERROR_KEYS` holds every key the public API and `embedded.createSession` answer today (about 200);
+this table names the ones most integrations meet.
 
 Codes that the embed reports in its `ERROR` event are in point 11. A source note on verification: these keys are in the
 backend source and, where marked in the OpenAPI, in `openapi/public-api.json`; the contract does not list every one.
@@ -396,9 +445,10 @@ backend source and, where marked in the OpenAPI, in `openapi/public-api.json`; t
 - **New look.** The signing screen is rebuilt on the same component (`DocumentSigningView`) the Chaindoc app draws, driven by one
   read (`GET /embedded/signing-window/{requestId}`: lane, requirements, what holds the signer, standing, decline, result).
   The embed now looks like the app and shows 14 languages. Your iframe needs no code change for the look.
-- **Decline.** A signer can decline from the embed (`POST /embedded/signatures/requests/{requestId}/decline`). The reason is
-  optional on a document request (up to 500 characters), required on a contract or an amendment (up to 1000). The request
-  ends for everybody, the sender is told, and the declined webhooks fire.
+- **Decline.** A signer can decline from the embed (`POST /embedded/signatures/requests/{requestId}/decline`). The window
+  always asks the signer for a reason, as the app does (up to 500 characters on a document, 1000 on a contract or an
+  amendment); the route itself takes an empty reason on a document request. The request ends for everybody, the sender is
+  told, and the declined webhooks fire.
 - **Card step.** A counterparty who must add a payment method does it inside the embed (previously a dead end). Two embedded
   routes: `POST /embedded/contracts/signing/{requestId}/payment-method/setup-intent` (answers `clientSecret`, `setupIntentId`,
   `stripeAccountId`, `publishableKey`) and `.../payment-method/attach`. Card only for now. Card data goes to Stripe's own fields;
@@ -466,5 +516,7 @@ sdk.openSignatureFlow({
 - [ ] Re-subscribe to the new webhook events; handle one delivery per contract side
 - [ ] Money: no blind retries; cancel with a credit note once money arrived
 - [ ] Embed: update to embed-sdk 2.3.0, add `onDecline`, handle the new `ERROR` codes
+- [ ] Contracts: put the `business` and `contragent` signature chips into the contract's text before `send`; convert a file first
+- [ ] Content: read `version` as 1, 2 or 3; send back what you read
 
 See [MIGRATION.md](../MIGRATION.md) for every SDK change with before and after.

@@ -615,6 +615,41 @@ Recommended payment webhook flow:
 - Treat `transaction.created` and `transaction.updated` as operational payment-status updates.
 - Always verify both `X-Chaindoc-Signature` and `X-Chaindoc-Timestamp` via `Chaindoc.webhooks.verify()`.
 
+### Delivery, retries and a webhook that is turned off
+
+This is what the server does today:
+
+- A delivery is **tried 3 times in all**: at once, then 1 minute later, then 5 minutes after that. Anything but a `2xx`
+  answer within 30 seconds counts as a failure. Every attempt carries the **same delivery `id`** (`envelope.id`), so
+  make your handler idempotent on it.
+- After **50 deliveries in a row that failed every attempt**, the webhook is **turned off**. The Chaindoc app shows it on
+  the API key's page; a person fixes the endpoint and presses *Resume sending*. Nothing turns it back on by itself.
+- While it is off, `contract.signed`, `invoice.*` and `transaction.*` wait (they are written to a delivery outbox with the
+  change itself) and go out once it is resumed. **Other events of that period are not delivered**: after resuming, read
+  the documents, requests and contracts you track from the API.
+
+### Payload types
+
+`WebhookEnvelope.data` is typed per event for the document and signature events: `WebhookEventDataMap['signature.request.rejected']`
+is `SignatureRequestRejectedData`, and so on (`DocumentCreatedData`, `DocumentVerifiedData`, `DocumentSignedData`,
+`SignatureRequestCreatedData`, `SignatureRequestCompletedData`, `DocumentConversionCompletedData`,
+`DocumentConversionFailedData`). Every event whose object belongs to a workspace carries `data.workspace.uuid`.
+
+- `signature.request.created` names the request as `signatureRequestId` (as every `signature.request.*` event does) and
+  keeps `requestId`; it carries `documentId` and `versionId`, and `resentFrom` for a request `signatures.resend` made.
+- `signature.request.rejected` with `rejectedVia: 'contract'` is a counterparty's refusal of a contract (or an amendment):
+  it also carries `contractId`, `signingRequestId` and, for an amendment, `agreementId`.
+- `invoice.ksef_accepted` (KSeF, Poland) carries `invoice.sent`'s payload plus `ksef: { number, acceptedAt }`.
+
+```typescript
+import type { WebhookEventDataMap } from "@chaindoc_io/server-sdk";
+
+if (event.type === "signature.request.rejected") {
+  const data = event.data as unknown as WebhookEventDataMap["signature.request.rejected"];
+  if (data.rejectedVia === "contract") await markContractRefused(data.contractId!, data.reason);
+}
+```
+
 ---
 
 ## Rate Limiting & Retries
@@ -927,7 +962,8 @@ describe("Chaindoc Integration", () => {
   beforeAll(() => {
     chaindoc = new Chaindoc({
       secretKey: process.env.CHAINDOC_TEST_SECRET_KEY!,
-      environment: "staging",
+      // A test backend's base URL, with a key it issued (without it the SDK calls production).
+      baseUrl: process.env.CHAINDOC_TEST_API_BASE_URL!,
     });
   });
 

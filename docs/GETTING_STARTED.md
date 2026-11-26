@@ -455,40 +455,29 @@ try {
 
 ---
 
-## Environment Configuration
+## Base URL
 
-The SDK supports three environments:
+The SDK calls the production API, `https://api.chaindoc.io`, unless you pass `baseUrl`. A key works only against the
+backend that issued it: to call a non-production backend, pass its base URL (and a key issued there) as `baseUrl`.
 
-| Environment   | API URL                             |
-| ------------- | ----------------------------------- |
-| `production`  | `https://api.chaindoc.io` (default) |
-| `staging`     | `https://api-demo.chaindoc.io`      |
-| `development` | `https://api-demo.chaindoc.io`      |
+`environment` is **deprecated and switches nothing**: `production`, `staging` and `development` all call
+`https://api.chaindoc.io`, the production API, with your key (earlier docs pointed `staging` and `development` at a demo
+host that no longer answers). Remove `environment` from your config, or keep it — it has no effect.
 
-### Development
-
-```typescript
-const chaindoc = new Chaindoc({
-  secretKey: "sk_test_xxxxxxxxxxxxx",
-  environment: "development",
-});
-```
-
-### Staging
-
-```typescript
-const chaindoc = new Chaindoc({
-  secretKey: "sk_test_xxxxxxxxxxxxx",
-  environment: "staging",
-});
-```
-
-### Production
+### Production (default)
 
 ```typescript
 const chaindoc = new Chaindoc({
   secretKey: process.env.CHAINDOC_SECRET_KEY!,
-  // environment defaults to 'production'
+});
+```
+
+### Another backend
+
+```typescript
+const chaindoc = new Chaindoc({
+  secretKey: process.env.CHAINDOC_SECRET_KEY!, // a key issued by that backend
+  baseUrl: process.env.CHAINDOC_API_BASE_URL!,
 });
 ```
 

@@ -519,7 +519,7 @@
               }
             ],
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/MetaTagDto"
             },
             "type": "array"
           },
@@ -903,7 +903,7 @@
           },
           "content": {
             "additionalProperties": true,
-            "description": "A text document: the engine's content `{ version: 2, mode: 'document' | 'template', doc }`. Signature places are chips of the text; `mode: 'template'` holds fields and signer roles. Give exactly one of `content`, `media` and `storageFileId`.",
+            "description": "A text document: the engine's content `{ version: 3, mode: 'document' | 'template', doc }` — version 3 is what `GET /documents/{id}/content` answers; versions 1 and 2 are accepted too, each drawn by its own rules. Signature places are chips of the text; `mode: 'template'` holds fields and signer roles. Required here: a file goes through `POST /documents/from-storage`.",
             "type": "object"
           },
           "description": {
@@ -926,7 +926,8 @@
             "type": "string"
           },
           "media": {
-            "description": "A file uploaded with `POST /media/upload`. A file becomes a text document only by conversion (an asynchronous conversion, answered 202). Give exactly one of `content`, `media` and `storageFileId`.",
+            "deprecated": true,
+            "description": "Not accepted: answered 422 `DOCUMENT_FILE_VIA_STORAGE`. A file becomes a text document only by conversion: upload it with `POST /media/chunked`, then send it to `POST /documents/from-storage` by its `storageFileId` (202). Declared so a request carrying it is refused by name rather than stripped.",
             "example": {
               "key": "temp/path/to/file.pdf",
               "type": "document"
@@ -941,7 +942,7 @@
               }
             ],
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/MetaTagDto"
             },
             "type": "array"
           },
@@ -1026,7 +1027,7 @@
               }
             ],
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/MetaTagDto"
             },
             "type": "array"
           },
@@ -1226,7 +1227,7 @@
             "type": "boolean"
           },
           "showUnpaid": {
-            "description": "Whether the invoice, when it is sent, also prints under its totals what the partner still owes on their other open invoices in its currency — «Not part of this invoice» and «Total outstanding, with this invoice». Omitted → true; false prints none. Read once, when the invoice is sent.",
+            "description": "Whether the invoice, when it is sent, also prints under its totals what the partner still owes on their other open invoices in its currency — «Not part of this invoice» and «Total outstanding, with this invoice». Omitted → false (the switch starts off, EXCHANGE №177); true prints them. Read once, when the invoice is sent.",
             "type": "boolean"
           },
           "stripePaymentAllowed": {
@@ -1334,7 +1335,7 @@
           },
           "meta": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/MetaTagDto"
             },
             "type": "array"
           },
@@ -1358,8 +1359,7 @@
           "versionId",
           "recipients",
           "embeddedFlow",
-          "deadline",
-          "meta"
+          "deadline"
         ],
         "type": "object"
       },
@@ -1438,7 +1438,7 @@
             "type": "string"
           },
           "content": {
-            "description": "The template's content in the new content format: `{ version, mode: 'template', doc }`. Required unless `contentJson` is sent. Its `version` is 1 for content made before the editor's format came and 2 for content made since: each is read, saved and answered in its own version. Content of version 2 may hold all the editor's format holds — sections with their own paper, orientation, header, footer and page numbers, footnotes, tab stops, tables in cells and merged rows, list levels and the rest — and is saved and answered exactly as it was sent: nothing in it is flattened or left out.",
+            "description": "The template's content in the new content format: `{ version, mode: 'template', doc }`. Required unless `contentJson` is sent. Its `version` is 1 for content made before the editor's format came, 2 for content made since and 3 for content made since the editor's content version 3: each is read, saved and answered in its own version. Content of version 2 or 3 may hold all the editor's format holds — sections with their own paper, orientation, header, footer and page numbers, footnotes, tab stops, tables in cells and merged rows, list levels and the rest — and is saved and answered exactly as it was sent: nothing in it is flattened or left out.",
             "type": "object"
           },
           "contentJson": {
@@ -1537,7 +1537,7 @@
       "DeclineEmbeddedRequestDto": {
         "properties": {
           "reason": {
-            "description": "The reason. Optional on a plain document request (up to 500 characters); required on a contract or an amendment (up to 1000). the `decline` field of the signing window says which applies.",
+            "description": "The reason. Optional on a plain document request (up to 500 characters); required on a contract or an amendment (up to 1000). the `decline` field of the signing window says which applies. Over its bound the refusal is `400 EMBEDDED_DECLINE_REASON_TOO_LONG` on either kind.",
             "maxLength": 1000,
             "type": "string"
           }
@@ -2437,7 +2437,7 @@
               }
             ],
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/MetaTagDto"
             },
             "type": "array"
           },
@@ -6521,7 +6521,7 @@
           },
           "content": {
             "additionalProperties": true,
-            "description": "The template's content in the new content format: `{ version, mode: 'template', doc }`. Its `version` is 1 for content made before the editor's format came and 2 for content made since: each is read, saved and answered in its own version. Content of version 2 may hold all the editor's format holds — sections with their own paper, orientation, header, footer and page numbers, footnotes, tab stops, tables in cells and merged rows, list levels and the rest — and is saved and answered exactly as it was sent: nothing in it is flattened or left out.",
+            "description": "The template's content in the new content format: `{ version, mode: 'template', doc }`. Its `version` is 1 for content made before the editor's format came, 2 for content made since and 3 for content made since the editor's content version 3: each is read, saved and answered in its own version. Content of version 2 or 3 may hold all the editor's format holds — sections with their own paper, orientation, header, footer and page numbers, footnotes, tab stops, tables in cells and merged rows, list levels and the rest — and is saved and answered exactly as it was sent: nothing in it is flattened or left out.",
             "type": "object"
           },
           "revision": {
@@ -6781,6 +6781,7 @@
               "invoice.sent",
               "invoice.paid",
               "invoice.cancelled",
+              "invoice.ksef_accepted",
               "transaction.created",
               "transaction.updated",
               "transaction.edited",
@@ -7236,7 +7237,7 @@
           },
           "meta": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/MetaTagDto"
             },
             "type": "array"
           },
@@ -7253,8 +7254,7 @@
         },
         "required": [
           "requestId",
-          "signatureId",
-          "meta"
+          "signatureId"
         ],
         "type": "object"
       },
@@ -7441,7 +7441,7 @@
           },
           "meta": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/MetaTagDto"
             },
             "type": "array"
           },
@@ -7456,8 +7456,7 @@
         },
         "required": [
           "requestId",
-          "signatureId",
-          "meta"
+          "signatureId"
         ],
         "type": "object"
       },
@@ -7740,7 +7739,7 @@
               }
             ],
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/MetaTagDto"
             },
             "type": "array"
           },
@@ -7877,7 +7876,7 @@
           },
           "content": {
             "additionalProperties": true,
-            "description": "The next version's text, the engine's content. Needs `baseVersionId`: the version the caller read.",
+            "description": "The next version's text, the engine's content `{ version: 3, mode, doc }` (versions 1 and 2 are accepted too). Needs `baseVersionId`: the version the caller read.",
             "type": "object"
           },
           "description": {
@@ -7900,7 +7899,8 @@
             "type": "string"
           },
           "media": {
-            "description": "A file uploaded with `POST /media/upload`; it is converted into the next version (asynchronous, 202). Give exactly one of `content`, `media` and `storageFileId`.",
+            "deprecated": true,
+            "description": "Not accepted: answered 422 `DOCUMENT_FILE_VIA_STORAGE`. A file becomes the next version only by conversion: upload it with `POST /media/chunked` and name it by `storageFileId` (202). Declared so a request carrying it is refused by name rather than stripped.",
             "example": {
               "key": "temp/path/to/updated-file.pdf",
               "type": "document"
@@ -7915,7 +7915,7 @@
               }
             ],
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/MetaTagDto"
             },
             "type": "array"
           },
@@ -7963,7 +7963,7 @@
             "type": "object"
           },
           "showUnpaid": {
-            "description": "Whether the invoice, when it is sent, also prints under its totals what the partner still owes on their other open invoices in its currency — «Not part of this invoice» and «Total outstanding, with this invoice». Omitted → true; false prints none. Read once, when the invoice is sent.",
+            "description": "Whether the invoice, when it is sent, also prints under its totals what the partner still owes on their other open invoices in its currency — «Not part of this invoice» and «Total outstanding, with this invoice». Omitted — left as the draft has it; false prints none. Read once, when the invoice is sent.",
             "type": "boolean"
           },
           "takePaidAhead": {
@@ -8061,7 +8061,7 @@
             "type": "string"
           },
           "content": {
-            "description": "The template's content in the new content format: `{ version, mode: 'template', doc }`, saved into its working copy with `revision`. Its `version` is 1 for content made before the editor's format came and 2 for content made since: each is read, saved and answered in its own version. Content of version 2 may hold all the editor's format holds — sections with their own paper, orientation, header, footer and page numbers, footnotes, tab stops, tables in cells and merged rows, list levels and the rest — and is saved and answered exactly as it was sent: nothing in it is flattened or left out.",
+            "description": "The template's content in the new content format: `{ version, mode: 'template', doc }`, saved into its working copy with `revision`. Its `version` is 1 for content made before the editor's format came, 2 for content made since and 3 for content made since the editor's content version 3: each is read, saved and answered in its own version. Content of version 2 or 3 may hold all the editor's format holds — sections with their own paper, orientation, header, footer and page numbers, footnotes, tab stops, tables in cells and merged rows, list levels and the rest — and is saved and answered exactly as it was sent: nothing in it is flattened or left out.",
             "type": "object"
           },
           "contentJson": {
@@ -8388,6 +8388,9 @@
         "responses": {
           "200": {
             "description": "Contract deleted successfully"
+          },
+          "403": {
+            "description": "The contract is not a draft (errorKey CONTRACT_NOT_A_DRAFT), or the key does not act for its business side"
           }
         },
         "security": [
@@ -8762,7 +8765,7 @@
     },
     "/api/v1/contracts/{contractId}/agreements/{agreementId}/initiate-signing": {
       "post": {
-        "description": "Requires secret key (sk_). Initiates the signing flow for a DRAFT amendment on an ACTIVE contract.",
+        "description": "Requires secret key (sk_). Initiates the signing flow for a DRAFT amendment on an ACTIVE contract. The amendment's document text binds the contract's two sides by role, as `POST /contracts/{contractId}/send` does: `business` and `contragent`, each signing where its Signature chip stands. A text the application's set-up would block (a side with no Signature chip, as in a text with no roles) answers 409 with errorKey SETUP_BLOCKED and `blockers[]`; a text whose roles are not `business` and `contragent` answers 400 with errorKey SIGNATURE_ROLE_UNKNOWN or SIGNATURE_ROLE_UNASSIGNED. Nothing is created then. With `isKycRequired: true` the business side is signed at once as the workspace's Owner, who must have verified their identity: an Owner who has not answers 400 with errorKey KYC_NOT_VERIFIED.",
         "operationId": "PublicContractsController_initiateAgreementSigning",
         "parameters": [
           {
@@ -8805,6 +8808,15 @@
         "responses": {
           "201": {
             "description": "Additional agreement sent for signing"
+          },
+          "400": {
+            "description": "The text's roles are not the contract's two sides (errorKey SIGNATURE_ROLE_UNKNOWN or SIGNATURE_ROLE_UNASSIGNED), or the amendment asks for identity verification and the workspace's Owner, who signs the business side, has not verified (errorKey KYC_NOT_VERIFIED). Nothing is created"
+          },
+          "409": {
+            "description": "The application's set-up would block the send (errorKey SETUP_BLOCKED, `blockers[]`): a side has no Signature chip in the text"
+          },
+          "422": {
+            "description": "The amendment's document is a file (errorKey DOCUMENT_FILE_CONVERTS): a file is sent only once converted into a text version (`POST /api/v1/documents/{documentId}/conversion`, `convert` names it). Nothing is created"
           }
         },
         "security": [
@@ -8847,6 +8859,9 @@
         "responses": {
           "200": {
             "description": "Contract cancelled successfully"
+          },
+          "403": {
+            "description": "The contract is not a draft (errorKey CONTRACT_NOT_A_DRAFT): a sent one is withdrawn by cancelling its signing request"
           }
         },
         "security": [
@@ -9092,6 +9107,9 @@
               }
             },
             "description": "Refused by the Stripe cascade — `code` is STRIPE_NOT_ALLOWED_BY_CASCADE when `stripePaymentAllowed: true` was sent under a contract that forbids Stripe payment."
+          },
+          "403": {
+            "description": "The business profile does not yet hold what an invoice prints (errorKey BUSINESS_PROFILE_INCOMPLETE)"
           }
         },
         "security": [
@@ -9558,7 +9576,7 @@
     },
     "/api/v1/contracts/{contractId}/invoices/{invoiceUuid}/pdf": {
       "get": {
-        "description": "Requires secret key (sk_). Returns the generated invoice PDF as an attachment. The PDF exists only once the invoice has been sent.",
+        "description": "Requires secret key (sk_). Returns the generated invoice PDF as an attachment. The PDF exists only once the invoice has been sent. With `?format=facturx|peppol|xrechnung` it returns the invoice’s e-invoice file instead (Factur-X is a PDF/A-3 hybrid, the others are XML) under the same access; a format that is not ready answers 409 `EINVOICE_FORMAT_NOT_READY` with its `state` (and `gaps`), a seller outside the EU/EEA 404 `EINVOICE_FORMAT_NOT_OFFERED`, an unknown format 400.",
         "operationId": "PublicContractsController_downloadInvoicePdf",
         "parameters": [
           {
@@ -9586,11 +9604,29 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "The file asked for; `pdf` (default) is the PDF as it was issued.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "pdf",
+                "facturx",
+                "peppol",
+                "xrechnung"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "Invoice PDF returned as attachment"
+            "description": "Invoice PDF, or the e-invoice file, returned as attachment"
+          },
+          "409": {
+            "description": "EINVOICE_FORMAT_NOT_READY"
           }
         },
         "security": [
@@ -10150,7 +10186,7 @@
     },
     "/api/v1/contracts/{contractId}/send": {
       "post": {
-        "description": "Requires secret key (sk_). Initiates the signing flow for a DRAFT contract. Creates signing request and notifies signers.",
+        "description": "Requires secret key (sk_). Initiates the signing flow for a DRAFT contract. Creates signing request and notifies signers. The contract's document text binds its two sides by role: `business` and `contragent`, each signing where its Signature chip stands (`POST /api/v1/documents/{documentId}/signature-block` adds them to a text that has none). A text the application's set-up would block (a side with no Signature chip in the text, as in a text with no roles) answers 409 with errorKey SETUP_BLOCKED and `blockers[]`; a text whose roles are not `business` and `contragent` answers 400 with errorKey SIGNATURE_ROLE_UNKNOWN or SIGNATURE_ROLE_UNASSIGNED. Nothing is created then. With `isKycRequired: true` the business side is signed at once as the workspace's Owner, who must have verified their identity: an Owner who has not answers 400 with errorKey KYC_NOT_VERIFIED, and nothing is created.",
         "operationId": "PublicContractsController_sendForSigning",
         "parameters": [
           {
@@ -10184,6 +10220,15 @@
         "responses": {
           "200": {
             "description": "Contract sent for signing"
+          },
+          "400": {
+            "description": "The text's roles are not the contract's two sides (errorKey SIGNATURE_ROLE_UNKNOWN or SIGNATURE_ROLE_UNASSIGNED), the contract asks for identity verification and the workspace's Owner, who signs the business side, has not verified (errorKey KYC_NOT_VERIFIED), the contract is not a draft (errorKey CONTRACT_NOT_A_DRAFT), or it cannot be sent in its state otherwise"
+          },
+          "409": {
+            "description": "The application's set-up would block the send (errorKey SETUP_BLOCKED, `blockers[]`): a side has no Signature chip in the text"
+          },
+          "422": {
+            "description": "The contract's document is a file (errorKey DOCUMENT_FILE_CONVERTS): a file is sent only once converted into a text version (`POST /api/v1/documents/{documentId}/conversion`, `convert` names it). Nothing is created"
           }
         },
         "security": [
@@ -10277,6 +10322,9 @@
         "responses": {
           "200": {
             "description": "Signing request cancelled"
+          },
+          "400": {
+            "description": "Somebody has signed the request (errorKey SIGNING_REQUEST_HAS_A_SIGNATURE) — a business side signed at the send (`signingPolicy.business: delegated`) counts"
           }
         },
         "security": [
@@ -10344,7 +10392,7 @@
     },
     "/api/v1/contracts/{contractId}/signing-requests/{requestId}/business-sign": {
       "post": {
-        "description": "Requires secret key (sk_). Applies the business-side signature to a signing request using a saved signature, identified by its hash from GET /api/v1/signatures. The act is the integration key's and is attributed to the key, not to the key owner as a person.",
+        "description": "Requires secret key (sk_). Applies the business-side signature to a signing request using a saved signature, identified by its hash from GET /api/v1/signatures. The act is the integration key's and is attributed to the key, not to the key owner as a person. A signature that is recorded is a success: when it is the last one and the contract’s completion fails after it, the answer is still `200` with `completionPending: true`, and the contract is completed automatically within minutes.",
         "operationId": "PublicContractsController_businessSignRequest",
         "parameters": [
           {
@@ -10386,7 +10434,13 @@
         },
         "responses": {
           "200": {
-            "description": "Contract signed successfully"
+            "description": "Contract signed successfully. `completionPending: true` — the signature is recorded and the contract is still being completed."
+          },
+          "400": {
+            "description": "The signing request's deadline has passed (errorKey SIGNING_REQUEST_EXPIRED), or the business side has already signed (errorKey SIGNER_ALREADY_ACTED)"
+          },
+          "403": {
+            "description": "The key acts for a workspace with team capabilities, and saved signatures are a person's (errorKey KEY_WORKSPACE_IS_NOT_A_PERSON)"
           }
         },
         "security": [
@@ -11378,7 +11432,7 @@
     },
     "/api/v1/documents/{documentId}": {
       "get": {
-        "description": "Returns the document with its current version metadata. Both pk_ and sk_ keys are accepted.",
+        "description": "Returns the document with its current version metadata. Both pk_ and sk_ keys are accepted. `format` is `text` or `file` (a file is sent only once converted: `POST /documents/{documentId}/conversion`). `sendable` is `true` when `POST /signatures/requests` can send the current version now: it is a text whose signer roles each hold a Signature chip and nothing the set-up blocks (no author's required field left empty), and no request is open or completed over it. A text with no roles is not sendable: add them with `POST /documents/{documentId}/signature-block`.",
         "operationId": "PublicApiController_getDocument",
         "parameters": [
           {
@@ -12000,7 +12054,7 @@
     },
     "/api/v1/documents/conversions/{conversionId}": {
       "get": {
-        "description": "The conversion `POST /documents/from-storage`, `PUT /documents/{id}` or `POST /documents/{id}/conversion` started: `converting`, `ready` (with `documentId` and `versionId`) or `failed` (with `failure.code`).",
+        "description": "The conversion `POST /documents/from-storage`, `PUT /documents/{id}` or `POST /documents/{id}/conversion` started: `converting` (with `progress`: the converter's `stage` and, page by page, `page` of `pages`; `null` before it starts), `ready` (with `documentId`, `versionId` and `review`: `ready_for_review` or `needs_review` as `document.conversion.completed` says it, `null` when none was reported) or `failed` (with `failure.code`).",
         "operationId": "PublicApiController_getConversion",
         "parameters": [
           {
@@ -12522,7 +12576,7 @@
     },
     "/api/v1/embedded/contracts/signing/{requestId}": {
       "get": {
-        "description": "Requires embedded session JWT token. Returns contract-aware signing data including contract summary, payment terms, signer statuses, and current user progression.",
+        "description": "Requires embedded session JWT token. Returns contract-aware signing data including contract summary, payment terms, signer statuses, and current user progression. Its `document` is the document's id and current version (`uuid`, `name`, `description`, `status`, `createdAt`); its `signers` carry their public facts only. The signing window reads `GET /api/v1/embedded/signing-window/{requestId}` instead.",
         "operationId": "EmbeddedController_getContractSigningRequest",
         "parameters": [
           {
@@ -12818,7 +12872,7 @@
     },
     "/api/v1/embedded/contracts/signing/{requestId}/sign": {
       "post": {
-        "description": "Requires embedded session JWT token. Signs a contract-linked document using the contract-specific signing workflow.",
+        "description": "Requires embedded session JWT token. Signs a contract-linked document using the contract-specific signing workflow. A signature that is recorded is a success: when it is the last one and the contract’s completion fails after it (the signing stack briefly unavailable), the answer is still `200` with `completionPending: true`, and the contract is completed automatically within minutes.",
         "operationId": "EmbeddedController_signContract",
         "parameters": [
           {
@@ -12850,7 +12904,10 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "Signed. `completionPending: true` — the signature is recorded and the contract is still being completed."
+          },
+          "409": {
+            "description": "EMBEDDED_SIGNING_REQUEST_CLOSED — the request is no longer pending (`status`: `cancelled` after a decline, `completed`, `expired`); nothing more can be done on it"
           }
         },
         "security": [
@@ -12866,7 +12923,7 @@
     },
     "/api/v1/embedded/documents/{documentId}": {
       "get": {
-        "description": "Requires embedded session JWT token. Returns document details including version, verification status, and metadata.",
+        "description": "Requires embedded session JWT token. Returns the document's id and its current version (`uuid`, `name`, `description`, `status`, `createdAt`) — nothing of who holds it. The signing window reads `GET /api/v1/embedded/signing-window/{requestId}` instead.",
         "operationId": "EmbeddedController_getDocument",
         "parameters": [
           {
@@ -13199,6 +13256,9 @@
           "201": {
             "description": "Embedded session created successfully. OTP sent to email."
           },
+          "400": {
+            "description": "EMBEDDED_SIGNING_REQUEST_CLOSED — the signature request (or, for `metadata.contractId`, the contract’s signing request) is no longer pending: declined, cancelled, completed or expired (`status` says which). EMBEDDED_CONTRACT_NOT_SIGNABLE — the contract has never been sent for signing (`status`: the contract’s). NOT_YOUR_TURN — the request is signed in order and an earlier signer has not signed yet. No session is created and no code is mailed."
+          },
           "401": {
             "description": "Secret key required for this operation"
           }
@@ -13527,13 +13587,16 @@
             "description": "Declined"
           },
           "400": {
-            "description": "Reason missing or too long, or the request cannot be declined now"
+            "description": "EMBEDDED_DECLINE_REASON_REQUIRED — no reason on a contract or an amendment; EMBEDDED_DECLINE_REASON_TOO_LONG — over 500 characters on a document request, over 1000 on a contract or an amendment (the reason is not echoed)"
           },
           "401": {
             "description": "Invalid or expired session token"
           },
           "403": {
             "description": "EMBEDDED_SESSION_NOT_BOUND_TO_REQUEST — the request is not this session’s own"
+          },
+          "409": {
+            "description": "EMBEDDED_SIGNING_REQUEST_CLOSED — the request is no longer pending (`status`: `cancelled` after a decline, `completed`, `expired`); nothing more can be done on it"
           }
         },
         "security": [
@@ -16879,7 +16942,7 @@
     },
     "/api/v1/signatures/requests": {
       "get": {
-        "description": "Requires secret key (sk_). Returns a paginated list of signature requests for the authenticated user. Use the optional `status` filter (all | pending | completed | declined).",
+        "description": "Requires secret key (sk_). Returns a paginated list of signature requests for the authenticated user. Use the optional `status` filter (all | pending | completed | declined). Every item carries ISO timestamps `createdAt`, `completedAt` (the last signature; null until the request is completed) and `declinedAt` (null unless declined). Order: `completed` newest completion first, `declined` newest decline first, the other filters newest created first.",
         "operationId": "PublicApiController_getMySignatureRequests",
         "parameters": [
           {
@@ -17125,6 +17188,9 @@
         "responses": {
           "200": {
             "description": "Reminders dispatched (see remindedEmails / skipped)"
+          },
+          "400": {
+            "description": "The request is not pending (errorKey SIGNATURE_REQUEST_NOT_PENDING, `status` names what it is)"
           }
         },
         "security": [
@@ -17200,7 +17266,7 @@
     },
     "/api/v1/signatures/requests/{requestId}/status": {
       "get": {
-        "description": "Requires secret key (sk_). Returns status of signature request including signer details.",
+        "description": "Requires secret key (sk_). Returns status of signature request including signer details: each signer's `role` (the key of the text role they were bound to, `null` when none). A declined request reads `status: cancelled` like a cancelled one and is told apart by `declinedAt` (`null` unless declined), with `declinedBy`, `declineComment` and `declinedVia` (`document` or `contract`), as the list `GET /signatures/requests` names them. `status` is decided by the database clock: a request whose deadline has passed reads `expired` before the sweep writes it.",
         "operationId": "PublicApiController_getSignatureRequestStatus",
         "parameters": [
           {
@@ -17268,6 +17334,9 @@
           "200": {
             "description": "Document signed successfully"
           },
+          "400": {
+            "description": "The key names no signer row it may act on (errorKey KEY_NAMES_NO_SIGNER), or that row has signed already (errorKey SIGNER_ALREADY_ACTED)"
+          },
           "401": {
             "description": "Secret key required for this operation"
           }
@@ -17289,7 +17358,7 @@
     },
     "/api/v1/signatures/validate-pdf": {
       "post": {
-        "description": "Requires secret key (sk_). Runs DSS (EU Digital Signature Services) validation over an uploaded PDF and returns the validation report. The file is not stored.",
+        "description": "Requires secret key (sk_). Runs DSS (EU Digital Signature Services) validation over an uploaded PDF and returns the validation report. The file is not stored.\n\n**Change note, 2026-11-21.** `valid` is now `false` for a signature whose issuer our trust list does not let vouch for that signer: a website (TLS) or time-stamp certificate used as a document signer, a signature under the ICP-Brasil v10 root that is not by Imprensa Nacional (pinned signer), and a signature under the CCA India special-purpose (SPL) roots. Such a signature used to count as trusted whenever DSS trusted its root. A PDF that carries an image too large to be checked is refused with HTTP 422 and `errorKey: PDF_IMAGE_TOO_LARGE`.",
         "operationId": "PublicApiController_validatePdfSignatures",
         "parameters": [
           {

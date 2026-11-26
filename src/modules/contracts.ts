@@ -123,8 +123,17 @@ export class Contracts {
   }
 
   /**
-   * Send contract for signing
-   * Initiates the signing flow for a DRAFT contract.
+   * Send a DRAFT contract for signing.
+   *
+   * The contract's document must be a **text** whose signature places are chips of the roles `business` and
+   * `contragent` (`documents.addSignatureBlock`): the server places each side's signature on its chips, as the app's Send
+   * does. Refusals, each before anything is created (the contract stays a draft):
+   * - `409 SETUP_BLOCKED` — a side has no signature chip (`blockers[]` names it; a text without roles names both);
+   * - `400 SIGNATURE_ROLE_UNKNOWN` — the text holds a role other than `business` / `contragent`;
+   * - `422 DOCUMENT_FILE_CONVERTS` — the document is a file: `documents.convert`, wait, place the chips, send;
+   * - `400 KYC_NOT_VERIFIED` — `isKycRequired` with `signingPolicy.business: 'delegated'`, and the workspace Owner (who
+   *   signs the business side at once) has not passed identity verification;
+   * - `400 CONTRACT_NOT_A_DRAFT` — it was already sent, cancelled or finished.
    */
   async send(contractId: string, params?: ContractSendParams): Promise<ContractSendResponse> {
     return this.client.post<ContractSendResponse>(`/api/v1/contracts/${seg(contractId)}/send`, {
@@ -304,7 +313,10 @@ export class Contracts {
     );
   }
 
-  /** Resend the signing invitation email for a pending signing request. */
+  /**
+   * Resend the signing invitation email for a pending signing request. A request that ended is refused
+   * `400 SIGNING_REQUEST_NOT_PENDING`; past its deadline, `400 SIGNING_REQUEST_EXPIRED`.
+   */
   async resendSigningRequest(
     contractId: string,
     requestId: string
@@ -317,7 +329,9 @@ export class Contracts {
 
   /**
    * Cancel a pending signing request.
-   * Fails if the request has already been signed by any party.
+   * Refused `400 SIGNING_REQUEST_HAS_A_SIGNATURE` once anybody signed it — and a contract sent with
+   * `signingPolicy.business: 'delegated'` has the business side's signature from the moment of `send` — and
+   * `400 SIGNING_REQUEST_NOT_PENDING` once it ended (signed, declined, cancelled, expired).
    */
   async cancelSigningRequest(
     contractId: string,
@@ -339,6 +353,9 @@ export class Contracts {
    *
    * `signatureHash` references one of the workspace's saved signatures — list them with
    * `signatures.getSignatures()` or create one with `signatures.createSignature()`.
+   *
+   * `completionPending: true` in the answer: the signature is recorded and the contract is still being completed; the
+   * server finishes it within minutes and `contract.signed` tells you. Past the deadline — `400 SIGNING_REQUEST_EXPIRED`.
    */
   async businessSign(
     contractId: string,

@@ -33,7 +33,8 @@ export interface RetryConfig {
 }
 
 /**
- * Available API environments
+ * @deprecated All three values call the production API (`https://api.chaindoc.io`); the option switches nothing and stays
+ * only so that existing code compiles. To call another backend, pass `baseUrl`.
  */
 export type ChaindocEnvironment = "production" | "staging" | "development";
 
@@ -45,16 +46,16 @@ export interface ChaindocConfig {
   secretKey: string;
 
   /**
-   * API environment. Used to select the default base URL.
-   * @default 'production'
+   * @deprecated Switches nothing: `production`, `staging` and `development` all call `https://api.chaindoc.io`, the
+   * production API, with your key. A key of a non-production backend is used with `baseUrl`.
    */
   environment?: ChaindocEnvironment;
 
   /**
-   * Custom API base URL. Overrides the URL derived from `environment`.
-   * Useful for development/staging with self-hosted backends.
+   * The API's base URL. Defaults to the production API, `https://api.chaindoc.io`. Pass the base URL you were given for a
+   * non-production backend (with a key issued there); a production key works only against production.
    *
-   * @example 'https://api-dev.example.com'
+   * @example 'https://api.example.com'
    */
   baseUrl?: string;
 
@@ -249,12 +250,19 @@ export interface DocumentNode {
 }
 
 /**
- * A text document: the engine's content, version 2. Signature places and fields are chips of the text;
+ * The version of the engine's content. The server reads and writes `3` today (a converted text and
+ * `documents.getContent` answer `3`); `1` and `2` are still accepted on a write. Read `version` without assuming `2`.
+ */
+export type DocumentContentVersion = 1 | 2 | 3;
+
+/**
+ * A text document: the engine's content. Signature places and fields are chips of the text;
  * `mode: 'template'` holds the field definitions (`doc.attrs.fields`) and the signer roles
- * (`doc.attrs.signers`) a signature request binds its recipients by.
+ * (`doc.attrs.signers`) a signature request binds its recipients by. Send back what `getContent` gave you, `version`
+ * included.
  */
 export interface DocumentContent {
-  version: 2;
+  version: DocumentContentVersion;
   mode: "document" | "template";
   doc: DocumentNode;
 }
@@ -387,7 +395,11 @@ export interface PublicDocumentDetail {
    * documents became text: readable and verifiable, but sent only after `documents.convert()`.
    */
   format: "text" | "file";
-  /** Whether a signature request can be made on it now (`false` for a `file`). */
+  /**
+   * Whether a signature request can be made on its current version now, by the same rule the request itself is refused
+   * by: `true` for a text whose roles each have a signature chip and nothing in its setup blocks a send, with no open or
+   * completed request on that version; `false` for a `file`, a text without roles or chips, and after it was sent.
+   */
   sendable: boolean;
   currentVersion: PublicDocumentVersion | null;
   createdAt: string;
@@ -403,6 +415,27 @@ export interface GetDocumentResponse {
 
 export type DocumentConversionStatus = "converting" | "ready" | "failed";
 
+/**
+ * A stage of a running conversion, in order: `source` (the file read), `review` and `draft` (page by page), `print`,
+ * `visual`, `meta`; `waiting` — the workspace's AI is busy with another operation and the conversion goes on after it.
+ */
+export type DocumentConversionStage =
+  | "source"
+  | "review"
+  | "draft"
+  | "print"
+  | "visual"
+  | "meta"
+  | "waiting"
+  | (string & Record<never, never>);
+
+/** Where a running conversion stands: its stage and, for a stage that goes page by page, the page of how many. */
+export interface DocumentConversionProgress {
+  stage: DocumentConversionStage | null;
+  page: number | null;
+  pages: number | null;
+}
+
 export interface DocumentConversion {
   id: string;
   status: DocumentConversionStatus;
@@ -412,9 +445,16 @@ export interface DocumentConversion {
   documentId: string | null;
   /** The made version, when `ready`. */
   versionId: string | null;
-  /** `ready_for_review` or `needs_review`, when the converter reported one. */
-  review?: string;
-  progress?: number;
+  /**
+   * On `ready`: `ready_for_review` or `needs_review` (as `document.conversion.completed` says it), `null` when the
+   * converter reported none. `null` while `converting` or `failed`; absent on the 202 of a file entrance.
+   */
+  review?: string | null;
+  /**
+   * While `converting`: where it stands (`null` before the converter reported). `null` once `ready` or `failed`; absent
+   * on the 202 of a file entrance. Was typed `number` in 3.0.0 — the server never sent a number.
+   */
+  progress?: DocumentConversionProgress | null;
   /** Why it failed, when `failed`: the converter's code or `AI_LIMIT_REACHED`, `STORAGE_LIMIT_REACHED`, ... */
   failure?: { code: string } | null;
 }
@@ -767,24 +807,53 @@ export interface SignerUser {
 export interface Signer {
   id: string;
   email: string;
+  /**
+   * The key of the text's role this signer was bound to (`recipients[].role`); `null` when none (a request made without
+   * roles). One address may hold two roles: this is what tells the rows apart. Absent from answers older than the field.
+   */
+  role?: string | null;
   signatureHash?: string;
   signedAt?: string;
   hasSigned: boolean;
-  signer?: SignerUser;
+  signer?: SignerUser | null;
 }
 
-export interface SignatureRequest {
+/** Through what a signer declined: the document's signing window, or a contract's (or amendment's). */
+export type SignatureRequestDeclinedVia = "document" | "contract";
+
+/**
+ * How a declined request is told apart from a cancelled one. A decline does not add a status: a declined request reads
+ * `status: 'cancelled'`, and `declinedAt` is set. `declinedBy`, `declineComment` and `declinedVia` come only with a decline.
+ */
+export interface SignatureRequestDecline {
+  /** When a signer declined; `null` unless the request was declined. */
+  declinedAt?: string | null;
+  declinedBy?: SignerUser;
+  /** The signer's reason, when they gave one. */
+  declineComment?: string;
+  declinedVia?: SignatureRequestDeclinedVia;
+}
+
+export interface SignatureRequest extends SignatureRequestDecline {
   id: string;
   versionId?: string;
+  /** The status by the server's clock: past its deadline a request reads `expired` even before the nightly sweep writes it. */
   status: SignRequestStatus;
   dueDate: string;
   isKycRequired: boolean;
+  createdAt?: string | null;
+  /** The instant of the last signature, for a completed request; `null` otherwise. */
+  completedAt?: string | null;
   signers: Signer[];
 }
 
-export interface SignatureRequestStatus {
+export interface SignatureRequestStatus extends SignatureRequestDecline {
   success: boolean;
   requestId: string;
+  /**
+   * The status by the server's clock: past its deadline a request reads `expired` even before the nightly sweep writes
+   * it. A declined request reads `cancelled` — tell it apart by `declinedAt`.
+   */
   status: SignRequestStatus;
   versionId?: string;
   totalSigners: number;
@@ -909,6 +978,11 @@ export interface BusinessSignResponse {
   contractId: string;
   signingRequestId: string;
   message: string;
+  /**
+   * `true` — the signature is recorded and the contract is still being completed (the server finishes it within minutes;
+   * `contract.signed` tells you when). `false` — the act is complete. Absent from answers older than the field.
+   */
+  completionPending?: boolean;
 }
 
 // ============================================================================
@@ -963,7 +1037,10 @@ export interface HealthCheckResponse {
 // ============================================================================
 
 /**
- * Webhook event types emitted by the Chaindoc API (the contract's list of 22).
+ * Webhook event types emitted by the Chaindoc API (the contract's list of 23).
+ *
+ * `invoice.ksef_accepted` (KSeF, Poland): the national e-invoicing system numbered an invoice of a seller connected to
+ * it; the payload is `invoice.sent`'s with `ksef: { number, acceptedAt }`. Told once per invoice.
  *
  * There are no `workflow.*` events (the approval-workflow routes are gone) and no escrow events.
  * Events go only to keys that can read the object, and only on a Business plan or above.
@@ -987,6 +1064,7 @@ export type WebhookEventType =
   | "invoice.sent"
   | "invoice.paid"
   | "invoice.cancelled"
+  | "invoice.ksef_accepted"
   | "transaction.created"
   | "transaction.updated"
   | "transaction.edited"
@@ -1041,6 +1119,112 @@ export interface DocumentConversionFailedData {
   /** The converter's code, or `AI_LIMIT_REACHED`, `STORAGE_LIMIT_REACHED`, `DOCUMENT_FILE_REFUSED`... */
   failure: { code: string };
   workspace?: WebhookEventWorkspace;
+}
+
+/** A signer as the signature events list them. */
+export interface WebhookEventSigner {
+  signerId: string;
+  email: string;
+  name?: string;
+  status: "signed" | "pending";
+  signedAt: string | null;
+}
+
+/** Payload of `document.created`. */
+export interface DocumentCreatedData {
+  documentId: string;
+  name?: string;
+  workspace?: WebhookEventWorkspace;
+}
+
+/** Payload of `document.verified`: the version's hash is written on-chain. */
+export interface DocumentVerifiedData {
+  documentId: string;
+  versionId: string;
+  verificationId: string;
+  versionHash: string;
+  txHash: string;
+  chainId: string | number;
+  status: string;
+  verifiedAt: string;
+  workspace?: WebhookEventWorkspace;
+}
+
+/**
+ * Payload of `signature.request.created` (also for the request `signatures.resend` makes, with `resentFrom`).
+ * `requestId` and `signatureRequestId` are the same id: `signatureRequestId` is how every other `signature.request.*`
+ * event names it; `requestId` stays for existing handlers.
+ */
+export interface SignatureRequestCreatedData {
+  requestId: string;
+  signatureRequestId: string;
+  documentId?: string;
+  versionId?: string;
+  /** The recipients' addresses. */
+  recipients: string[];
+  isKycRequired?: boolean;
+  deadline?: string;
+  /** The cancelled request this one resends. */
+  resentFrom?: string;
+  workspace?: WebhookEventWorkspace;
+}
+
+/** Payload of `signature.request.completed`: every signer signed. */
+export interface SignatureRequestCompletedData {
+  signatureRequestId: string;
+  documentId?: string;
+  versionId?: string;
+  documentTitle?: string;
+  status: SignRequestStatus;
+  completedAt: string;
+  signers: WebhookEventSigner[];
+  workspace?: WebhookEventWorkspace;
+}
+
+/** Payload of `document.signed`, sent beside `signature.request.completed`. */
+export interface DocumentSignedData {
+  documentId?: string;
+  versionId?: string;
+  signatureRequestId: string;
+  documentTitle?: string;
+  signedAt: string;
+  signers: WebhookEventSigner[];
+  workspace?: WebhookEventWorkspace;
+}
+
+/**
+ * Payload of `signature.request.rejected`: a signer declined, the request ended for everybody. A refusal of a contract or
+ * an amendment (`rejectedVia: 'contract'`) also names the contract, its signing request (`embedded.createSession`'s
+ * `contractId` and the window's address) and, for an amendment, the amendment.
+ */
+export interface SignatureRequestRejectedData {
+  signatureRequestId: string;
+  documentId?: string;
+  versionId?: string;
+  documentTitle?: string;
+  status: SignRequestStatus;
+  rejectedAt: string;
+  rejectedVia?: SignatureRequestDeclinedVia;
+  rejectedByEmail?: string;
+  rejectedByName?: string;
+  reason?: string;
+  contractId?: string;
+  signingRequestId?: string;
+  /** The amendment's id, when the refused paper is an amendment's. */
+  agreementId?: string | null;
+  workspace?: WebhookEventWorkspace;
+}
+
+/** The payload type of each document and signature event, for narrowing on `envelope.type`. */
+export interface WebhookEventDataMap {
+  "document.created": DocumentCreatedData;
+  "document.verified": DocumentVerifiedData;
+  "document.signed": DocumentSignedData;
+  "document.conversion.completed": DocumentConversionCompletedData;
+  "document.conversion.failed": DocumentConversionFailedData;
+  "signature.request.created": SignatureRequestCreatedData;
+  "signature.request.completed": SignatureRequestCompletedData;
+  "signature.request.rejected": SignatureRequestRejectedData;
 }
 
 /**
@@ -2241,7 +2425,7 @@ export interface InvoiceListAllResponse extends InvoiceListResponse {
 /** Invoice webhook event types */
 export type InvoiceWebhookEventType = Extract<
   WebhookEventType,
-  'invoice.created' | 'invoice.sent' | 'invoice.paid' | 'invoice.cancelled'
+  'invoice.created' | 'invoice.sent' | 'invoice.paid' | 'invoice.cancelled' | 'invoice.ksef_accepted'
 >;
 
 /** Transaction webhook event types */

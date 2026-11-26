@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Says what the API answers today (the server's November fixes after 3.0.0). Types widen or get corrected; nothing at
+runtime changes except which error class four limit keys arrive as. No version bump yet. What an integration on 3.0.0
+changes is in [MIGRATION.md](MIGRATION.md) («Upgrading from 3.0.0»).
+
+### Added
+
+- **`ERROR_KEYS` is the whole list** an integrator can meet on the public API and `embedded.createSession`: 55 → 201 keys,
+  swept from the server's code paths behind every route (guards, validation pipe, services). New among them:
+  `VALIDATION_FAILED` (any body that fails validation), `DOCUMENT_NOT_A_FILE`, `DOCUMENT_EDIT_REFUSED`,
+  `KYC_NOT_VERIFIED`, `CONTRACT_NOT_A_DRAFT`, `SIGNING_REQUEST_HAS_A_SIGNATURE`, `SIGNING_REQUEST_NOT_PENDING`,
+  `SIGNING_REQUEST_EXPIRED`, `SIGNATURE_REQUEST_NOT_PENDING`, `SIGNER_ALREADY_ACTED`, `KEY_NAMES_NO_SIGNER`,
+  `BUSINESS_PROFILE_INCOMPLETE`, `EMBEDDED_SIGNING_REQUEST_CLOSED`, `EMBEDDED_CONTRACT_NOT_SIGNABLE`, `WORKSPACE_SUSPENDED`,
+  `WORKSPACE_CLOSED`, the plan limits (`CONTRACTS_LIMIT_REACHED`, `OPEN_SIGN_REQUESTS_LIMIT_REACHED`,
+  `SIGNATURE_CREDITS_EXHAUSTED`, `KYC_CREDITS_EXHAUSTED`, `DOCUMENT_SHARE_LIMIT_REACHED`), the document-writing,
+  signing-edit, invoice and PDF-check refusals. No known key was retired.
+- `ChaindocRefusalBody` and `SetupBlocker`: the facts that ride with a key (`status`, `blockers`, `convert`, `state`).
+- Signature requests: `signers[].role`; `declinedAt`, `declinedBy`, `declineComment`, `declinedVia` on `getRequestStatus`
+  and on list items (a decline reads `status: 'cancelled'`); `createdAt`, `completedAt` on list items.
+- `DocumentConversionProgress` / `DocumentConversionStage`; `DocumentContentVersion`.
+- `BusinessSignResponse.completionPending`.
+- Webhooks: `invoice.ksef_accepted` (the 23rd event; also in `InvoiceWebhookEventType`); payload types
+  `DocumentCreatedData`, `DocumentVerifiedData`, `DocumentSignedData`, `SignatureRequestCreatedData`,
+  `SignatureRequestCompletedData`, `SignatureRequestRejectedData` (with `contractId`, `signingRequestId`, `agreementId`),
+  `WebhookEventSigner`, `WebhookEventDataMap`.
+
+### Changed
+
+- `CONTRACTS_LIMIT_REACHED`, `OPEN_SIGN_REQUESTS_LIMIT_REACHED`, `SIGNATURE_CREDITS_EXHAUSTED`, `KYC_CREDITS_EXHAUSTED`,
+  `DOCUMENT_SHARE_LIMIT_REACHED` now arrive as `ChaindocLimitError` (still `instanceof ChaindocError`).
+
+### Fixed (types that were wrong)
+
+- `DocumentConversion.progress` was `number`; the server sends `{ stage, page, pages } | null`. `review` may be `null`.
+- `DocumentContent.version` was `2`; the server answers `3` and accepts `1 | 2 | 3`.
+- `Signer.signer` may be `null`.
+
+### Deprecated
+
+- `environment` (and `ChaindocEnvironment`): it switches nothing — every value calls `https://api.chaindoc.io`. Use
+  `baseUrl` for another backend.
+
+### Documentation
+
+- Removed the dead demo host from README, API reference, getting started and migration; documented `baseUrl`.
+- `contracts.send` / `contracts.agreements.initiateSigning`: the text needs the `business` and `contragent` signature
+  chips (`409 SETUP_BLOCKED`, `400 SIGNATURE_ROLE_UNKNOWN`), a file is refused (`422 DOCUMENT_FILE_CONVERTS`), and
+  `isKycRequired` with a delegated business side needs the workspace Owner verified (`400 KYC_NOT_VERIFIED`).
+- `embedded.createSession` gives no session for a closed request or a never-sent contract.
+- The signing window always asks the signer for a reason to decline.
+- `documents.get().sendable` and `conversions.get` (progress, review) say what they mean.
+- Webhook delivery as the server runs it: 3 attempts (at once, +1 min, +5 min), the same delivery `id`, turned off after
+  50 failed deliveries in a row and resumed in the app; which events wait while it is off.
+- Build: dropped three dead `define`s (`CHAINDOC_API_*`) from `tsup.config.ts`.
+
 ## [3.0.0] - 2026-11-10
 
 **BREAKING.** Aligns the SDK with the platform contract of November 2026 (194 public operations). Files are

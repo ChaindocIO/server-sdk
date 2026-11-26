@@ -20,6 +20,15 @@ export class Embedded {
    * - OTP will be sent to the provided email
    * - Use returned sessionId with @chaindoc_io/embed-sdk on frontend
    *
+   * No session is given (and no code is mailed) for something there is nothing to sign in:
+   * - `400 EMBEDDED_SIGNING_REQUEST_CLOSED` (`status`) — the request is signed, declined, cancelled or expired;
+   * - `400 EMBEDDED_CONTRACT_NOT_SIGNABLE` (`status` of the contract) — `contractId` of a contract never sent for signing
+   *   (a contract whose request ended answers `EMBEDDED_SIGNING_REQUEST_CLOSED`). Both answered `201` with a session
+   *   before the server's November fixes; SDK 3.0.0 did not name them.
+   * - `400 NOT_YOUR_TURN` — an earlier signer of an ordered request has not signed yet.
+   *
+   * The signing window always asks the signer for a reason before a decline, on a document request too.
+   *
    * @example
    * ```typescript
    * const session = await chaindoc.embedded.createSession({

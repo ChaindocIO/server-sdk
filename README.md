@@ -105,13 +105,15 @@ const session = await chaindoc.embedded.createSession({
 });
 ```
 
-Or make the text yourself (`content` is the engine's version 2 content; `mode: 'template'` holds fields and roles):
+Or make the text yourself (`content` is the engine's content; `mode: 'template'` holds fields and roles). The server
+reads and writes content **version 3** (`getContent` answers `3`; `1` and `2` are still accepted on a write): send back what
+you read, and do not branch on `version === 2`.
 
 ```typescript
 const doc = await chaindoc.documents.create({
   name: "NDA",
   status: "draft",
-  content: { version: 2, mode: "document", doc: { type: "doc", content: [] } },
+  content: { version: 3, mode: "document", doc: { type: "doc", content: [] } },
 });
 ```
 
@@ -217,24 +219,25 @@ console.log(contract.contractId);
 ```typescript
 const chaindoc = new Chaindoc({
   secretKey: "sk_xxx", // Required - Your secret API key
-  environment: "production", // Optional: 'production' | 'staging' | 'development'
+  // baseUrl: "https://…", // Optional: another backend's base URL (default: https://api.chaindoc.io)
   timeout: 30000, // Optional: Request timeout in ms (default: 30000)
   retry: {
     // Optional: Retry configuration
     maxRetries: 3,
-    initialDelay: 1000,
-    maxDelay: 10000,
+    baseDelayMs: 1000,
+    maxDelayMs: 10000,
   },
 });
 ```
 
-### Environments
+### Base URL
 
-| Environment   | API URL                             | Use Case                |
-| ------------- | ----------------------------------- | ----------------------- |
-| `production`  | `https://api.chaindoc.io` (default) | Live production traffic |
-| `staging`     | `https://api-demo.chaindoc.io`      | Pre-release testing     |
-| `development` | `https://api-demo.chaindoc.io`      | Development & debugging |
+The SDK calls the production API, `https://api.chaindoc.io`, unless you pass `baseUrl`. A key works only against the
+backend that issued it: to call a non-production backend, pass its base URL (and a key issued there) as `baseUrl`.
+
+`environment` is **deprecated and switches nothing**: `production`, `staging` and `development` all call
+`https://api.chaindoc.io`, the production API, with your key (earlier docs pointed `staging` and `development` at a demo
+host that no longer answers). Remove `environment` from your config, or keep it — it has no effect.
 
 ### Email handling
 
@@ -249,7 +252,7 @@ The SDK trims and lowercases every email value before sending it to the API. Thi
 await chaindoc.documents.create({ name, content, status: 'draft' | 'published', accessType?: 'private' | 'public' | 'restricted' | 'team' });
 // ... or a file: Storage -> conversion (202, always lands as a draft)
 const { conversion } = await chaindoc.documents.createFromFile(blob, { name }, { filename });
-await chaindoc.conversions.get(conversion.id);   // converting | ready | failed
+await chaindoc.conversions.get(conversion.id);   // converting (progress: { stage, page, pages }) | ready (review) | failed
 await chaindoc.conversions.wait(conversion.id);  // resolves ready, throws on failed / timeout
 
 // Read the text with its signer roles and fields; add roles with signature chips; convert an old file document
@@ -260,7 +263,9 @@ await chaindoc.documents.convert(documentId);
 // Next version: from text (+ the version you read) or from a Storage file (202)
 await chaindoc.documents.update(documentId, { name, content, baseVersionId, status: 'draft' });
 
-// `get` says whether it is a text or a file, and whether it can be sent
+// `get` says whether it is a text or a file, and whether a signature request can be made on it now:
+// `sendable` is true for a text whose roles each have a signature chip (and nothing blocks the send), with no
+// open or completed request on its current version; false for a file, a text without roles, and once it was sent
 (await chaindoc.documents.get(documentId)).document; // { format: 'text' | 'file', sendable: boolean, ... }
 
 // Update access rights; address a person by account (see Accounts)
@@ -338,6 +343,10 @@ await chaindoc.contracts.list({ page: 1, limit: 10, status: "active" });
 await chaindoc.contracts.get(created.contractId);
 await chaindoc.contracts.getStatus(created.contractId);
 await chaindoc.contracts.getActivities(created.contractId);
+// The contract's document is a text with the two sides placed as signature chips: roles `business` and `contragent`
+await chaindoc.documents.addSignatureBlock("doc_uuid", {
+  roles: [{ key: "business", name: "Business" }, { key: "contragent", name: "Counterparty" }],
+});
 await chaindoc.contracts.send(created.contractId, {
   messageToSigners: "Please review and sign this contract",
   deadline: new Date("2026-12-31"),
@@ -347,9 +356,31 @@ await chaindoc.contracts.cancel(created.contractId);
 await chaindoc.contracts.terminate(created.contractId, { reason: "Mutual offboarding" });
 ```
 
+`contracts.send` and `contracts.agreements.initiateSigning` place each side's signature on its chips in the text, as the
+Chaindoc app's Send does. They refuse before anything is created (the contract or amendment stays a draft):
+
+| Answer | When | What to do |
+| --- | --- | --- |
+| `409 SETUP_BLOCKED` (`blockers[]`) | a side has no signature chip (a text without roles: both) | `documents.addSignatureBlock` with `business` and `contragent` |
+| `400 SIGNATURE_ROLE_UNKNOWN` | the text holds a role other than `business` / `contragent` | use the two side roles |
+| `422 DOCUMENT_FILE_CONVERTS` (`convert`) | the document is a file | `documents.convert`, `conversions.wait`, place the chips, send |
+| `400 KYC_NOT_VERIFIED` | `isKycRequired` with `signingPolicy.business: 'delegated'`, and the workspace Owner, who signs the business side at once, has not passed identity verification | the Owner verifies in the app first |
+
+With `signingPolicy.business: 'delegated'` the business side is signed at `send`, so `contracts.cancelSigningRequest`
+then answers `400 SIGNING_REQUEST_HAS_A_SIGNATURE`.
+
+`embedded.createSession` gives no session for something there is nothing to sign in: `400 EMBEDDED_SIGNING_REQUEST_CLOSED`
+(`status`) for a request that is signed, declined, cancelled or expired, `400 EMBEDDED_CONTRACT_NOT_SIGNABLE` for a
+contract never sent.
+
+**Declines.** A signer declines in the signing window, and the window always asks them for a reason (up to 500
+characters on a document, 1000 on a contract), as the Chaindoc app does. A decline does not add a request status:
+`signatures.getRequestStatus` reads `status: 'cancelled'` with `declinedAt` set and `declinedBy`, `declineComment`,
+`declinedVia` (`document` or `contract`); a cancel has `declinedAt: null`. Each signer carries its `role`.
+
 ### Templates
 
-Templates use the new content format (`{ version: 2, mode: 'template', doc }`). Content goes into a working
+Templates use the new content format (`{ version: 3, mode: 'template', doc }`; `1` and `2` are accepted). Content goes into a working
 copy and names the `revision` it was read at; publishing makes a version. Old-format templates answer
 `410 TEMPLATE_RETIRED`; the three preview methods are gone.
 
@@ -471,6 +502,11 @@ switch (verification.envelope?.type) {
 }
 ```
 
+The event union has 23 types (`invoice.ksef_accepted` among them); `WebhookEventDataMap` types the payloads of the
+document and signature events. A delivery is tried 3 times (at once, +1 min, +5 min) with the same `id`; after 50 failed
+deliveries in a row the webhook is turned off until it is resumed in the app — see
+[Advanced Usage](docs/ADVANCED_USAGE.md#delivery-retries-and-a-webhook-that-is-turned-off).
+
 ## Error Handling
 
 Every refusal carries the server's `errorKey`. `ChaindocError.errorKey` reads it, and the common families are
@@ -487,7 +523,7 @@ try {
   if (hasErrorKey(error, 'SIGNING_FIELDS_EMPTY')) { /* a required signer field is empty */ }
   else if (error instanceof ChaindocPlanError) { /* INTEGRATIONS_NOT_IN_PLAN: needs a Business plan */ }
   else if (error instanceof ChaindocReadOnlyError) { /* ACCOUNT_READ_ONLY */ }
-  else if (error instanceof ChaindocLimitError) { /* STORAGE_LIMIT_REACHED, AI_LIMIT_REACHED, AI_NOT_IN_PLAN */ }
+  else if (error instanceof ChaindocLimitError) { /* a plan limit: STORAGE_LIMIT_REACHED, AI_LIMIT_REACHED, CONTRACTS_LIMIT_REACHED, ... */ }
   else if (error instanceof ChaindocDocumentFileError) { /* DOCUMENT_FILE_CONVERTS, DOCUMENT_CONVERSION_PENDING/FAILED, ... */ }
   else if (error instanceof ChaindocSigningSetupError) { /* SETUP_FIELDS_STAND_IN_THE_TEXT, SETUP_BLOCKED, SIGNATURE_ROLE_* */ }
   else if (error instanceof ChaindocError) {
@@ -495,6 +531,10 @@ try {
   }
 }
 ```
+
+`ERROR_KEYS` lists every key the public API and `embedded.createSession` answer today (a body that fails validation is
+`400 VALIDATION_FAILED`); a key the server adds later still arrives as a `string`. Facts that ride with a key
+(`status`, `blockers`, `convert`, ...) are in `error.response`, typed as `ChaindocRefusalBody`.
 
 `conversions.wait()` throws `ChaindocConversionFailedError` (with `failureCode`) or
 `ChaindocConversionTimeoutError` (with `conversionId`; the conversion may still finish).

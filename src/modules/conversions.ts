@@ -23,7 +23,10 @@ const DEFAULT_BACKOFF_FACTOR = 1.5;
 export class Conversions {
   constructor(private client: HttpClient) {}
 
-  /** Where a conversion stands: `converting`, `ready` (with `documentId` and `versionId`) or `failed` (with `failure.code`). */
+  /**
+   * Where a conversion stands: `converting` (with `progress`: stage, page of pages), `ready` (with `documentId`,
+   * `versionId` and `review`: `ready_for_review` or `needs_review`) or `failed` (with `failure.code`).
+   */
   async get(conversionId: string): Promise<DocumentConversionResponse> {
     return this.client.get<DocumentConversionResponse>(
       `/api/v1/documents/conversions/${seg(conversionId)}`,

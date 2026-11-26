@@ -45,8 +45,11 @@ export class ContractAgreements {
   }
 
   /**
-   * Send a DRAFT amendment for signing.
-   * The parent contract must be ACTIVE.
+   * Send a DRAFT amendment for signing. The parent contract must be ACTIVE.
+   *
+   * As `contracts.send`: the amendment's document is a text with signature chips of the roles `business` and
+   * `contragent` (else `409 SETUP_BLOCKED` / `400 SIGNATURE_ROLE_UNKNOWN`), not a file (`422 DOCUMENT_FILE_CONVERTS`),
+   * and with `isKycRequired` the workspace Owner has passed identity verification (`400 KYC_NOT_VERIFIED`).
    */
   async initiateSigning(
     contractId: string,

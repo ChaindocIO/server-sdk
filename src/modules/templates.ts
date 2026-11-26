@@ -106,7 +106,7 @@ export class Templates {
   }
 
   /**
-   * Create a template from `content` (`{ version: 2, mode: 'template', doc }`).
+   * Create a template from `content` (`{ version: 3, mode: 'template', doc }`).
    * It starts as a DRAFT held in its working copy; publish it before using it.
    */
   async create(params: CreateTemplateParams): Promise<TemplateEnvelope> {

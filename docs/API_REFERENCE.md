@@ -151,18 +151,20 @@ new Chaindoc(config: ChaindocConfig)
 | Property      | Type                     | Required | Default        | Description                                              |
 | ------------- | ------------------------ | -------- | -------------- | -------------------------------------------------------- |
 | `secretKey`   | `string`                 | **Yes**  | -              | API secret key (format: `sk_*`)                          |
-| `environment` | `ChaindocEnvironment`    | No       | `'production'` | API environment (`production`, `staging`, `development`) |
+| `baseUrl`     | `string`                 | No       | `'https://api.chaindoc.io'` | The API's base URL; pass another backend's URL (with a key issued there) |
+| `environment` | `ChaindocEnvironment`    | No       | `'production'` | **Deprecated, switches nothing**: every value calls `https://api.chaindoc.io` |
 | `timeout`     | `number`                 | No       | `30000`        | Request timeout (ms)                                     |
 | `headers`     | `Record<string, string>` | No       | `{}`           | Custom headers                                           |
 | `retry`       | `RetryConfig`            | No       | See below      | Retry configuration                                      |
 
-#### Environments
+#### Base URL
 
-| Environment   | API URL                        |
-| ------------- | ------------------------------ |
-| `production`  | `https://api.chaindoc.io`      |
-| `staging`     | `https://api-demo.chaindoc.io` |
-| `development` | `https://api-demo.chaindoc.io` |
+The SDK calls the production API, `https://api.chaindoc.io`, unless you pass `baseUrl`. A key works only against the
+backend that issued it: to call a non-production backend, pass its base URL (and a key issued there) as `baseUrl`.
+
+`environment` is **deprecated and switches nothing**: `production`, `staging` and `development` all call
+`https://api.chaindoc.io`, the production API, with your key (earlier docs pointed `staging` and `development` at a demo
+host that no longer answers). Remove `environment` from your config, or keep it — it has no effect.
 
 #### RetryConfig
 
@@ -185,10 +187,10 @@ const chaindoc = new Chaindoc({
   },
 });
 
-// Development
-const chaindocDev = new Chaindoc({
-  secretKey: "sk_test_xxxxxxxxxxxxx",
-  environment: "development",
+// Another backend (its own key)
+const chaindocOther = new Chaindoc({
+  secretKey: process.env.OTHER_SECRET_KEY!,
+  baseUrl: process.env.OTHER_API_BASE_URL!,
 });
 ```
 
@@ -482,6 +484,9 @@ async createRequest(params: CreateSignatureRequestParams): Promise<SignatureRequ
 ```typescript
 interface Recipient {
   email: string; // Signer email
+  role?: string; // The text's role this recipient signs as (`getContent().roles[].key`); required when the text holds roles
+  account?: AccountChoice; // Where the person is addressed (an option of `accounts.lookup`)
+  signingMethod?: "embedded" | "delegated";
 }
 ```
 
@@ -539,16 +544,27 @@ async getRequestStatus(requestId: string): Promise<SignatureRequestStatus>
 ```typescript
 interface SignatureRequestStatus {
   success: boolean;
-  requestId: number;
+  requestId: string;
+  // By the server's clock: past the deadline it reads `expired` before the nightly sweep writes it.
+  // A declined request reads `cancelled`; `declinedAt` tells it apart.
   status: "pending" | "completed" | "expired" | "cancelled";
+  versionId?: string;
   totalSigners: number;
   signedCount: number;
   pendingCount: number;
   isCompleted: boolean;
   dueDate: string;
-  signers: Signer[];
+  signers: Signer[]; // each with `role: string | null` — the text's role it was bound to
+  declinedAt?: string | null; // null unless declined
+  declinedBy?: { email?: string; username?: string };
+  declineComment?: string;
+  declinedVia?: "document" | "contract";
 }
 ```
+
+The list (`getMyRequests`) carries the same `role` and decline fields on each item, plus `createdAt` and `completedAt`
+(the last signature; `null` until completed). `remind` on a request that is not pending answers
+`400 SIGNATURE_REQUEST_NOT_PENDING` (`status`).
 
 #### Example
 
@@ -669,9 +685,15 @@ signer whose account is known is only ever acted for by that account.
 | ----------------------------- | -------- | -------- | -------------------------- |
 | `email`                       | `string` | **Yes**  | Signer's email — see below  |
 | `metadata`                    | `object` | **Yes**  | Session metadata           |
-| `metadata.documentId`         | `string` | **Yes**  | Document ID                |
+| `metadata.documentId`         | `string` | No\*    | Document ID (\*required without `contractId`) |
+| `metadata.contractId`         | `string` | No       | Contract ID: the document and its open signing request are found by it |
 | `metadata.signatureRequestId` | `string` | No       | Signature request ID       |
 | `metadata.returnUrl`          | `string` | No       | Redirect URL after signing |
+
+No session is created, and no code is mailed, when there is nothing to sign: `400 EMBEDDED_SIGNING_REQUEST_CLOSED`
+(`status`: signed, declined, cancelled or expired), `400 EMBEDDED_CONTRACT_NOT_SIGNABLE` (a contract never sent for
+signing), `400 NOT_YOUR_TURN` (an ordered request whose earlier signer has not signed). The signing window always asks
+the signer for a reason before a decline.
 
 #### Response: EmbeddedSessionResponse
 
@@ -828,8 +850,13 @@ try {
 | ------------- | --------------------- | ---------------------- |
 | `message`     | `string`              | Error description      |
 | `statusCode`  | `number \| undefined` | HTTP status code       |
-| `response`    | `unknown`             | Full API response      |
+| `errorKey`    | `ChaindocErrorKey \| undefined` | The server's machine-readable reason |
+| `response`    | `unknown`             | Full API response (read it as `ChaindocRefusalBody` for `status`, `blockers`, `convert`, ...) |
 | `isRetryable` | `boolean`             | Whether retry may help |
+
+`ERROR_KEYS` lists every `errorKey` the public API and `embedded.createSession` answer today; branch with
+`hasErrorKey(error, 'KEY')`. A body or query that fails validation is `400 VALIDATION_FAILED` (`message` is the list of
+broken constraints). A key the server adds later still arrives as a `string`.
 
 ### Common Error Codes
 

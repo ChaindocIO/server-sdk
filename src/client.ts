@@ -57,6 +57,8 @@ function parseAttachmentFileName(header: string | null): string | undefined {
   return plainValue ? plainValue.trim() : undefined;
 }
 
+// `environment` switches nothing (it is deprecated): every value is the production API. A non-production backend is
+// reached with `baseUrl` only; there is no public non-production host to name here.
 const ENVIRONMENT_URLS: Record<ChaindocEnvironment, string> = {
   production: "https://api.chaindoc.io",
   staging: "https://api.chaindoc.io",

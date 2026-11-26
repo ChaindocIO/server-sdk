@@ -33,6 +33,7 @@ const EXPECTED_WEBHOOK_EVENTS: WebhookEventType[] = [
   'invoice.sent',
   'invoice.paid',
   'invoice.cancelled',
+  'invoice.ksef_accepted',
   'transaction.created',
   'transaction.updated',
   'transaction.edited',
@@ -52,6 +53,7 @@ const EXPECTED_INVOICE_WEBHOOK_EVENTS: InvoiceWebhookEventType[] = [
   'invoice.sent',
   'invoice.paid',
   'invoice.cancelled',
+  'invoice.ksef_accepted',
 ];
 
 const EXPECTED_TRANSACTION_WEBHOOK_EVENTS: TransactionWebhookEventType[] = [
@@ -85,7 +87,7 @@ const EXPECTED_ROUTE_MATRIX: Record<string, Record<string, string[]>> = {
     post: ['201'],
   },
   '/api/v1/contracts/{contractId}': {
-    delete: ['200'],
+    delete: ['200', '403'],
     get: ['200'],
     patch: ['200'],
   },
@@ -105,10 +107,10 @@ const EXPECTED_ROUTE_MATRIX: Record<string, Record<string, string[]>> = {
     post: ['200'],
   },
   '/api/v1/contracts/{contractId}/send': {
-    post: ['200'],
+    post: ['200', '400', '409', '422'],
   },
   '/api/v1/contracts/{contractId}/cancel': {
-    post: ['200'],
+    post: ['200', '403'],
   },
   '/api/v1/contracts/{contractId}/terminate': {
     post: ['200'],
@@ -154,10 +156,10 @@ const EXPECTED_ROUTE_MATRIX: Record<string, Record<string, string[]>> = {
   },
   '/api/v1/contracts/{contractId}/signing-requests/{requestId}': {
     get: ['200'],
-    delete: ['200'],
+    delete: ['200', '400'],
   },
   '/api/v1/contracts/{contractId}/signing-requests/{requestId}/business-sign': {
-    post: ['200'],
+    post: ['200', '400', '403'],
   },
   '/api/v1/contracts/{contractId}/agreements': {
     get: ['200'],
@@ -168,14 +170,14 @@ const EXPECTED_ROUTE_MATRIX: Record<string, Record<string, string[]>> = {
     delete: ['200'],
   },
   '/api/v1/contracts/{contractId}/agreements/{agreementId}/initiate-signing': {
-    post: ['201'],
+    post: ['201', '400', '409', '422'],
   },
   '/api/v1/signatures/requests/{requestId}/edit': {
     post: ['200'],
   },
   '/api/v1/contracts/{contractId}/invoices': {
     get: ['200'],
-    post: ['201', '400'],
+    post: ['201', '400', '403'],
   },
   '/api/v1/contracts/{contractId}/invoices/{invoiceUuid}': {
     get: ['200'],
@@ -185,7 +187,7 @@ const EXPECTED_ROUTE_MATRIX: Record<string, Record<string, string[]>> = {
     post: ['200'],
   },
   '/api/v1/contracts/{contractId}/invoices/{invoiceUuid}/pdf': {
-    get: ['200'],
+    get: ['200', '409'],
   },
   '/api/v1/contracts/{contractId}/invoices/{invoiceUuid}/send': {
     post: ['200'],
@@ -283,7 +285,7 @@ const EXPECTED_ROUTE_MATRIX: Record<string, Record<string, string[]>> = {
     post: ['200'],
   },
   '/api/v1/signatures/requests/{requestId}/remind': {
-    post: ['200'],
+    post: ['200', '400'],
   },
   '/api/v1/signatures/versions/{versionId}/certificate': {
     get: ['200'],
@@ -292,7 +294,7 @@ const EXPECTED_ROUTE_MATRIX: Record<string, Record<string, string[]>> = {
     get: ['200'],
   },
   '/api/v1/embedded/sessions': {
-    post: ['201', '401'],
+    post: ['201', '400', '401'],
   },
 };
 

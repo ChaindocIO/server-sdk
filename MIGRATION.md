@@ -2,6 +2,36 @@
 
 > Start with [What changed (November 2026)](docs/WHATS-CHANGED-2026-11.md): the platform change as a whole (plan, workspaces, files converted, templates, money, QES, processes, webhooks, embed), with every new refusal code.
 
+## Upgrading from 3.0.0 (Unreleased)
+
+Most of it is added fields and named refusals; nothing you call changed its route. What an integration written against
+3.0.0 changes:
+
+1. **`conversions.get` / `onPoll` — `progress` is an object.** It was typed `number` (the server never sent one):
+   `{ stage, page, pages } | null` while converting, `null` once ready or failed. `review` may be `null`.
+2. **Content `version`.** `getContent` answers `version: 3`. Read `version` as `1 | 2 | 3`; send back what you read.
+   Code that checked `version === 2` takes the other branch now.
+3. **Contracts and amendments: chips before `send`.** Put the `business` and `contragent` roles into the contract's text
+   with `documents.addSignatureBlock` before `contracts.send` / `agreements.initiateSigning`. Handle `409 SETUP_BLOCKED`
+   (`blockers[]`), `400 SIGNATURE_ROLE_UNKNOWN`, `422 DOCUMENT_FILE_CONVERTS` (a file: convert first) and, with
+   `isKycRequired` and a delegated business side, `400 KYC_NOT_VERIFIED` (the workspace Owner verifies first).
+4. **Embedded sessions are refused for nothing to sign.** `400 EMBEDDED_SIGNING_REQUEST_CLOSED` (a request that ended) and
+   `400 EMBEDDED_CONTRACT_NOT_SIGNABLE` (a contract never sent) — a session for a never-sent contract used to be given
+   (`201`). Do not open the window then.
+5. **A decline reads `cancelled`.** Tell it from a cancel by `declinedAt` (`declinedBy`, `declineComment`, `declinedVia`
+   beside it). `status` is decided by the server's clock: `expired` can come before the nightly sweep. Bind signers to
+   roles by `signers[].role`, not by e-mail.
+6. **`environment` does nothing.** If you relied on `staging` / `development` reaching a test backend, they never did after
+   2.x: every value calls production. Pass `baseUrl` (with that backend's key).
+7. **Errors.** Branch on the new keys you meet (`VALIDATION_FAILED`, `CONTRACT_NOT_A_DRAFT`, `SIGNING_REQUEST_HAS_A_SIGNATURE`,
+   `SIGNING_REQUEST_NOT_PENDING`, `SIGNATURE_REQUEST_NOT_PENDING`, `DOCUMENT_NOT_A_FILE`, `DOCUMENT_EDIT_REFUSED`, ...);
+   five plan-limit keys now arrive as `ChaindocLimitError`. A `switch` over `errorKey` keeps a `default`.
+8. **Webhooks.** Add `invoice.ksef_accepted` to an exhaustive `switch` over `WebhookEventType`. Prefer
+   `signatureRequestId` over `requestId` on `signature.request.created`. A contract refusal is
+   `signature.request.rejected` with `rejectedVia: 'contract'` and `contractId`. Deliveries: 3 attempts with one `id`;
+   a webhook turned off after 50 failures loses document and signature events until it is resumed.
+9. **`delete*` methods work.** In the published 3.0.0 every `delete*` answered `400` (a JSON header with no body); fixed.
+
 ## Upgrading from 2.x to 3.0.0
 
 ```bash
@@ -255,29 +285,10 @@ npm install @chaindoc_io/server-sdk@1.0.0
 
 ### Environment Configuration
 
-If you were using `baseUrl` (alpha.1-alpha.4), update to `environment`:
-
-```typescript
-// Before (alpha.1 - alpha.4)
-const chaindoc = new Chaindoc({
-  secretKey: "sk_xxx",
-  baseUrl: "https://api-demo.chaindoc.io",
-});
-
-// After (alpha.5+ and 1.0.0)
-const chaindoc = new Chaindoc({
-  secretKey: "sk_xxx",
-  environment: "staging", // 'production' | 'staging' | 'development'
-});
-```
-
-### Environment URLs
-
-| Environment   | API URL                        |
-| ------------- | ------------------------------ |
-| `production`  | `https://api.chaindoc.io`      |
-| `staging`     | `https://api-demo.chaindoc.io` |
-| `development` | `https://api-demo.chaindoc.io` |
+> **Corrected (Unreleased).** This section used to tell you to replace `baseUrl` with `environment` and listed a demo host
+> for `staging` and `development`. That host no longer answers, and `environment` switches nothing:
+> every value calls the production API, `https://api.chaindoc.io`. Keep (or go back to) `baseUrl` for a non-production
+> backend; `environment` is deprecated.
 
 ### What's New in 1.0.0
 
@@ -289,7 +300,7 @@ const chaindoc = new Chaindoc({
 ### Checklist
 
 - [ ] Update package version to `1.0.0`
-- [ ] Replace `baseUrl` with `environment` if applicable
+- [ ] Keep `baseUrl` for a non-production backend (`environment` switches nothing)
 - [ ] Review error handling (no changes required, but improvements available)
 - [ ] Update API keys for production if moving from test environment
 

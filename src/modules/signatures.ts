@@ -66,7 +66,9 @@ export class Signatures {
   }
 
   /**
-   * Get signature request status
+   * Get signature request status: each signer's `role`, and `status` by the server's clock (`expired` past the deadline,
+   * before the sweep writes it). A decline reads `status: 'cancelled'` with `declinedAt` set and `declinedBy`,
+   * `declineComment`, `declinedVia`; a cancel has `declinedAt: null`.
    */
   async getRequestStatus(requestId: string): Promise<SignatureRequestStatus> {
     return this.client.get<SignatureRequestStatus>(`/api/v1/signatures/requests/${seg(requestId)}/status`);
