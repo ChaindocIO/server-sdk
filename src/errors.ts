@@ -201,6 +201,29 @@ export const ERROR_KEYS = {
    * signature on either side. Ask for none, or let the business side sign in person.
    */
   QES_DELEGATED_AUTO_SIGN_REFUSED: 'QES_DELEGATED_AUTO_SIGN_REFUSED',
+  /**
+   * 400 · `contracts.send` / `agreements.initiateSigning`: the sides were asked to sign with different methods, one of them
+   * `qes` (e.g. `signingLaneByParty: { business: 'internal', contragent: 'qes' }`). Such a contract cannot be completed yet,
+   * so it is not sent and nothing is created. Ask both sides for the same method: `signingLane: 'qes'` or none.
+   */
+  SIGNING_LANES_MIXED_UNSUPPORTED: 'SIGNING_LANES_MIXED_UNSUPPORTED',
+  // qualified signature, `signatures.qes.promise` — the server spells these keys in lower case
+  /** 400 · the request is cancelled, declined, expired or completed: nothing is collected on it any more. */
+  request_not_pending: 'request_not_pending',
+  /** 400 · the request belongs to a contract whose business side signs by delegation, which takes no qualified signature. */
+  delegated_auto_sign: 'delegated_auto_sign',
+  /** 400 · the key has no signer row on this request. */
+  not_a_signer: 'not_a_signer',
+  /** 400 · this signer has already agreed or signed. */
+  already_acted: 'already_acted',
+  /** 400 · the request is already being signed with the platform's signature; the two methods do not mix on it. */
+  lane_taken_by_internal: 'lane_taken_by_internal',
+  /** 400 · the request belongs to a contract that was not sent with `signingLane: 'qes'`. */
+  lane_not_qualified_on_contract: 'lane_not_qualified_on_contract',
+  /** 400 · every signer has agreed and the document is fixed for signing: agreements are no longer taken. */
+  promises_closed: 'promises_closed',
+  /** 400 · this signer is asked for the platform's signature on a request that has one method for everyone. */
+  above_requirement_unsupported: 'above_requirement_unsupported',
   ACCOUNT_OPTION_UNAVAILABLE: 'ACCOUNT_OPTION_UNAVAILABLE',
   // webhook endpoint — set on the API key's page in the app (Developers), not through an SDK call
   /**

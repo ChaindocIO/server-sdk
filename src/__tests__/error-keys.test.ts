@@ -75,6 +75,35 @@ describe('ERROR_KEYS', () => {
     }
   });
 
+  it('names the refusal of sides asked for different methods, and the qualified promise refusals as the server spells them', () => {
+    const known = new Set<string>(Object.values(ERROR_KEYS));
+    for (const key of [
+      'SIGNING_LANES_MIXED_UNSUPPORTED',
+      'request_not_pending',
+      'delegated_auto_sign',
+      'not_a_signer',
+      'already_acted',
+      'lane_taken_by_internal',
+      'lane_not_qualified_on_contract',
+      'promises_closed',
+      'above_requirement_unsupported',
+    ]) {
+      expect(known.has(key), key).toBe(true);
+    }
+  });
+
+  it('a lower-case promise refusal is read by its key like any other', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ message: 'closed', errorKey: 'promises_closed' }), { status: 400, headers: JSON_TYPE }),
+      ),
+    );
+    const client = new HttpClient({ secretKey: 'sk_test', retry: { maxRetries: 0 } });
+    const error = await client.post('/api/v1/signatures/qes/r/promise', {}).catch((e: unknown) => e);
+    expect(hasErrorKey(error, ERROR_KEYS.promises_closed)).toBe(true);
+  });
+
   it.each([
     'CONTRACTS_LIMIT_REACHED',
     'OPEN_SIGN_REQUESTS_LIMIT_REACHED',

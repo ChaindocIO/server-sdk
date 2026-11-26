@@ -1604,8 +1604,8 @@ export interface SigningLaneParams {
   /** Both sides; omitted — the platform's signature. */
   signingLane?: SigningLane;
   /**
-   * Per side. Sent with `signingLane`, the two must agree. ⚠️ Two different methods (one side `qes`, the other `internal`)
-   * are accepted, but such a contract is not completed today: send both sides on the same method.
+   * Per side. Sent with `signingLane`, the two must agree. Two different methods (one side `qes`, the other `internal`) are
+   * refused for now — `400 SIGNING_LANES_MIXED_UNSUPPORTED`, nothing is created: send both sides on the same method.
    */
   signingLaneByParty?: SigningLaneByParty;
 }
@@ -2569,7 +2569,9 @@ export type TransactionWebhookEventType = Extract<
  * Phase 0: record the signer's promise - consent, field values and appearance, no crypto. It is the
  * integration key's act, attributed to the key, and commits the request to the qualified lane. A contract
  * counterparty is refused (`CONTRAGENT_QES_REQUIRES_SIGNER_SESSION`): their consent comes from their own
- * embedded session.
+ * embedded session. Other refusals come with lower-case keys (`ERROR_KEYS.request_not_pending`,
+ * `delegated_auto_sign`, `not_a_signer`, `already_acted`, `lane_taken_by_internal`, `lane_not_qualified_on_contract`,
+ * `promises_closed`, `above_requirement_unsupported`).
  */
 export interface QesPromiseParams {
   /** Filled placed-field values keyed by field placement id (required signer fields: `SIGNING_FIELDS_EMPTY`). */

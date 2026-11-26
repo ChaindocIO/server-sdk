@@ -309,8 +309,9 @@ the PDF). It exists on the public API (`/signatures/qes/{requestId}/...`) and in
   only with their own certificate, the business side too (in the app, or in the signing window with
   `signingPolicy.business: 'embedded'`). A contract whose business side signs by delegation
   (`signingPolicy.business: 'delegated'`) takes no `qes` on any side: `400 QES_DELEGATED_AUTO_SIGN_REFUSED`.
-  ⚠️ `signingLaneByParty` with two different methods (one side `qes`, the other `internal`) is accepted, but such a contract
-  is not completed today: once both sides agree, the signatures are never made. Send both sides on the same method.
+  Both sides sign with one method for now: `signingLaneByParty` with two different methods (one side `qes`, the other
+  `internal`) is refused with `400 SIGNING_LANES_MIXED_UNSUPPORTED`, and nothing is created or sent. Send both sides on the
+  same method.
 - A plain signature request has no such option. The signing window offers each signer the choice: «Simple signature» or
   «Qualified signature».
 
@@ -341,6 +342,9 @@ await chaindoc.signatures.qes.finalize(requestId, { sessionId, signatureValueB64
 ```
 
 `fieldValues` is how a signer's own fields are sent with the signature; a required one left empty is `SIGNING_FIELDS_EMPTY`.
+The promise's own refusals come with lower-case keys, exactly as the server sends them (all in `ERROR_KEYS`):
+`request_not_pending`, `delegated_auto_sign`, `not_a_signer`, `already_acted`, `lane_taken_by_internal`,
+`lane_not_qualified_on_contract`, `promises_closed`, `above_requirement_unsupported`.
 On the public API (your key acting for its own person) a signer without a name is refused `409 NAME_REQUIRED_FOR_SIGNING`;
 the embedded window asks no name, the e-mail is the identity there.
 
