@@ -428,7 +428,7 @@ envelope has `errorKey` and a `hint`.
 | `TEMPLATE_VALUES_REFUSED` / `TEMPLATE_VALUES_MISSING` | A value its field cannot hold / a required value empty | Correct the `variables` |
 | `INVOICE_MONEY_OR_CREDIT_NOTE` | Cancel of an invoice that money or a credit note has reached | Create a credit note |
 | `STRIPE_NOT_READY` (and other `STRIPE_*`) | The seller's Stripe is not ready for a charge | The seller finishes Stripe setup; do not retry the charge blindly |
-| `VALIDATION_FAILED` (400) | The body or the query failed validation (`message` lists the broken constraints) | Fix the input |
+| `VALIDATION_FAILED` (400) | The body or the query failed validation (`message` lists the broken constraints) — for example a document `status` other than `'draft'` or `'published'` | Fix the input |
 | `DOCUMENT_NOT_A_FILE` (422) | `convert` (or a next version from a file) on a document that is already a text | Edit it as text |
 | `DOCUMENT_EDIT_REFUSED` (403) | The document takes no new version now (on signing, signed, in a contract) | Make a new document |
 | `KYC_NOT_VERIFIED` (400) | A signer of a request with `isKycRequired` has not verified; on a contract `send`, the workspace Owner | The person verifies in the app |
@@ -464,6 +464,11 @@ backend source and, where marked in the OpenAPI, in `openapi/public-api.json`; t
   `stripeAccountId`, `publishableKey`) and `.../payment-method/attach`. Card only for now. Card data goes to Stripe's own fields;
   it never reaches Chaindoc or your page. The embed does not list saved cards.
 - **QES** on the signer's device and **fields** (`fieldValues`) are handled by the embed; typed refusals are shown to the signer.
+- **Before you sign** lists «Payment method» only on a contract with payment terms (as the app does); a contract with none
+  says nothing about paying.
+- **Identity check refused for good.** The signer sees a final screen and your page hears `ERROR` `KYC_REJECTED` once. The
+  embedded route that hands the window the provider's token (`GET /embedded/kyc/get-access-token/{requestId}`) answers such a
+  signer `400 KYC_REJECTED` too; a resubmission still gets its token.
 - **embed-sdk 2.3.0** adds events and codes. Nothing you wrote against 2.2.0 breaks: the new fields are optional and an iframe
   older than 2.3.0 sends neither.
 

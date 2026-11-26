@@ -528,7 +528,11 @@
             "type": "string"
           },
           "status": {
-            "description": "Set to \"published\" to verify in blockchain after creation. A document made from a file always lands as a draft: \"published\" with a file is refused.",
+            "description": "Set to \"published\" to verify in blockchain after creation. A document made from a file always lands as a draft: \"published\" with a file is refused. Anything but \"draft\" or \"published\" is refused with `400 VALIDATION_FAILED`.",
+            "enum": [
+              "draft",
+              "published"
+            ],
             "example": "draft",
             "type": "string"
           },
@@ -951,7 +955,11 @@
             "type": "string"
           },
           "status": {
-            "description": "Set to \"published\" to verify in blockchain after creation. A document made from a file always lands as a draft: \"published\" with a file is refused.",
+            "description": "Set to \"published\" to verify in blockchain after creation. A document made from a file always lands as a draft: \"published\" with a file is refused. Anything but \"draft\" or \"published\" is refused with `400 VALIDATION_FAILED`.",
+            "enum": [
+              "draft",
+              "published"
+            ],
             "example": "draft",
             "type": "string"
           }
@@ -1036,7 +1044,11 @@
             "type": "string"
           },
           "status": {
-            "description": "Set to \"published\" to verify in blockchain after creation. A document made from a file always lands as a draft: \"published\" with a file is refused.",
+            "description": "Set to \"published\" to verify in blockchain after creation. A document made from a file always lands as a draft: \"published\" with a file is refused. Anything but \"draft\" or \"published\" is refused with `400 VALIDATION_FAILED`.",
+            "enum": [
+              "draft",
+              "published"
+            ],
             "example": "draft",
             "type": "string"
           },
@@ -2481,7 +2493,11 @@
             "type": "string"
           },
           "status": {
-            "description": "Set to \"published\" to verify in blockchain after creation. A document made from a file always lands as a draft: \"published\" with a file is refused.",
+            "description": "Set to \"published\" to verify in blockchain after creation. A document made from a file always lands as a draft: \"published\" with a file is refused. Anything but \"draft\" or \"published\" is refused with `400 VALIDATION_FAILED`.",
+            "enum": [
+              "draft",
+              "published"
+            ],
             "example": "draft",
             "type": "string"
           }
@@ -7684,6 +7700,10 @@
             "type": "string"
           },
           "status": {
+            "enum": [
+              "draft",
+              "published"
+            ],
             "example": "draft",
             "type": "string"
           },
@@ -7784,7 +7804,11 @@
             "type": "string"
           },
           "status": {
-            "description": "Set to \"published\" to verify new version in blockchain",
+            "description": "Set to \"published\" to verify new version in blockchain Anything but \"draft\" or \"published\" is refused with `400 VALIDATION_FAILED`.",
+            "enum": [
+              "draft",
+              "published"
+            ],
             "example": "draft",
             "type": "string"
           }
@@ -7960,7 +7984,11 @@
             "type": "string"
           },
           "status": {
-            "description": "Set to \"published\" to verify new version in blockchain",
+            "description": "Set to \"published\" to verify new version in blockchain Anything but \"draft\" or \"published\" is refused with `400 VALIDATION_FAILED`.",
+            "enum": [
+              "draft",
+              "published"
+            ],
             "example": "draft",
             "type": "string"
           },
@@ -13119,6 +13147,9 @@
               }
             },
             "description": "KYC access token retrieved successfully"
+          },
+          "400": {
+            "description": "`KYC_REJECTED` (`rejectType: \"final\"`): identity verification refused this signer for good — no provider token is issued and this request cannot be signed. A resubmission the provider asks for still gets its token."
           },
           "401": {
             "description": "Invalid or expired session token"

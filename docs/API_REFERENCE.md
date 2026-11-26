@@ -286,7 +286,7 @@ async create(params: CreateDocumentParams): Promise<DocumentResponse>
 | -------------- | ---------------- | -------- | ----------------------------------- |
 | `name`         | `string`         | **Yes**  | Document name                       |
 | `media`        | `Media`          | **Yes**  | Uploaded file (from `media.upload`) |
-| `status`       | `DocumentStatusForCreate` | **Yes** | `'draft'` \| `'published'`    |
+| `status`       | `DocumentStatusForCreate` | **Yes** | `'draft'` \| `'published'`; anything else is `400 VALIDATION_FAILED` |
 | `description`  | `string`         | No       | Document description                |
 | `meta`         | `MetaTag[]`      | No       | Metadata key-value pairs            |
 | `hashtags`     | `string[]`       | No       | Search tags                         |

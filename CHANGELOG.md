@@ -51,6 +51,14 @@ changes is in [MIGRATION.md](MIGRATION.md) («Upgrading from 3.0.0»).
   delivered after *Resume sending*. Before, only `contract.signed`, `invoice.*` and `transaction.*` were.
 - `CONTRACTS_LIMIT_REACHED`, `OPEN_SIGN_REQUESTS_LIMIT_REACHED`, `SIGNATURE_CREDITS_EXHAUSTED`, `KYC_CREDITS_EXHAUSTED`,
   `DOCUMENT_SHARE_LIMIT_REACHED` now arrive as `ChaindocLimitError` (still `instanceof ChaindocError`).
+- **Server: a document's `status` is `'draft'` or `'published'`, nothing else.** `documents.create`, `update`,
+  `createFromStorage` (and the Pipedrive lane) answered `201` to any other string and made a draft — `'Published'` published
+  nothing. Now `400 VALIDATION_FAILED`. `DocumentStatusForCreate` already allowed only the two.
+- **Server: the embed's identity-check token is refused to a signer refused for good** (`400 KYC_REJECTED`,
+  `rejectType: 'final'`). The signing window shows its final screen before it would ask, so only a direct call to the
+  embedded route meets it; a resubmission the provider asks for still gets its token.
+- **Server: the signing window lists «Payment method» only on a contract with payment terms.** A contract with none said
+  «You choose how to pay each invoice» though there was nothing to pay.
 
 ### Fixed (types that were wrong)
 

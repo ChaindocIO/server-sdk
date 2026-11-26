@@ -29,11 +29,14 @@ Most of it is added fields and named refusals; nothing you call changed its rout
 8. **Webhooks.** Add `invoice.ksef_accepted` to an exhaustive `switch` over `WebhookEventType`. Prefer
    `signatureRequestId` over `requestId` on `signature.request.created`. A contract refusal is
    `signature.request.rejected` with `rejectedVia: 'contract'` and `contractId`. Deliveries: 3 attempts with one `id`;
-   a webhook turned off after 50 failures loses document and signature events until it is resumed.
+   a webhook turned off after 50 failures keeps every event and delivers it after it is resumed.
 9. **`delete*` methods work.** In the published 3.0.0 every `delete*` answered `400` (a JSON header with no body); fixed.
 10. **A signer refused identity verification.** On a KYC request, `getRequestStatus` gives each signer `kyc`; a `rejected`
     signer will not sign (the provider refused them for good) — cancel the request or send it to someone else rather than
     reminding them. The embed SDK reports it as `ERROR` `KYC_REJECTED`.
+11. **A document's `status` is `'draft'` or `'published'`.** Any other value (`'Published'`, `'nope'`, `''`) used to answer
+    `201` and make a draft; it is `400 VALIDATION_FAILED` now. TypeScript code on `DocumentStatusForCreate` never sent one;
+    check values that reach `status` from configuration or user input.
 
 ## Upgrading from 2.x to 3.0.0
 
