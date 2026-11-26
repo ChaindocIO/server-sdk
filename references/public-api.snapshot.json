@@ -336,7 +336,7 @@
           },
           "metadata": {
             "additionalProperties": true,
-            "description": "Session metadata. Provide either documentId (for standalone signing) or contractId (for contract signing). When using contractId, documentId, signatureRequestId, and contractSigningRequestId are resolved automatically.",
+            "description": "Session metadata. Provide either documentId (for standalone signing) or contractId (for contract signing). When using contractId, documentId, signatureRequestId, and contractSigningRequestId are resolved automatically: the session is for the contract’s open signing request — its own while the contract is being signed, or an amendment’s while one is (`pending_amendment`), over that amendment’s document. A contract signing request (`contractSigningRequestId`, the `signingRequestId` the send and the amendment’s send answer) or its signature request may be named instead of or beside contractId; it must be one of that contract’s.",
             "properties": {
               "contractId": {
                 "format": "uuid",
@@ -13327,7 +13327,7 @@
             "description": "Embedded session created successfully. OTP sent to email."
           },
           "400": {
-            "description": "EMBEDDED_SIGNING_REQUEST_CLOSED — the signature request (or, for `metadata.contractId`, the contract’s signing request) is no longer pending: declined, cancelled, completed or expired (`status` says which). EMBEDDED_CONTRACT_NOT_SIGNABLE — the contract has never been sent for signing (`status`: the contract’s). NOT_YOUR_TURN — the request is signed in order and an earlier signer has not signed yet. No session is created and no code is mailed."
+            "description": "EMBEDDED_SIGNING_REQUEST_CLOSED — the signature request (or, for `metadata.contractId`, the contract’s signing request) is no longer pending: declined, cancelled, completed or expired (`status` says which). EMBEDDED_CONTRACT_NOT_SIGNABLE — the contract has never been sent for signing (`status`: the contract’s). NOT_YOUR_TURN — the request is signed in order and an earlier signer has not signed yet. EMBEDDED_SESSION_REQUEST_MISMATCH — a contractSigningRequestId, signatureRequestId or documentId named beside the contract is not one of its own (its signing requests, or an amendment’s), or two of them name different requests. No session is created and no code is mailed."
           },
           "401": {
             "description": "Secret key required for this operation"

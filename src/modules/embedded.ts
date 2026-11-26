@@ -26,6 +26,13 @@ export class Embedded {
    *   (a contract whose request ended answers `EMBEDDED_SIGNING_REQUEST_CLOSED`). Both answered `201` with a session
    *   before the server's November fixes; SDK 3.0.0 did not name them.
    * - `400 NOT_YOUR_TURN` — an earlier signer of an ordered request has not signed yet.
+   * - `400 EMBEDDED_SESSION_REQUEST_MISMATCH` — a `contractSigningRequestId`, `signatureRequestId` or `documentId` named
+   *   beside `contractId` is not that contract's, or two of them name different requests.
+   *
+   * **Contracts and amendments.** With `contractId` the session is for the contract's open signing request: its own while
+   * the contract is being signed, or an amendment's while one is (`pending_amendment`) — the signer signs or declines the
+   * amendment in the window. `contractSigningRequestId` (the `signingRequestId` that `contracts.send` and
+   * `agreements.initiateSigning` answer) names the request itself, beside `contractId` or alone.
    *
    * The signing window always asks the signer for a reason before a decline, on a document request too.
    *

@@ -212,6 +212,12 @@ export const ERROR_KEYS = {
    * ended answers `EMBEDDED_SIGNING_REQUEST_CLOSED`.
    */
   EMBEDDED_CONTRACT_NOT_SIGNABLE: 'EMBEDDED_CONTRACT_NOT_SIGNABLE',
+  /**
+   * 400 · a `contractSigningRequestId`, `signatureRequestId` or `documentId` named beside the contract is not one of its own
+   * (its signing requests — its own or an amendment's — and their documents), or two of them name different requests. No
+   * session, no OTP.
+   */
+  EMBEDDED_SESSION_REQUEST_MISMATCH: 'EMBEDDED_SESSION_REQUEST_MISMATCH',
   // contracts
   /** 403 (`cancel`, `delete`) / 400 (`send`) · the contract is not a draft. */
   CONTRACT_NOT_A_DRAFT: 'CONTRACT_NOT_A_DRAFT',

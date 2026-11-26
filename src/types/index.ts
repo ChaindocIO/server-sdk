@@ -1007,8 +1007,20 @@ export interface CreateEmbeddedSessionParams {
   metadata: {
     /** Document UUID — required for standalone signing, auto-resolved when contractId is provided */
     documentId?: string;
-    /** Contract UUID — when provided, documentId and signatureRequestId are resolved automatically */
+    /**
+     * Contract UUID — when provided, documentId, signatureRequestId and contractSigningRequestId are resolved
+     * automatically: the session is for the contract's open signing request — its own while it is being signed, or an
+     * amendment's while one is (`pending_amendment`), over that amendment's document. The signer signs or declines the
+     * amendment in the window.
+     */
     contractId?: string;
+    /**
+     * A contract signing request — the `signingRequestId` that `contracts.send` and `agreements.initiateSigning` answer.
+     * Named beside `contractId` it must be one of that contract's (else `EMBEDDED_SESSION_REQUEST_MISMATCH`); named alone it
+     * names its contract. A request that is no longer pending is refused (`EMBEDDED_SIGNING_REQUEST_CLOSED`).
+     */
+    contractSigningRequestId?: string;
+    /** Signature request UUID — required for standalone signing; for a contract, its signing request's document request. */
     signatureRequestId?: string;
     returnUrl?: string;
     [key: string]: unknown;

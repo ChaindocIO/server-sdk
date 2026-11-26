@@ -694,13 +694,32 @@ signer whose account is known is only ever acted for by that account.
 | `metadata`                    | `object` | **Yes**  | Session metadata           |
 | `metadata.documentId`         | `string` | No\*    | Document ID (\*required without `contractId`) |
 | `metadata.contractId`         | `string` | No       | Contract ID: the document and its open signing request are found by it |
+| `metadata.contractSigningRequestId` | `string` | No | A contract signing request (`signingRequestId` of `contracts.send` / `agreements.initiateSigning`) |
 | `metadata.signatureRequestId` | `string` | No       | Signature request ID       |
 | `metadata.returnUrl`          | `string` | No       | Redirect URL after signing |
 
+**Contracts and amendments.** With `contractId` the session is for the contract's open signing request: its own while
+the contract is being signed (`pending_signature`), or an amendment's while one is (`pending_amendment`) — the window then
+shows the amendment of the named contract, and the signer signs or declines it there, as in the app. The two are never
+open at once. You may also name the request itself — `contractSigningRequestId`, the `signingRequestId` that
+`contracts.send` and `agreements.initiateSigning` answer, beside `contractId` or alone. A named request that is no
+longer pending is refused, not replaced by another one.
+
 No session is created, and no code is mailed, when there is nothing to sign: `400 EMBEDDED_SIGNING_REQUEST_CLOSED`
 (`status`: signed, declined, cancelled or expired), `400 EMBEDDED_CONTRACT_NOT_SIGNABLE` (a contract never sent for
-signing), `400 NOT_YOUR_TURN` (an ordered request whose earlier signer has not signed). The signing window always asks
-the signer for a reason before a decline.
+signing), `400 NOT_YOUR_TURN` (an ordered request whose earlier signer has not signed) — or when what is named does not
+fit together: `400 EMBEDDED_SESSION_REQUEST_MISMATCH` (a request, signature request or document named beside
+`contractId` that is not that contract's, or two names of different requests). The signing window always asks the signer
+for a reason before a decline.
+
+```typescript
+// The counterparty signs or declines an amendment in your page
+const { signingRequestId } = await chaindoc.contracts.agreements.initiateSigning(contractId, agreementId);
+const session = await chaindoc.embedded.createSession({
+  email: "counterparty@example.com",
+  metadata: { contractId, contractSigningRequestId: signingRequestId },
+});
+```
 
 #### Response: EmbeddedSessionResponse
 

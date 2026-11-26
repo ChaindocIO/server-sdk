@@ -40,6 +40,12 @@ changes is in [MIGRATION.md](MIGRATION.md) («Upgrading from 3.0.0»).
 - Webhook payload types `ContractStatusChangedData` and `ContractTerminatedData` (in `WebhookEventDataMap`): `contractId`,
   `status`, `previousStatus`, and `terminationRequestId` / `signingRequestId` / `additionalAgreementId` where an act names
   it; `signedOutsideChaindoc` on a draft recorded as signed elsewhere.
+- Amendments in the embedded window: `embedded.createSession` with the `contractId` of a contract in `pending_amendment`
+  opens the signing window on the amendment, where the counterparty signs or declines it (the server refused it with a
+  `400` and no `errorKey`). `CreateEmbeddedSessionParams.metadata.contractSigningRequestId` names the request itself
+  (the `signingRequestId` of `contracts.send` / `agreements.initiateSigning`), beside `contractId` or alone.
+  `EMBEDDED_SESSION_REQUEST_MISMATCH` (`ERROR_KEYS`): a request or document named beside `contractId` is not that
+  contract's. `references/public-api.snapshot.json` synced with the API.
 
 ### Changed
 

@@ -373,7 +373,22 @@ Chaindoc app. It ends when the counterparty signs or declines, or when its deadl
 
 `embedded.createSession` gives no session for something there is nothing to sign in: `400 EMBEDDED_SIGNING_REQUEST_CLOSED`
 (`status`) for a request that is signed, declined, cancelled or expired, `400 EMBEDDED_CONTRACT_NOT_SIGNABLE` for a
-contract never sent.
+contract never sent, `400 EMBEDDED_SESSION_REQUEST_MISMATCH` when a request or document named beside `contractId` is not
+that contract's.
+
+**Amendments in your page.** Once an amendment is sent (`contracts.agreements.initiateSigning`, the contract is
+`pending_amendment`), `embedded.createSession` with its `contractId` opens the window on the amendment: the counterparty
+reads it as an amendment of the named contract and signs or declines it there, as in the Chaindoc app. Name the request
+itself with `metadata.contractSigningRequestId` (the `signingRequestId` the send answered) if you keep it.
+
+```typescript
+const { signingRequestId } = await chaindoc.contracts.agreements.initiateSigning(contractId, agreementId);
+const session = await chaindoc.embedded.createSession({
+  email: "counterparty@example.com",
+  metadata: { contractId, contractSigningRequestId: signingRequestId },
+});
+// Signed: `additional_agreement.signed`. Declined: `contract.status_changed` (pending_amendment → active).
+```
 
 **Declines.** A signer declines in the signing window, and the window always asks them for a reason (up to 500
 characters on a document, 1000 on a contract), as the Chaindoc app does. A decline does not add a request status:

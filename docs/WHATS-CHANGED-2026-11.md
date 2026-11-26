@@ -444,6 +444,7 @@ envelope has `errorKey` and a `hint`.
 | `KEY_NAMES_NO_SIGNER` (400) | `signatures.sign`: the key's person is no signer of the request | Sign as the signer, or in the window |
 | `BUSINESS_PROFILE_INCOMPLETE` (403) | An invoice before the business profile holds what an invoice prints | Complete the business profile |
 | `EMBEDDED_SIGNING_REQUEST_CLOSED` / `EMBEDDED_CONTRACT_NOT_SIGNABLE` (400, `status`) | `embedded.createSession` for a request that ended / a contract never sent | Nothing to sign: no session is given |
+| `EMBEDDED_SESSION_REQUEST_MISMATCH` (400) | `embedded.createSession`: a request, signature request or document named beside `contractId` is not that contract's, or two names are of different requests | Name the contract's own request, or only `contractId` |
 
 The SDK's `ERROR_KEYS` holds every key the public API and `embedded.createSession` answer today (about 200);
 this table names the ones most integrations meet.
@@ -467,6 +468,10 @@ backend source and, where marked in the OpenAPI, in `openapi/public-api.json`; t
   routes: `POST /embedded/contracts/signing/{requestId}/payment-method/setup-intent` (answers `clientSecret`, `setupIntentId`,
   `stripeAccountId`, `publishableKey`) and `.../payment-method/attach`. Card only for now. Card data goes to Stripe's own fields;
   it never reaches Chaindoc or your page. The embed does not list saved cards.
+- **Amendments.** A contract's amendment is signed or declined in the embed too: `embedded.createSession` with the
+  `contractId` of a contract in `pending_amendment` opens the window on the amendment (or name its request with
+  `contractSigningRequestId`, the `signingRequestId` of `agreements.initiateSigning`). The window says it is an amendment
+  of the named contract, as the app does. Before, the session was refused `400` with no `errorKey`.
 - **QES** on the signer's device and **fields** (`fieldValues`) are handled by the embed; typed refusals are shown to the signer.
 - **Before you sign** lists «Payment method» only on a contract with payment terms (as the app does); a contract with none
   says nothing about paying.
