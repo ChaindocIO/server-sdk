@@ -1,12 +1,6 @@
 # Advanced Usage Guide
 
-> **3.0 notice.** Examples in this guide that create a document from `media`, or place signature `fields` by
-> page coordinates, are 2.x. In 3.0 a file is converted (`documents.createFromFile` +
-> `conversions.wait`) and recipients are bound by `role`; see the README and [MIGRATION.md](../MIGRATION.md).
-> This guide is rewritten in the next pass.
-
-
-> **Version:** 1.0.0
+> **Version:** 3.x · upgrading from 2.x: [MIGRATION.md](../MIGRATION.md)
 
 Advanced configuration, workflows, and best practices for production deployments.
 
@@ -31,32 +25,30 @@ Advanced configuration, workflows, and best practices for production deployments
 
 ### Document Versioning
 
-Every update creates a new version. Previous versions are preserved.
+Every update creates a new version; previous versions are preserved. The next version comes from text (`content`, with
+`baseVersionId` — the version you read; another current version is `409 DOCUMENT_WRITING_BASE_MOVED`) or from a Storage
+file, converted asynchronously (202).
 
 ```typescript
-// Create initial document
-const doc = await chaindoc.documents.create({
-  name: "Contract v1",
-  description: "Initial version",
-  media: uploadedMedia,
-  status: "draft",
-  hashtags: ["#contract"],
-  meta: [{ key: "version", value: "1.0" }],
-});
+// Read the current text, change it, write the next version
+const current = await chaindoc.documents.getContent(documentId);
+const edited = editContent(current.content); // your change to the engine's content; send `version` back as read
 
-// Update creates v2
-const updated = await chaindoc.documents.update(doc.documentId, {
+await chaindoc.documents.update(documentId, {
   name: "Contract v2",
   description: "Updated terms in section 3",
-  media: newMedia,
-  status: "published", // Verify on blockchain
-  hashtags: ["#contract"],
-  meta: [{ key: "version", value: "2.0" }],
+  content: edited,
+  baseVersionId: current.versionId,
+  status: "draft",
 });
 
-// Both versions are accessible
-console.log("v1:", doc.document.currentVersion.id);
-console.log("v2:", updated.document.currentVersion.id);
+// Or the next version from a new file in Storage (202): wait for its conversion
+const { storageFileId } = await chaindoc.media.uploadChunked(newFile, { filename: "contract-v2.pdf" });
+const { conversion } = await chaindoc.documents.update(documentId, { name: "Contract v2", storageFileId, status: "draft" });
+const ready = await chaindoc.conversions.wait(conversion.id); // ready.versionId is the new version
+
+// Every version stays readable
+const { versions } = await chaindoc.documents.getVersions(documentId);
 ```
 
 ### Document Status Flow
@@ -89,32 +81,29 @@ console.log("v2:", updated.document.currentVersion.id);
 
 ### Bulk Document Upload
 
+Each file is converted on its own; start the conversions, then wait for them. Pass an `idempotencyKey` so that a retry of
+your own does not pay for a second conversion.
+
 ```typescript
 async function uploadDocuments(files: { path: string; name: string }[]) {
-  const results = [];
+  const started = [];
 
   for (const file of files) {
-    const buffer = await readFile(file.path);
-    const blob = new Blob([buffer], { type: "application/pdf" });
-    const { media } = await chaindoc.media.upload([blob]);
-
-    const doc = await chaindoc.documents.create({
-      name: file.name,
-      description: "",
-      media: media[0],
-      status: "published",
-      hashtags: [],
-      meta: [],
-    });
-
-    results.push({
-      name: file.name,
-      documentId: doc.documentId,
-      versionId: doc.document.currentVersion.id,
-    });
+    const blob = new Blob([await readFile(file.path)], { type: "application/pdf" });
+    const { conversion } = await chaindoc.documents.createFromFile(
+      blob,
+      { name: file.name, idempotencyKey: `upload-${file.path}` },
+      { filename: basename(file.path) },
+    );
+    started.push({ name: file.name, conversionId: conversion.id });
   }
 
-  return results;
+  return Promise.all(
+    started.map(async ({ name, conversionId }) => {
+      const ready = await chaindoc.conversions.wait(conversionId);
+      return { name, documentId: ready.documentId, versionId: ready.versionId };
+    }),
+  );
 }
 ```
 
@@ -124,17 +113,25 @@ async function uploadDocuments(files: { path: string; name: string }[]) {
 
 ### Multiple Signers (Parallel)
 
-All signers can sign independently in any order:
+All signers can sign independently in any order. Each recipient is bound to a role of the text:
 
 ```typescript
-const sigRequest = await chaindoc.signatures.createRequest({
-  versionId: doc.document.currentVersion.id,
-  recipients: [
-    { email: "signer1@example.com" },
-    { email: "signer2@example.com" },
-    { email: "signer3@example.com" },
+const { versionId } = await chaindoc.documents.addSignatureBlock(documentId, {
+  roles: [
+    { key: "signer_1", name: "First signer" },
+    { key: "signer_2", name: "Second signer" },
+    { key: "signer_3", name: "Third signer" },
   ],
-  deadline: new Date("2024-12-31"),
+});
+
+const sigRequest = await chaindoc.signatures.createRequest({
+  versionId,
+  recipients: [
+    { email: "signer1@example.com", role: "signer_1" },
+    { email: "signer2@example.com", role: "signer_2" },
+    { email: "signer3@example.com", role: "signer_3" },
+  ],
+  deadline: new Date("2027-12-31"),
   embeddedFlow: true,
 });
 
@@ -146,9 +143,9 @@ async function checkProgress(requestId: string) {
 
   status.signers.forEach((signer) => {
     if (signer.signedAt) {
-      console.log(`✓ ${signer.signerEmail} signed at ${signer.signedAt}`);
+      console.log(`✓ ${signer.email} (${signer.role}) signed at ${signer.signedAt}`);
     } else {
-      console.log(`○ ${signer.signerEmail} pending`);
+      console.log(`○ ${signer.email} (${signer.role}) pending`);
     }
   });
 
@@ -208,64 +205,38 @@ const manager = new SequentialSigningManager([
 
 ### Reminder System
 
+Chaindoc sends the reminder itself and keeps a 12-hour cooldown per signer: a signer reminded too recently comes back in
+`skipped`, not as an error.
+
 ```typescript
 async function sendReminders(chaindoc: Chaindoc) {
-  const { items } = await chaindoc.signatures.getMyRequests({
-    pageNumber: 1,
-    pageSize: 100,
-  });
+  const { items } = await chaindoc.signatures.getMyRequests({ status: "pending", pageNumber: 1, pageSize: 100 });
 
-  const pendingRequests = items.filter((r) => r.status === "pending");
-
-  for (const request of pendingRequests) {
-    const pendingSigners = request.signers.filter((s) => !s.signedAt);
-
-    for (const signer of pendingSigners) {
-      // Check if reminder was sent recently
-      const lastReminder = signer.remindedAt
-        ? new Date(signer.remindedAt)
-        : null;
-      const now = new Date();
-      const hoursSinceReminder = lastReminder
-        ? (now.getTime() - lastReminder.getTime()) / (1000 * 60 * 60)
-        : Infinity;
-
-      if (hoursSinceReminder > 24) {
-        // Send reminder via your email service
-        await sendReminderEmail(signer.signerEmail, {
-          documentName: request.versionId, // You may need to fetch document name
-          deadline: request.dueDate,
-          requestId: request.id,
-        });
-      }
-    }
+  for (const request of items) {
+    const { remindedEmails, skipped } = await chaindoc.signatures.remind(request.id);
+    console.log(request.id, "reminded:", remindedEmails, "skipped:", skipped);
   }
 }
 ```
 
 ### Expiration Handling
 
+A request past its deadline reads `expired` (by the server's clock, before the nightly sweep writes it). `resend` opens a
+NEW request over a fresh copy of the version, with the same signers and their roles; the expired one stays as the
+record.
+
 ```typescript
 async function handleExpiredRequests(chaindoc: Chaindoc) {
-  const { items } = await chaindoc.signatures.getMyRequests({
-    pageNumber: 1,
-    pageSize: 100,
-  });
+  const { items } = await chaindoc.signatures.getMyRequests({ pageNumber: 1, pageSize: 100 });
 
-  const expired = items.filter((r) => r.status === "expired");
-
-  for (const request of expired) {
-    // Notify document owner
+  for (const request of items.filter((r) => r.status === "expired")) {
     await notifyOwner(request);
 
-    // Optionally: auto-renew with new deadline
     if (shouldAutoRenew(request)) {
-      await chaindoc.signatures.createRequest({
-        versionId: request.versionId.toString(),
-        recipients: request.signers.map((s) => ({ email: s.signerEmail })),
+      const renewed = await chaindoc.signatures.resend(request.id, {
         deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // +7 days
-        embeddedFlow: request.embeddedFlow,
       });
+      console.log(`${request.id} resent as ${renewed.requestId}`);
     }
   }
 }
@@ -415,12 +386,14 @@ Chaindoc-managed iframe before signing.
 ```typescript
 async function createKycProtectedSignatureRequest(
   chaindoc: Chaindoc,
-  versionId: string,
+  documentId: string,
   signerEmail: string
 ) {
+  const { roles, versionId } = await chaindoc.documents.getContent(documentId);
+
   const request = await chaindoc.signatures.createRequest({
     versionId,
-    recipients: [{ email: signerEmail }],
+    recipients: [{ email: signerEmail, role: roles[0]!.key }],
     deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     embeddedFlow: true,
     isKycRequired: true,
@@ -429,7 +402,7 @@ async function createKycProtectedSignatureRequest(
   const session = await chaindoc.embedded.createSession({
     email: signerEmail,
     metadata: {
-      documentId: request.documentId,
+      documentId,
       signatureRequestId: request.requestId,
     },
   });
@@ -806,20 +779,16 @@ app.post("/api/documents", async (req, res) => {
 ### Parallel Uploads
 
 ```typescript
-async function uploadMultipleFiles(files: Buffer[]): Promise<Media[]> {
-  // Upload in parallel batches
+async function uploadMultipleFiles(files: { blob: Blob; filename: string }[]): Promise<string[]> {
+  // Upload into Storage in parallel batches; each answer is a storageFileId for documents.createFromStorage
   const batchSize = 5;
-  const results: Media[] = [];
+  const results: string[] = [];
 
   for (let i = 0; i < files.length; i += batchSize) {
     const batch = files.slice(i, i + batchSize);
 
     const batchResults = await Promise.all(
-      batch.map(async (buffer) => {
-        const blob = new Blob([buffer], { type: "application/pdf" });
-        const { media } = await chaindoc.media.upload([blob]);
-        return media[0];
-      })
+      batch.map(async ({ blob, filename }) => (await chaindoc.media.uploadChunked(blob, { filename })).storageFileId)
     );
 
     results.push(...batchResults);
@@ -949,12 +918,22 @@ vi.mock("@chaindoc_io/server-sdk", () => ({
       create: vi.fn().mockResolvedValue({
         success: true,
         documentId: "doc_test",
-        document: { versions: [{ uuid: "ver_test" }] },
+        document: { id: "doc_test", currentVersion: { id: "ver_test", name: "Test", status: "draft" } },
+        message: "Document created successfully",
+      }),
+      getContent: vi.fn().mockResolvedValue({
+        success: true,
+        versionId: "ver_test",
+        roles: [{ id: "r1", key: "client", name: "Client" }],
+        fields: [],
       }),
     },
     signatures: {
       createRequest: vi.fn().mockResolvedValue({
-        signatureRequest: { uuid: "req_test" },
+        success: true,
+        requestId: "req_test",
+        signatureRequest: { id: "req_test", status: "pending", signers: [] },
+        message: "Signature request created successfully",
       }),
     },
     embedded: {
@@ -1006,24 +985,15 @@ describe("Chaindoc Integration", () => {
     expect(health.apiKeyValid).toBe(true);
   });
 
-  it("can upload and create document", async () => {
+  it("can upload a file and convert it into a document", async () => {
     const buffer = Buffer.from("test content");
     const blob = new Blob([buffer], { type: "text/plain" });
 
-    const { media } = await chaindoc.media.upload([blob]);
-    expect(media).toHaveLength(1);
+    const { conversion } = await chaindoc.documents.createFromFile(blob, { name: "Test Document" }, { filename: "test.txt" });
+    const ready = await chaindoc.conversions.wait(conversion.id);
 
-    const doc = await chaindoc.documents.create({
-      name: "Test Document",
-      description: "Integration test",
-      media: media[0],
-      status: "draft",
-      hashtags: ["#test"],
-      meta: [],
-    });
-
-    expect(doc.success).toBe(true);
-    expect(doc.documentId).toBeDefined();
+    expect(ready.status).toBe("ready");
+    expect(ready.documentId).toBeDefined();
   });
 });
 ```
@@ -1033,23 +1003,19 @@ describe("Chaindoc Integration", () => {
 ```typescript
 describe("Complete Signing Flow", () => {
   it("creates session and completes signing", async () => {
-    // 1. Upload document
-    const { media } = await chaindoc.media.upload([testFile]);
+    // 1. Upload the file: it is converted into a text document
+    const { conversion } = await chaindoc.documents.createFromFile(testFile, { name: "E2E Test Contract" }, { filename: "contract.pdf" });
+    const ready = await chaindoc.conversions.wait(conversion.id);
 
-    // 2. Create document
-    const doc = await chaindoc.documents.create({
-      name: "E2E Test Contract",
-      description: "Testing",
-      media: media[0],
-      status: "published",
-      hashtags: [],
-      meta: [],
+    // 2. Give the text its signer role
+    const { versionId } = await chaindoc.documents.addSignatureBlock(ready.documentId, {
+      roles: [{ key: "client", name: "Client" }],
     });
 
     // 3. Create signature request
     const sigRequest = await chaindoc.signatures.createRequest({
-      versionId: doc.document.currentVersion.id,
-      recipients: [{ email: "test@example.com" }],
+      versionId,
+      recipients: [{ email: "test@example.com", role: "client" }],
       deadline: new Date(Date.now() + 86400000),
       embeddedFlow: true,
     });
@@ -1058,7 +1024,7 @@ describe("Complete Signing Flow", () => {
     const session = await chaindoc.embedded.createSession({
       email: "test@example.com",
       metadata: {
-        documentId: doc.documentId,
+        documentId: ready.documentId,
         signatureRequestId: sigRequest.requestId,
       },
     });

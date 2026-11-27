@@ -1,8 +1,11 @@
 /**
  * Contract Additional Agreements (Amendments) Submodule
  *
- * Amendments are document-backed changes layered on an existing contract. They
- * may carry payment-term modifications that apply once the amendment is signed.
+ * Amendments are document-backed changes layered on an existing contract. An amendment
+ * carries no money: payment-term modifications are refused (`422 AMENDMENT_CARRIES_NO_MONEY`).
+ * Change a contract's money through invoices — a one-off by `invoices.create`, a recurring
+ * payment by a series of invoices (in the Chaindoc app; `contracts.setupRecurring` for an
+ * imported contract).
  */
 
 import { seg } from '../utils/path';

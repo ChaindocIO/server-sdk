@@ -236,6 +236,10 @@ The three preview tools are gone.
   `canCancel`, `creditedAmount`, `paidAheadAmount`, `taxSummary`, `buyer`, `seller` in the answer; overdue is computed.
 - Transactions: `method`, `paidOn`, `removedAt`, `kind`, plus edit and remove (webhooks in point 9).
 - Business owners are **emailed whenever bank details are created, changed, made default or assigned** to a counterparty by a key.
+- **An amendment carries no money.** A new amendment with `modifiesPaymentTerms: true` or any `paymentTermModifications`
+  is `422 AMENDMENT_CARRIES_NO_MONEY` (the SDK marks both fields deprecated). A contract's money changes through invoices:
+  a one-off by an invoice under the contract, a recurring payment by a series of invoices (in the Chaindoc app;
+  `contracts.setupRecurring` for an imported contract).
 
 **What you do.**
 - **Never retry a money call blindly.** SDK 3.0 does not (`charge`, `markPaid`, credit notes, payment-instruction writes,

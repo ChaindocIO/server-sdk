@@ -2038,10 +2038,17 @@ export interface SigningRequestGetResponse {
 
 // --- Additional agreements / amendments ---
 
-/** Action applied by a payment-term modification carried in an amendment. */
+/**
+ * Action applied by a payment-term modification carried in an amendment.
+ *
+ * @deprecated An amendment carries no money (`422 AMENDMENT_CARRIES_NO_MONEY`); kept so that existing code compiles.
+ */
 export type PaymentTermModificationAction = 'add' | 'update' | 'deactivate';
 
 /**
+ * @deprecated An amendment carries no money: a modification is refused with `422 AMENDMENT_CARRIES_NO_MONEY`. Kept so
+ * that existing code compiles; change a contract's money through invoices.
+ *
  * One payment-term modification in an amendment.
  * `paymentTermId` (a payment term UUID) is required for `update` / `deactivate`;
  * `add` instead supplies the new term fields (type/name/amount, etc.).
@@ -2068,7 +2075,10 @@ export interface PaymentTermModificationInput {
   autoCharge?: boolean;
 }
 
-/** Parameters for creating an additional agreement (amendment). */
+/**
+ * Parameters for creating an additional agreement (amendment). An amendment carries no money: it is a document that is
+ * signed, and nothing is charged by it.
+ */
 export interface CreateAgreementParams {
   /** UUID of an existing document backing the amendment. */
   documentId: string;
@@ -2076,7 +2086,18 @@ export interface CreateAgreementParams {
   description?: string;
   /** ISO 8601 date */
   effectiveDate?: string;
+  /**
+   * @deprecated An amendment carries no money: `true` is refused with `422 AMENDMENT_CARRIES_NO_MONEY`. Leave it out (or
+   * `false`). Change a contract's money through invoices: a one-off by `invoices.create` under the contract, a recurring
+   * payment by a series of invoices (in the Chaindoc app; `contracts.setupRecurring` for an imported contract).
+   */
   modifiesPaymentTerms?: boolean;
+  /**
+   * @deprecated An amendment carries no money: a non-empty list is refused with `422 AMENDMENT_CARRIES_NO_MONEY` ("it
+   * cannot add, change or end a payment term"). Leave it out. Change a contract's money through invoices: a one-off by
+   * `invoices.create` under the contract, a recurring payment by a series of invoices (in the Chaindoc app;
+   * `contracts.setupRecurring` for an imported contract).
+   */
   paymentTermModifications?: PaymentTermModificationInput[];
 }
 

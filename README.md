@@ -316,14 +316,20 @@ await chaindoc.signatures.qes.finalize(requestId, { sessionId, signatureValueB64
 ### Embedded Sessions
 
 ```typescript
-// Create session for frontend signing (sends OTP to email)
+// Create session for frontend signing (sends a one-time code to the email)
 const session = await chaindoc.embedded.createSession({
   email: 'signer@example.com',
   metadata: {
-    documentId: string;
-    signatureRequestId?: string;
-    returnUrl?: string;
+    documentId,                    // a document: its id and its signature request
+    signatureRequestId,
+    returnUrl: 'https://yourapp.com/signed', // optional
   },
+});
+
+// A contract (or the amendment being signed): its id, and optionally the request `send` answered
+await chaindoc.embedded.createSession({
+  email: 'counterparty@example.com',
+  metadata: { contractId, contractSigningRequestId: signingRequestId },
 });
 // Returns sessionId for @chaindoc_io/embed-sdk
 ```
@@ -375,6 +381,12 @@ Chaindoc app. It ends when the counterparty signs or declines, or when its deadl
 (`status`) for a request that is signed, declined, cancelled or expired, `400 EMBEDDED_CONTRACT_NOT_SIGNABLE` for a
 contract never sent, `400 EMBEDDED_SESSION_REQUEST_MISMATCH` when a request or document named beside `contractId` is not
 that contract's.
+
+**An amendment carries no money.** It is a document both sides sign; nothing is charged by it.
+`agreements.create` with `modifiesPaymentTerms: true` or any `paymentTermModifications` is
+`422 AMENDMENT_CARRIES_NO_MONEY` (both fields are deprecated). Change a contract's money through invoices: a one-off by
+`invoices.create` under the contract, a recurring payment by a series of invoices (in the Chaindoc app;
+`contracts.setupRecurring` for an imported contract).
 
 **Amendments in your page.** Once an amendment is sent (`contracts.agreements.initiateSigning`, the contract is
 `pending_amendment`), `embedded.createSession` with its `contractId` opens the window on the amendment: the counterparty

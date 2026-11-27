@@ -37,6 +37,11 @@ Most of it is added fields and named refusals; nothing you call changed its rout
 11. **A document's `status` is `'draft'` or `'published'`.** Any other value (`'Published'`, `'nope'`, `''`) used to answer
     `201` and make a draft; it is `400 VALIDATION_FAILED` now. TypeScript code on `DocumentStatusForCreate` never sent one;
     check values that reach `status` from configuration or user input.
+12. **An amendment carries no money.** `agreements.create` with `modifiesPaymentTerms: true` or any
+    `paymentTermModifications` is `422 AMENDMENT_CARRIES_NO_MONEY`; both fields are `@deprecated` and stay only so that
+    existing code compiles. Change a contract's money through invoices: a one-off by `invoices.create` under the
+    contract, a recurring payment by a series of invoices (in the Chaindoc app; `contracts.setupRecurring` for an
+    imported contract).
 
 ## Upgrading from 2.x to 3.0.0
 

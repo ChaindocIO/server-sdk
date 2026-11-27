@@ -1,10 +1,6 @@
 # Getting Started with Chaindoc Server SDK
 
-> **3.0 notice.** Examples in this guide that create a document from `media`, or place signature `fields` by
-> page coordinates, are 2.x. In 3.0 a file is converted (`documents.createFromFile` +
-> `conversions.wait`) and recipients are bound by `role`; see the README and [MIGRATION.md](../MIGRATION.md).
-> This guide is rewritten in the next pass.
-
+> Upgrading from 2.x? See [MIGRATION.md](../MIGRATION.md).
 
 This guide walks you through setting up the Chaindoc Server SDK and creating your first document signing workflow.
 
@@ -56,48 +52,61 @@ if (health.status === "ok" && health.apiKeyValid) {
 
 ## Step 4: Upload a Document
 
+A file becomes a text document by **conversion**: upload it into Storage in chunks and start the conversion in one call.
+The answer is `202` with a conversion; wait for it (or subscribe to `document.conversion.completed`).
+
 ```typescript
 import { readFile } from "fs/promises";
 
-// Read file from disk
-const buffer = await readFile("./contract.pdf");
-const file = new Blob([buffer], { type: "application/pdf" });
+const file = new Blob([await readFile("./contract.pdf")], { type: "application/pdf" });
 
-// Upload to Chaindoc
-const { media } = await chaindoc.media.upload([file]);
+const { conversion } = await chaindoc.documents.createFromFile(
+  file,
+  { name: "Service Agreement", description: "Contract for consulting services" },
+  { filename: "contract.pdf" },
+);
 
-console.log("Uploaded:", media[0].url);
+// Polls with backoff; throws ChaindocConversionFailedError / ChaindocConversionTimeoutError
+const ready = await chaindoc.conversions.wait(conversion.id);
+
+console.log("Document ID:", ready.documentId);
 ```
+
+A document made from a file always lands as a draft. To make a text yourself, pass `content` to `documents.create`
+(see the README).
 
 ---
 
-## Step 5: Create a Document Record
+## Step 5: Give the Text Its Signer Roles
+
+Signature places are chips in the text. A converted text has none yet: add a role per signer, each with its Signature and
+Date signed chips. The answer is the new version, which holds them.
 
 ```typescript
-const doc = await chaindoc.documents.create({
-  name: "Service Agreement",
-  description: "Contract for consulting services",
-  media: media[0],
-  status: "published", // Triggers blockchain verification
-  hashtags: ["#contract", "#2024"],
-  meta: [
-    { key: "client", value: "Acme Corp" },
-    { key: "value", value: "$50,000" },
+const { versionId } = await chaindoc.documents.addSignatureBlock(ready.documentId, {
+  roles: [
+    { key: "client", name: "Client" },
+    { key: "provider", name: "Provider" },
   ],
 });
 
-console.log("Document ID:", doc.documentId);
-console.log("Version UUID:", doc.document.currentVersion.id);
+// A text that already holds roles: read them
+const { roles } = await chaindoc.documents.getContent(ready.documentId); // roles[].key
 ```
 
 ---
 
 ## Step 6: Create a Signature Request
 
+Each recipient is bound to a role of the text (`recipients[].role`); every role stands for exactly one recipient.
+
 ```typescript
 const sigRequest = await chaindoc.signatures.createRequest({
-  versionId: doc.document.currentVersion.id,
-  recipients: [{ email: "john@acme.com" }, { email: "jane@partner.com" }],
+  versionId,
+  recipients: [
+    { email: "john@acme.com", role: "client" },
+    { email: "jane@partner.com", role: "provider" },
+  ],
   deadline: new Date("2027-12-31"),
   message: "Please review and sign this agreement",
   embeddedFlow: true, // Enable embedded signing
@@ -115,7 +124,7 @@ console.log("Request ID:", sigRequest.requestId);
 const session = await chaindoc.embedded.createSession({
   email: "john@acme.com",
   metadata: {
-    documentId: doc.documentId,
+    documentId: ready.documentId,
     signatureRequestId: sigRequest.requestId,
     returnUrl: "https://yourapp.com/signed",
   },
@@ -278,7 +287,6 @@ switch (verification.envelope.type) {
 // server.ts
 import express from "express";
 import { Chaindoc, ChaindocError } from "@chaindoc_io/server-sdk";
-import { readFile } from "fs/promises";
 import multer from "multer";
 
 const app = express();
@@ -290,35 +298,44 @@ const chaindoc = new Chaindoc({
   secretKey: process.env.CHAINDOC_SECRET_KEY!,
 });
 
-// Upload and create document
+// Upload a file: it is converted into a text document (202); the client polls the conversion
 app.post("/api/documents", upload.single("file"), async (req, res) => {
   try {
     const file = new Blob([req.file!.buffer], { type: req.file!.mimetype });
-    const { media } = await chaindoc.media.upload([file]);
+    const { conversion } = await chaindoc.documents.createFromFile(
+      file,
+      { name: req.body.name, description: req.body.description || undefined },
+      { filename: req.file!.originalname },
+    );
 
-    const doc = await chaindoc.documents.create({
-      name: req.body.name,
-      description: req.body.description || "",
-      media: media[0],
-      status: "published",
-      hashtags: req.body.hashtags || [],
-      meta: req.body.meta || [],
-    });
-
-    res.json({ documentId: doc.documentId });
+    res.status(202).json({ conversionId: conversion.id });
   } catch (error) {
     handleError(res, error);
   }
 });
 
-// Create signature request
+// Where a conversion stands: `ready` carries the documentId
+app.get("/api/conversions/:id", async (req, res) => {
+  try {
+    const { conversion } = await chaindoc.conversions.get(req.params.id);
+    res.json(conversion);
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+// Give the text its signer roles, then send it: recipients = [{ email, role }]
 app.post("/api/documents/:id/signature-request", async (req, res) => {
   try {
-    const { versionId, recipients, deadline } = req.body;
+    const { roles, recipients, deadline } = req.body;
+
+    const { versionId } = await chaindoc.documents.addSignatureBlock(req.params.id, {
+      roles, // [{ key: "client", name: "Client" }, ...]
+    });
 
     const sigRequest = await chaindoc.signatures.createRequest({
       versionId,
-      recipients: recipients.map((email: string) => ({ email })),
+      recipients,
       deadline: new Date(deadline),
       embeddedFlow: true,
     });
@@ -359,7 +376,7 @@ function handleError(res: express.Response, error: unknown) {
   if (error instanceof ChaindocError) {
     res.status(error.statusCode || 500).json({
       error: error.message,
-      code: error.statusCode,
+      errorKey: error.errorKey,
     });
   } else {
     res.status(500).json({ error: "Internal server error" });
