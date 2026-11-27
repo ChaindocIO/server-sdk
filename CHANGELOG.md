@@ -13,9 +13,9 @@ changes is in [MIGRATION.md](MIGRATION.md) («Upgrading from 3.0.0»).
 
 ### Added
 
-- `SIGNING_LANES_MIXED_UNSUPPORTED` (`ERROR_KEYS`): `contracts.send` / `agreements.initiateSigning` refuse sides asked for
-  different methods, one of them `qes` — such a contract cannot be completed yet, so nothing is created. Ask both sides for
-  the same method.
+- A contract or an amendment whose sides sign by different methods: `signingLaneByParty: { business: 'internal',
+  contragent: 'qes' }` (or the reverse) is sent, each side signs with its own method, and the contract becomes `active`
+  once both have signed, in either order (`SigningLaneParams`, WHATS-CHANGED §7).
 - The refusals of `signatures.qes.promise` in `ERROR_KEYS`, under the lower-case keys the server sends:
   `request_not_pending`, `delegated_auto_sign`, `not_a_signer`, `already_acted`, `lane_taken_by_internal`,
   `lane_not_qualified_on_contract`, `promises_closed`, `above_requirement_unsupported`.

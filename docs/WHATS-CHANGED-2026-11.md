@@ -309,9 +309,9 @@ the PDF). It exists on the public API (`/signatures/qes/{requestId}/...`) and in
   only with their own certificate, the business side too (in the app, or in the signing window with
   `signingPolicy.business: 'embedded'`). A contract whose business side signs by delegation
   (`signingPolicy.business: 'delegated'`) takes no `qes` on any side: `400 QES_DELEGATED_AUTO_SIGN_REFUSED`.
-  Both sides sign with one method for now: `signingLaneByParty` with two different methods (one side `qes`, the other
-  `internal`) is refused with `400 SIGNING_LANES_MIXED_UNSUPPORTED`, and nothing is created or sent. Send both sides on the
-  same method.
+  The sides may also sign by different methods: `signingLaneByParty: { business: 'internal', contragent: 'qes' }` (or the
+  reverse). Each side signs with its own — the platform side's signature is made once both have agreed, the qualified side
+  then signs with their certificate — and the contract becomes `active` once both signatures exist, whichever comes last.
 - A plain signature request has no such option. The signing window offers each signer the choice: «Simple signature» or
   «Qualified signature».
 

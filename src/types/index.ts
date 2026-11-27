@@ -1604,8 +1604,9 @@ export interface SigningLaneParams {
   /** Both sides; omitted — the platform's signature. */
   signingLane?: SigningLane;
   /**
-   * Per side. Sent with `signingLane`, the two must agree. Two different methods (one side `qes`, the other `internal`) are
-   * refused for now — `400 SIGNING_LANES_MIXED_UNSUPPORTED`, nothing is created: send both sides on the same method.
+   * Per side. Sent with `signingLane`, the two must agree. The sides may sign by different methods (one side `qes`, the
+   * other `internal`): each signs with its own, and the contract becomes `active` once both have signed — whichever signs
+   * first.
    */
   signingLaneByParty?: SigningLaneByParty;
 }

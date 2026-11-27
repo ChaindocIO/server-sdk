@@ -75,10 +75,13 @@ describe('ERROR_KEYS', () => {
     }
   });
 
-  it('names the refusal of sides asked for different methods, and the qualified promise refusals as the server spells them', () => {
+  it('does not name a refusal of sides on different methods: such a contract is sent and completes', () => {
+    expect(Object.values(ERROR_KEYS)).not.toContain('SIGNING_LANES_MIXED_UNSUPPORTED');
+  });
+
+  it('names the qualified promise refusals as the server spells them', () => {
     const known = new Set<string>(Object.values(ERROR_KEYS));
     for (const key of [
-      'SIGNING_LANES_MIXED_UNSUPPORTED',
       'request_not_pending',
       'delegated_auto_sign',
       'not_a_signer',

@@ -201,12 +201,6 @@ export const ERROR_KEYS = {
    * signature on either side. Ask for none, or let the business side sign in person.
    */
   QES_DELEGATED_AUTO_SIGN_REFUSED: 'QES_DELEGATED_AUTO_SIGN_REFUSED',
-  /**
-   * 400 · `contracts.send` / `agreements.initiateSigning`: the sides were asked to sign with different methods, one of them
-   * `qes` (e.g. `signingLaneByParty: { business: 'internal', contragent: 'qes' }`). Such a contract cannot be completed yet,
-   * so it is not sent and nothing is created. Ask both sides for the same method: `signingLane: 'qes'` or none.
-   */
-  SIGNING_LANES_MIXED_UNSUPPORTED: 'SIGNING_LANES_MIXED_UNSUPPORTED',
   // qualified signature, `signatures.qes.promise` — the server spells these keys in lower case
   /** 400 · the request is cancelled, declined, expired or completed: nothing is collected on it any more. */
   request_not_pending: 'request_not_pending',
