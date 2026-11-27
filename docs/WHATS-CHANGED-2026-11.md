@@ -500,6 +500,14 @@ backend source and, where marked in the OpenAPI, in `openapi/public-api.json`; t
   routes: `POST /embedded/contracts/signing/{requestId}/payment-method/setup-intent` (answers `clientSecret`, `setupIntentId`,
   `stripeAccountId`, `publishableKey`) and `.../payment-method/attach`. Card only for now. Card data goes to Stripe's own fields;
   it never reaches Chaindoc or your page. The embed does not list saved cards.
+  The step is asked when the contract is created with `paymentMethodRequired: true` on a business with a connected Stripe
+  account (`stripePaymentAllowed` omitted follows that account; without one the create is refused
+  `STRIPE_SETTING_REQUIRES_STRIPE`, and an explicit `stripePaymentAllowed: true` `STRIPE_NOT_ALLOWED_BY_CASCADE`). The signer
+  cannot sign until the card is saved, so a signed counterparty of such a contract has a card on file; the business sees it
+  on the contract in the app. The card form, a declined card and 3-D Secure are Stripe's own, in the window's language. The
+  routes' refusals: `EMBEDDED_PAYMENT_METHOD_ALREADY_LINKED` (409, a card is already linked for this signing),
+  `PAYMENT_PROVIDER_ERROR` (502, with Stripe's `providerCode`), `PAYMENT_PROVIDER_NOT_CONFIGURED` (503),
+  `EMBEDDED_PAYMENT_METHOD_TYPE_NOT_OFFERED` (400, anything but a card).
 - **Amendments.** A contract's amendment is signed or declined in the embed too: `embedded.createSession` with the
   `contractId` of a contract in `pending_amendment` opens the window on the amendment (or name its request with
   `contractSigningRequestId`, the `signingRequestId` of `agreements.initiateSigning`). The window says it is an amendment
@@ -507,8 +515,8 @@ backend source and, where marked in the OpenAPI, in `openapi/public-api.json`; t
 - **QES** on the signer's device and **fields** (`fieldValues`) are handled by the embed; typed refusals are shown to the signer.
   The window offers «Qualified signature» beside «Simple signature» on a plain request, and only the qualified one to a signer
   of a contract sent with `qes` for their side; the signer opens a key file or a smart card (point 7).
-- **Before you sign** lists «Payment method» only on a contract with payment terms (as the app does); a contract with none
-  says nothing about paying.
+- **Before you sign** lists «Payment method» on a contract that requires a card (`paymentMethodRequired`, the card step
+  above) or that has payment terms (as the app does); a contract with neither says nothing about paying.
 - **Identity check refused for good.** The signer sees a final screen and your page hears `ERROR` `KYC_REJECTED` once. The
   embedded route that hands the window the provider's token (`GET /embedded/kyc/get-access-token/{requestId}`) answers such a
   signer `400 KYC_REJECTED` too; a resubmission still gets its token.
