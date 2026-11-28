@@ -7,9 +7,9 @@ Versions that go with this change:
 
 | Package | From | To |
 |---|---|---|
-| `@chaindoc_io/server-sdk` | 2.2.0 | 3.0.0 ([MIGRATION.md](../MIGRATION.md), [CHANGELOG.md](../CHANGELOG.md)) |
+| `@chaindoc_io/server-sdk` | 2.2.0 | 3.1.0 ([MIGRATION.md](../MIGRATION.md), [CHANGELOG.md](../CHANGELOG.md)) |
 | `@chaindoc_io/mcp-server` and the Claude plugin | 0.2.0 | 0.3.0 (124 tools) |
-| `@chaindoc_io/embed-sdk` | 2.2.0 | 2.3.0 (backwards compatible) |
+| `@chaindoc_io/embed-sdk` | 2.2.0 | 2.4.0 (backwards compatible) |
 
 The public contract is `openapi/public-api.json` in the backend (194 operations for SDK 3.0). The new versions are
 version bumps in their repositories; check npm for what is actually published before you upgrade.
@@ -17,7 +17,7 @@ version bumps in their repositories; check npm for what is actually published be
 **Before anything else**, one change breaks existing integrations: point 3 (files are converted, coordinates are
 refused). Read it first.
 
-> **Updated after 3.0.0 (SDK `Unreleased`).** The server changed what some calls answer since this page was written;
+> **Updated for SDK 3.1.0.** The server changed what some calls answer since this page was written;
 > the points below say it as the server answers today: content is version 3 (points 3, 4); `sendable` follows the send's
 > own rule (point 3); a contract or amendment is sent only on a text with the sides' signature chips (point 6); 23
 > webhook events, the delivery schedule and the payload names (point 9); more refusal codes (point 10); the signing window
@@ -432,7 +432,7 @@ more than one delivery per contract change. If you treated `contract.terminated`
 `contract.status_changed` with `termination_pending` instead; after a resume, expect late events and trust the object's
 status over the order of events.
 
-**SDK 3.** `Chaindoc.webhooks.verify(...)`; the event union has the 23 types (since `Unreleased`; 3.0.0 had 22), and
+**SDK 3.** `Chaindoc.webhooks.verify(...)`; the event union has the 23 types (since 3.1.0; 3.0.0 had 22), and
 `WebhookEventDataMap` types the document and signature payloads.
 
 **MCP.** `chaindoc_webhooks_verify` (HMAC-SHA256, 5-minute replay window; headers `X-Chaindoc-Signature`, `X-Chaindoc-Timestamp`,

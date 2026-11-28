@@ -2,7 +2,7 @@
 
 > Start with [What changed (November 2026)](docs/WHATS-CHANGED-2026-11.md): the platform change as a whole (plan, workspaces, files converted, templates, money, QES, processes, webhooks, embed), with every new refusal code.
 
-## Upgrading from 3.0.0 (Unreleased)
+## Upgrading from 3.0.0 to 3.1.0
 
 Most of it is added fields and named refusals; nothing you call changed its route. What an integration written against
 3.0.0 changes:
@@ -46,7 +46,7 @@ Most of it is added fields and named refusals; nothing you call changed its rout
 ## Upgrading from 2.x to 3.0.0
 
 ```bash
-npm install @chaindoc_io/server-sdk@3.0.0
+npm install @chaindoc_io/server-sdk@^3.1.0
 ```
 
 **The headline:** in 3.0 **a file you send is converted into a text document** (as in the Chaindoc app), and
@@ -296,7 +296,7 @@ npm install @chaindoc_io/server-sdk@1.0.0
 
 ### Environment Configuration
 
-> **Corrected (Unreleased).** This section used to tell you to replace `baseUrl` with `environment` and listed a demo host
+> **Corrected (3.1.0).** This section used to tell you to replace `baseUrl` with `environment` and listed a demo host
 > for `staging` and `development`. That host no longer answers, and `environment` switches nothing:
 > every value calls the production API, `https://api.chaindoc.io`. Keep (or go back to) `baseUrl` for a non-production
 > backend; `environment` is deprecated.

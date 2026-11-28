@@ -5,11 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.1.0] - 2026-11-28
 
-Says what the API answers today (the server's November fixes after 3.0.0). Types widen or get corrected; nothing at
-runtime changes except which error class four limit keys arrive as. No version bump yet. What an integration on 3.0.0
-changes is in [MIGRATION.md](MIGRATION.md) («Upgrading from 3.0.0»).
+Fixes every `delete*` method of 3.0.0 and says what the API answers today (the server's November fixes after 3.0.0).
+Types widen or get corrected; nothing else changes at runtime except which error class five plan-limit keys arrive as.
+No export was removed. What an integration on 3.0.0 changes is in [MIGRATION.md](MIGRATION.md) («Upgrading from 3.0.0»).
+
+### Fixed
+
+- **Every `delete*` method works.** In 3.0.0 each one (and a `POST` sent without a body) answered `400`: the client said
+  `Content-Type: application/json` with an empty body, which the API refuses before any route runs. The header is now
+  sent only with a JSON body.
 
 ### Added
 
@@ -97,6 +103,10 @@ changes is in [MIGRATION.md](MIGRATION.md) («Upgrading from 3.0.0»).
 
 - `environment` (and `ChaindocEnvironment`): it switches nothing — every value calls `https://api.chaindoc.io`. Use
   `baseUrl` for another backend.
+- `modifiesPaymentTerms` and `paymentTermModifications` on `contracts.agreements.create`: an amendment carries no money
+  (`422 AMENDMENT_CARRIES_NO_MONEY`, now in `ERROR_KEYS`). Both stay only so that existing code compiles. Change a
+  contract's money through invoices: a one-off by `invoices.create` under the contract, a recurring payment by a series of
+  invoices.
 
 ### Documentation
 
@@ -119,9 +129,9 @@ changes is in [MIGRATION.md](MIGRATION.md) («Upgrading from 3.0.0»).
 - Build: dropped three dead `define`s (`CHAINDOC_API_*`) from `tsup.config.ts`.
 - QES: how to ask for it (contracts and amendments by `signingLane`; a plain request leaves the choice to the signer in the
   signing window), what the signer needs (a key file or a smart card with Web eID), and what the result means — the
-  method is not the legal verdict, `qes.legalClass` is. A contract whose sides are sent on different methods is not
-  completed today; send both on the same one. `signatureKind: 'qualified'` in the embed's `SUCCESS` names the
-  method. Removed the claim that the embed cannot make a qualified signature.
+  method is not the legal verdict, `qes.legalClass` is. `signatureKind: 'qualified'` in the embed's `SUCCESS` names
+  the method. Removed the claim that the embed cannot make a qualified signature.
+- The API reference describes 3.x throughout (it still showed 2.x shapes in places).
 - `hasSigned` / `signedCount`: a signer who agreed to sign with their own certificate counts once their device signs, not
   at the agreement.
 
