@@ -1,6 +1,6 @@
 /**
  * Compile-time check (`tsc --noEmit`): the answers dev gives today are assignable to the SDK's types, and answers in the
- * shapes SDK 3.0.0 typed still are. Values are dev's own (SDK piece 10's probe, 2026-11-26), addresses replaced.
+ * shapes SDK 3.0.0 typed still are. Values are dev's own (a probe, 2026-11-26), addresses replaced.
  */
 import type {
   BusinessSignResponse,
@@ -27,7 +27,7 @@ export const declined: SignatureRequestStatus = {
   dueDate: "2026-11-29T04:36:58.000Z",
   signers: [{ id: "s-1", email: "signer@example.com", role: "client", hasSigned: false, signer: null }],
   declinedBy: { email: "signer@example.com", username: "QA Signer" },
-  declineComment: "piece 09: decline told apart from a cancel",
+  declineComment: "decline told apart from a cancel",
   declinedVia: "document",
   declinedAt: "2026-11-26T04:37:36.373Z",
 };

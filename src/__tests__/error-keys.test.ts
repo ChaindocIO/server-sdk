@@ -45,7 +45,7 @@ describe('ERROR_KEYS', () => {
     expect(new Set(Object.values(ERROR_KEYS)).size).toBe(Object.keys(ERROR_KEYS).length);
   });
 
-  it('knows every errorKey the published contract names on a route the SDK wraps (F9)', () => {
+  it('knows every errorKey the published contract names on a route the SDK wraps', () => {
     const known = new Set<string>(Object.values(ERROR_KEYS));
     const missing = [...keysNamedBySnapshot()]
       .filter(([key]) => !known.has(key) && !(key in NOT_KEYS))
@@ -125,7 +125,7 @@ describe('ERROR_KEYS', () => {
   });
 
   it('a refusal keeps its facts readable as ChaindocRefusalBody (SETUP_BLOCKED, as dev answers it)', async () => {
-    // The body dev gave `contracts.send` on a text without the sides' chips (piece 10's probe), trimmed to the facts.
+    // The body dev gave `contracts.send` on a text without the sides' chips (a probe, 2026-11-26), trimmed to the facts.
     const body = {
       message: 'Something stands in the way of sending.',
       errorKey: 'SETUP_BLOCKED',

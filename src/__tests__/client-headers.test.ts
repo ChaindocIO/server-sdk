@@ -3,7 +3,7 @@ import { Chaindoc } from '../chaindoc';
 import { HttpClient } from '../client';
 
 /**
- * SDK piece 07 (dev, 26.11) — `contracts.delete` answered `400 Body cannot be empty when content-type is set to
+ * 3.0.0 — `contracts.delete` answered `400 Body cannot be empty when content-type is set to
  * 'application/json'`: the client declared a JSON body on every request, and a body-less DELETE is refused by the API's
  * JSON parser before any route runs. Every `delete*` method of the SDK was affected. Content-Type is said only when a
  * JSON body is sent.
